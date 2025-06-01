@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // GEÇICI TEST MODU - Tüm read/write işlemlerine izin ver
+    // PRODUCTION'da AUTH kontrolü eklenecek!
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // PRODUCTION RULES (şimdilik disabled):
+    /*
+    // Kullanıcılar sadece kendi verilerine erişebilir
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // İşlemler (Transactions)
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Hesaplar (Accounts)
+    match /accounts/{accountId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Kategoriler (Categories) - Herkes okuyabilir, sadece sahibi yazabilir
+    match /categories/{categoryId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        !resource.data.exists() || 
+        request.auth.uid == resource.data.userId ||
+        resource.data.isDefault == true
+      );
+      allow create: if request.auth != null && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.isDefault == true
+      );
+    }
+    */
+  }
+}
