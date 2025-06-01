@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,41 +24,46 @@ const isSmallDevice = width < 375;
 
 interface AddAccountScreenProps {
   navigation: any;
+  route?: {
+    params?: {
+      editAccount?: any; // Account to edit
+    };
+  };
 }
 
 const ACCOUNT_TYPES = [
   { 
     type: AccountType.CASH, 
     label: 'Nakit', 
-    icon: 'cash-outline',
+    icon: 'wallet',
     color: COLORS.SUCCESS,
     description: 'Cüzdanınızdaki nakit para'
   },
   { 
     type: AccountType.DEBIT_CARD, 
     label: 'Banka Kartı', 
-    icon: 'card-outline',
+    icon: 'card',
     color: COLORS.PRIMARY,
     description: 'Vadesiz hesap ve banka kartı'
   },
   { 
     type: AccountType.CREDIT_CARD, 
     label: 'Kredi Kartı', 
-    icon: 'card-outline',
+    icon: 'card',
     color: COLORS.ERROR,
     description: 'Kredi kartı hesabı'
   },
   { 
     type: AccountType.SAVINGS, 
     label: 'Tasarruf', 
-    icon: 'wallet-outline',
+    icon: 'home',
     color: COLORS.WARNING,
     description: 'Tasarruf hesabı'
   },
   { 
     type: AccountType.INVESTMENT, 
     label: 'Yatırım', 
-    icon: 'trending-up-outline',
+    icon: 'stats-chart',
     color: COLORS.SECONDARY,
     description: 'Yatırım hesabı'
   },
@@ -78,17 +84,81 @@ const ACCOUNT_COLORS = [
   '#98D8C8',
 ];
 
-const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation }) => {
+const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation, route }) => {
   const { user } = useAuth();
   const [viewModel] = useState(() => user?.id ? new AccountViewModel(user.id) : null);
 
-  const [accountName, setAccountName] = useState('');
-  const [selectedType, setSelectedType] = useState<AccountType>(AccountType.DEBIT_CARD);
-  const [initialBalance, setInitialBalance] = useState('');
-  const [selectedColor, setSelectedColor] = useState(COLORS.PRIMARY);
+  const editAccount = route?.params?.editAccount;
+  const isEditMode = !!editAccount;
+
+  const [accountName, setAccountName] = useState(editAccount?.name || '');
+  const [selectedType, setSelectedType] = useState<AccountType>(editAccount?.type || AccountType.DEBIT_CARD);
+  const [initialBalance, setInitialBalance] = useState(editAccount?.balance ? Math.abs(editAccount.balance).toString() : '');
+  const [isPositiveBalance, setIsPositiveBalance] = useState(
+    editAccount?.balance 
+      ? editAccount.balance >= 0 
+      : (editAccount?.type || AccountType.DEBIT_CARD) !== AccountType.CREDIT_CARD
+  );
+  const [selectedColor, setSelectedColor] = useState(editAccount?.color || COLORS.PRIMARY);
   const [loading, setLoading] = useState(false);
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
+
+  // Auto-update balance sign when account type changes
+  useEffect(() => {
+    // For new accounts (not editing), auto-set credit cards to negative
+    if (!isEditMode && selectedType === AccountType.CREDIT_CARD) {
+      setIsPositiveBalance(false);
+    }
+  }, [selectedType, isEditMode]);
+
+  // Helper function to format balance input
+  const formatBalanceInput = (value: string) => {
+    // Only allow numbers, commas and dots (no minus sign since we have toggle)
+    const cleanValue = value.replace(/[^0-9,\.]/g, '');
+    return cleanValue;
+  };
+
+  // Get the final balance value (with sign)
+  const getFinalBalance = () => {
+    const absValue = parseFloat(initialBalance.replace(',', '.')) || 0;
+    return isPositiveBalance ? absValue : -absValue;
+  };
+
+  // Helper function to get balance description based on account type
+  const getBalanceDescription = () => {
+    switch (selectedType) {
+      case AccountType.CREDIT_CARD:
+        return 'Kredi kartı borç tutarını girin (sol taraftaki - butonuna basın)';
+      case AccountType.CASH:
+        return 'Nakit paranızın miktarını giriniz';
+      case AccountType.DEBIT_CARD:
+      case AccountType.SAVINGS:
+        return 'Hesabınızdaki mevcut tutarı giriniz';
+      case AccountType.INVESTMENT:
+        return 'Yatırımınızın güncel değerini giriniz';
+      default:
+        return 'Hesabın başlangıç bakiyesini giriniz (+ / - butonunu kullanın)';
+    }
+  };
+
+  // Auto-set positive/negative based on account type when creating new account
+  const handleTypeChange = (type: AccountType) => {
+    setSelectedType(type);
+    
+    // Credit cards are always negative (debt), others start positive
+    if (type === AccountType.CREDIT_CARD) {
+      setIsPositiveBalance(false);
+    } else if (!isEditMode) {
+      // Only auto-set for new accounts, not when editing non-credit cards
+      setIsPositiveBalance(true);
+    }
+  };
+
+  // Check if current selection allows positive values
+  const canBePositive = () => {
+    return selectedType !== AccountType.CREDIT_CARD;
+  };
 
   const handleCreateAccount = async () => {
     if (!accountName.trim()) {
@@ -107,6 +177,8 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
       return;
     }
 
+    const finalBalance = getFinalBalance();
+
     if (!viewModel) {
       Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
       return;
@@ -116,22 +188,43 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
 
     const selectedTypeData = ACCOUNT_TYPES.find(type => type.type === selectedType);
     
-    const accountData: CreateAccountRequest = {
-      name: accountName.trim(),
-      type: selectedType,
-      initialBalance: balance,
-      color: selectedColor,
-      icon: selectedTypeData?.icon || 'wallet-outline',
-    };
+    let success = false;
 
-    const success = await viewModel.createAccount(accountData);
+    if (isEditMode) {
+      // Update existing account
+      const updateData = {
+        id: editAccount.id,
+        name: accountName.trim(),
+        type: selectedType,
+        color: selectedColor,
+        icon: selectedTypeData?.icon || 'wallet',
+      };
+
+      success = await viewModel.updateAccountInfo(updateData);
+      
+      // Update balance separately if changed
+      if (editAccount.balance !== finalBalance) {
+        await viewModel.updateAccountBalance(editAccount.id, finalBalance);
+      }
+    } else {
+      // Create new account
+      const accountData: CreateAccountRequest = {
+        name: accountName.trim(),
+        type: selectedType,
+        initialBalance: finalBalance,
+        color: selectedColor,
+        icon: selectedTypeData?.icon || 'wallet',
+      };
+
+      success = await viewModel.createAccount(accountData);
+    }
     
     setLoading(false);
 
     if (success) {
       Alert.alert(
         'Başarılı',
-        'Hesap başarıyla oluşturuldu',
+        isEditMode ? 'Hesap başarıyla güncellendi' : 'Hesap başarıyla oluşturuldu',
         [
           {
             text: 'Tamam',
@@ -140,7 +233,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         ]
       );
     } else {
-      Alert.alert('Hata', viewModel.error || 'Hesap oluşturulurken hata oluştu');
+      Alert.alert('Hata', viewModel.error || (isEditMode ? 'Hesap güncellenirken hata oluştu' : 'Hesap oluşturulurken hata oluştu'));
     }
   };
 
@@ -150,7 +243,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         styles.typeCard,
         selectedType === type && styles.selectedTypeCard
       ]}
-      onPress={() => setSelectedType(type)}
+      onPress={() => handleTypeChange(type)}
     >
       <View style={[styles.typeIconContainer, { backgroundColor: color }]}>
         <Ionicons name={icon} size={24} color="white" />
@@ -181,7 +274,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -190,7 +283,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         >
           <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yeni Hesap</Text>
+        <Text style={styles.headerTitle}>{isEditMode ? 'Hesabı Düzenle' : 'Yeni Hesap'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -221,17 +314,46 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         {/* Initial Balance */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Başlangıç Bakiyesi</Text>
+          <Text style={styles.balanceDescription}>{getBalanceDescription()}</Text>
+          
           <View style={styles.balanceInputContainer}>
+            {/* Toggle Button for Positive/Negative */}
+            <TouchableOpacity
+              style={[
+                styles.signToggleButton,
+                { backgroundColor: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR },
+                !canBePositive() && styles.signToggleButtonDisabled
+              ]}
+              onPress={() => canBePositive() && setIsPositiveBalance(!isPositiveBalance)}
+              disabled={!canBePositive()}
+            >
+              <Text style={styles.signToggleText}>
+                {isPositiveBalance ? '+' : '-'}
+              </Text>
+            </TouchableOpacity>
+            
             <Text style={styles.currencySymbol}>{currencySymbol}</Text>
             <TextInput
               style={styles.balanceInput}
               value={initialBalance}
-              onChangeText={setInitialBalance}
+              onChangeText={(value) => setInitialBalance(formatBalanceInput(value))}
               placeholder="0,00"
               placeholderTextColor={COLORS.TEXT_SECONDARY}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
             />
           </View>
+          
+          {initialBalance && (
+            <Text style={[
+              styles.balancePreview,
+              { color: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR }
+            ]}>
+              {selectedType === AccountType.CREDIT_CARD 
+                ? `Kredi Kartı Borcu: ${currencySymbol}${Math.abs(parseFloat(initialBalance.replace(',', '.')) || 0).toLocaleString('tr-TR')}`
+                : `${isPositiveBalance ? 'Bakiye: +' : 'Borç: -'}${currencySymbol}${Math.abs(parseFloat(initialBalance.replace(',', '.')) || 0).toLocaleString('tr-TR')}`
+              }
+            </Text>
+          )}
         </Card>
 
         {/* Account Color */}
@@ -251,7 +373,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
             <View style={styles.previewHeader}>
               <View style={styles.previewIconContainer}>
                 <Ionicons 
-                  name={ACCOUNT_TYPES.find(t => t.type === selectedType)?.icon as any || 'wallet-outline'}
+                  name={ACCOUNT_TYPES.find(t => t.type === selectedType)?.icon as any || 'wallet'}
                   size={20} 
                   color="white" 
                 />
@@ -266,7 +388,14 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
               </View>
             </View>
             <Text style={styles.previewBalance}>
-              {currencySymbol}{initialBalance || '0,00'}
+              {(() => {
+                const balance = getFinalBalance();
+                if (balance < 0) {
+                  return `-${currencySymbol}${Math.abs(balance).toLocaleString('tr-TR')}`;
+                } else {
+                  return `${currencySymbol}${balance.toLocaleString('tr-TR')}`;
+                }
+              })()}
             </Text>
           </View>
         </Card>
@@ -283,7 +412,10 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
           disabled={!accountName.trim() || !initialBalance.trim() || loading}
         >
           <Text style={styles.createButtonText}>
-            {loading ? 'Oluşturuluyor...' : 'Hesap Oluştur'}
+            {loading 
+              ? (isEditMode ? 'Güncelleniyor...' : 'Oluşturuluyor...') 
+              : (isEditMode ? 'Hesabı Güncelle' : 'Hesap Oluştur')
+            }
           </Text>
         </TouchableOpacity>
       </View>
@@ -470,6 +602,32 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
     color: COLORS.WHITE,
+  },
+  balanceDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.sm,
+  },
+  balancePreview: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'right',
+  },
+  signToggleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.xs,
+  },
+  signToggleText: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: '600',
+    color: COLORS.WHITE,
+  },
+  signToggleButtonDisabled: {
+    backgroundColor: COLORS.TEXT_SECONDARY,
   },
 });
 

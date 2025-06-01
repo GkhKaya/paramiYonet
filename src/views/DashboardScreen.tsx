@@ -8,13 +8,16 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
+import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../components/common/Card';
 import { AccountCard } from '../components/common/AccountCard';
 import { CategoryIcon } from '../components/common/CategoryIcon';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { Account, AccountType } from '../models/Account';
 import { Transaction, TransactionType } from '../models/Transaction';
@@ -22,6 +25,7 @@ import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
+import { isWeb, getResponsiveColumns } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -47,11 +51,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
       const accountVm = new AccountViewModel(user.id);
       setTransactionViewModel(transactionVm);
       setAccountViewModel(accountVm);
+      
+      // Load initial data
+      transactionVm.loadTransactions();
+      accountVm.loadAccounts();
     } else {
       setTransactionViewModel(null);
       setAccountViewModel(null);
     }
   }, [user?.id]);
+
+  // Refresh data when screen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (transactionViewModel && accountViewModel) {
+        transactionViewModel.loadTransactions();
+        accountViewModel.loadAccounts();
+      }
+    }, [transactionViewModel, accountViewModel])
+  );
 
   const onRefresh = async () => {
     if (!transactionViewModel || !accountViewModel) return;
@@ -67,7 +85,21 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
   
   const formatCurrency = (amount: number) => {
     return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const formatAccountBalance = (balance: number) => {
+    if (balance < 0) {
+      return `-₺${Math.abs(balance).toLocaleString('tr-TR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })}`;
+    }
+    
+    return `₺${balance.toLocaleString('tr-TR', {
+      minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     })}`;
   };
@@ -92,6 +124,49 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
     navigation.navigate('AddTransaction', { defaultType: type });
   };
 
+  // Calculate financial summaries
+  const getFinancialSummary = () => {
+    if (!transactionViewModel?.transactions) {
+      return { totalIncome: 0, totalExpenses: 0, netProfit: 0 };
+    }
+
+    const totalIncome = transactionViewModel.transactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const totalExpenses = transactionViewModel.transactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const netProfit = totalIncome - totalExpenses;
+
+    return { totalIncome, totalExpenses, netProfit };
+  };
+
+  const getAccountsSummary = () => {
+    if (!accountViewModel?.accounts) {
+      return [];
+    }
+
+    // Return individual accounts sorted by balance (positive first, then negative)
+    const result = accountViewModel.accounts
+      .filter(account => account.isActive) // Only show active accounts
+      .sort((a, b) => {
+        if (a.balance >= 0 && b.balance >= 0) {
+          return b.balance - a.balance; // Positive: highest first
+        }
+        if (a.balance < 0 && b.balance < 0) {
+          return b.balance - a.balance; // Negative: closest to zero first
+        }
+        if (a.balance >= 0 && b.balance < 0) {
+          return -1; // Positive comes before negative
+        }
+        return 1; // Negative comes after positive
+      });
+    
+    return result;
+  };
+
   const QuickActionButton = ({ 
     icon, 
     title, 
@@ -111,228 +186,464 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
     </TouchableOpacity>
   );
 
-  const RecentTransactionItem = ({ transaction }: { transaction: Transaction }) => {
-    const category = getCategoryDetails(transaction.category, transaction.type);
-    const isIncome = transaction.type === TransactionType.INCOME;
+  const handleRefresh = async () => {
+    await onRefresh();
+  };
 
-    return (
-      <TouchableOpacity 
-        style={styles.transactionItem}
-        onPress={() => navigation.navigate('Transactions')}
-      >
-        <View style={styles.transactionLeft}>
-          <CategoryIcon
-            iconName={transaction.categoryIcon}
-            color={category.color}
-            size="small"
-          />
-          <View style={styles.transactionInfo}>
-            <Text style={styles.transactionDescription}>{transaction.description}</Text>
-            <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
-          </View>
-        </View>
-        <Text style={[
-          styles.transactionAmount,
-          { color: isIncome ? COLORS.SUCCESS : COLORS.ERROR }
-        ]}>
-          {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
-        </Text>
-      </TouchableOpacity>
+  // Debug function to recalculate balances
+  const handleRecalculateBalances = async () => {
+    if (!accountViewModel) return;
+    
+    setRefreshing(true);
+    const success = await accountViewModel.recalculateBalancesFromTransactions();
+    if (success) {
+      Alert.alert('Başarılı', 'Hesap bakiyeleri yeniden hesaplandı');
+    } else {
+      Alert.alert('Hata', 'Bakiye hesaplama sırasında hata oluştu');
+    }
+    setRefreshing(false);
+  };
+
+  // Handle account editing
+  const handleEditAccount = (account: Account) => {
+    navigation.navigate('AddAccount', { editAccount: account });
+  };
+
+  // Handle account deletion
+  const handleDeleteAccount = (account: Account) => {
+    Alert.alert(
+      'Hesabı Sil',
+      `"${account.name}" hesabını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            if (accountViewModel) {
+              const success = await accountViewModel.deleteAccount(account.id);
+              if (success) {
+                Alert.alert('Başarılı', 'Hesap başarıyla silindi');
+              } else {
+                Alert.alert('Hata', 'Hesap silinirken hata oluştu');
+              }
+            }
+          }
+        }
+      ]
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Hoş geldiniz</Text>
-            <Text style={styles.userName}>{user?.displayName || 'Kullanıcı'}</Text>
+  // Web-specific responsive grid layout
+  const ResponsiveGrid: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const columns = getResponsiveColumns();
+    const childrenArray = React.Children.toArray(children);
+    
+    if (!isWeb || columns === 1) {
+      return <>{children}</>;
+    }
+
+    const rows = [];
+    for (let i = 0; i < childrenArray.length; i += columns) {
+      rows.push(childrenArray.slice(i, i + columns));
+    }
+
+    return (
+      <View>
+        {rows.map((row, index) => (
+          <View key={index} style={styles.webGridRow}>
+            {row.map((child, childIndex) => (
+              <View key={childIndex} style={styles.webGridItem}>
+                {child}
+              </View>
+            ))}
+            {/* Fill empty columns */}
+            {row.length < columns && 
+              Array.from({ length: columns - row.length }).map((_, emptyIndex) => (
+                <View key={`empty-${emptyIndex}`} style={styles.webGridItem} />
+              ))
+            }
           </View>
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Ionicons name="person-circle-outline" size={32} color={COLORS.TEXT_PRIMARY} />
-          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  const renderContent = () => {
+    if (!user) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyStateText}>Giriş yapmanız gerekiyor</Text>
         </View>
+      );
+    }
 
-        {/* Total Balance Card */}
-        <Card style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Toplam Bakiye</Text>
-          <Text style={styles.balanceAmount}>
-            {balanceVisible ? formatCurrency(totalBalance) : '••••••'}
-          </Text>
-          <View style={styles.balanceActions}>
-            <TouchableOpacity 
-              style={styles.balanceActionButton}
-              onPress={() => setBalanceVisible(!balanceVisible)}
-            >
-              <Ionicons 
-                name={balanceVisible ? "eye-outline" : "eye-off-outline"} 
-                size={16} 
-                color={COLORS.TEXT_SECONDARY} 
-              />
-            </TouchableOpacity>
-          </View>
-        </Card>
-
-        {/* Monthly Stats */}
-        {transactionViewModel && !transactionViewModel.isLoading && (
-          <Card style={styles.statsCard}>
-            <Text style={styles.statsTitle}>Bu Ay</Text>
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <View style={styles.statHeader}>
-                  <Ionicons name="trending-up" size={16} color={COLORS.SUCCESS} />
-                  <Text style={styles.statLabel}>Gelir</Text>
-                </View>
-                <Text style={[styles.statAmount, { color: COLORS.SUCCESS }]}>
-                  +{formatCurrency(transactionViewModel.monthlyStats.totalIncome || 0)}
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <View style={styles.statHeader}>
-                  <Ionicons name="trending-down" size={16} color={COLORS.ERROR} />
-                  <Text style={styles.statLabel}>Gider</Text>
-                </View>
-                <Text style={[styles.statAmount, { color: COLORS.ERROR }]}>
-                  -{formatCurrency(transactionViewModel.monthlyStats.totalExpense || 0)}
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <View style={styles.statHeader}>
-                  <Ionicons name="analytics" size={16} color={COLORS.PRIMARY} />
-                  <Text style={styles.statLabel}>Net</Text>
-                </View>
-                <Text style={[
-                  styles.statAmount, 
-                  { color: (transactionViewModel.monthlyStats.netAmount || 0) >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
-                ]}>
-                  {(transactionViewModel.monthlyStats.netAmount || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(transactionViewModel.monthlyStats.netAmount || 0))}
-                </Text>
-              </View>
-            </View>
-          </Card>
-        )}
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hızlı İşlemler</Text>
-          <View style={styles.quickActions}>
-            <QuickActionButton
-              icon="add-circle-outline"
-              title="Gelir Ekle"
-              color={COLORS.SUCCESS}
-              onPress={() => navigateToAddTransaction(TransactionType.INCOME)}
-            />
-            <QuickActionButton
-              icon="remove-circle-outline"
-              title="Gider Ekle"
-              color={COLORS.ERROR}
-              onPress={() => navigateToAddTransaction(TransactionType.EXPENSE)}
-            />
-            <QuickActionButton
-              icon="swap-horizontal-outline"
-              title="Transfer"
-              color={COLORS.WARNING}
-              onPress={() => console.log('Transfer')}
-            />
-            <QuickActionButton
-              icon="bar-chart-outline"
-              title="Raporlar"
-              color={COLORS.SECONDARY}
-              onPress={() => navigation.navigate('Reports')}
-            />
-          </View>
+    if (!accountViewModel || !transactionViewModel) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <Text style={styles.loadingText}>Dashboard yükleniyor...</Text>
         </View>
+      );
+    }
 
-        {/* Accounts */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Hesaplarım</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Accounts')}>
-              <Text style={styles.seeAllButton}>Tümünü Gör</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {accountViewModel?.isLoading ? (
-            <View style={styles.loadingState}>
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              <Text style={styles.loadingText}>Yükleniyor...</Text>
-            </View>
-          ) : (
-            <View style={styles.accountsList}>
-              {(accountViewModel?.accounts?.length || 0) > 0 ? (
-                (accountViewModel?.accounts?.slice(0, 3) || []).map((account) => (
-                  <AccountCard 
-                    key={account.id}
-                    account={account}
-                    onPress={() => navigation.navigate('Accounts')}
-                  />
-                ))
-              ) : (
-                <Card style={styles.emptyAccountsState}>
-                  <Ionicons name="wallet-outline" size={32} color={COLORS.TEXT_SECONDARY} />
-                  <Text style={styles.emptyStateText}>Henüz hesap yok</Text>
-                  <TouchableOpacity
-                    style={styles.addAccountButton}
-                    onPress={() => navigation.navigate('AddAccount')}
-                  >
-                    <Text style={styles.addAccountButtonText}>Hesap Ekle</Text>
-                  </TouchableOpacity>
-                </Card>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Recent Transactions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Son İşlemler</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
-              <Text style={styles.seeAllButton}>Tümünü Gör</Text>
-            </TouchableOpacity>
-          </View>
-          <Card>
-            {transactionViewModel?.isLoading ? (
-              <View style={styles.loadingState}>
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-                <Text style={styles.loadingText}>Yükleniyor...</Text>
-              </View>
-            ) : (
-              <View>
-                {(transactionViewModel?.transactions?.slice(0, 5)?.length || 0) > 0 ? (
-                  (transactionViewModel?.transactions?.slice(0, 5) || []).map((transaction, index) => (
-                    <RecentTransactionItem 
-                      key={transaction.id} 
-                      transaction={transaction}
-                    />
-                  ))
-                ) : (
-                  <View style={styles.emptyState}>
-                    <Ionicons name="receipt-outline" size={48} color={COLORS.TEXT_SECONDARY} />
-                    <Text style={styles.emptyStateText}>Henüz işlem yok</Text>
-                    <Text style={styles.emptyStateSubtext}>İlk işleminizi ekleyin</Text>
+    return (
+      <View style={styles.dashboardContainer}>
+        {/* Main Section - Quick Actions & Recent Transactions */}
+        <View style={styles.mainSection}>
+          <ResponsiveGrid>
+            {/* Quick Actions Card */}
+            <Card style={styles.quickActionsCard}>
+              <Text style={styles.cardTitle}>Hızlı İşlemler</Text>
+              <View style={styles.quickActionsGrid}>
+                <TouchableOpacity 
+                  style={[styles.quickAction, { backgroundColor: COLORS.PRIMARY + '20' }]}
+                  onPress={() => navigation.navigate('AddAccount')}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.PRIMARY }]}>
+                    <Ionicons name="add" size={20} color={COLORS.WHITE} />
                   </View>
-                )}
+                  <Text style={styles.quickActionText}>Yeni Hesap</Text>
+                </TouchableOpacity>
+
+                {/* Temporary debug button */}
+                <TouchableOpacity 
+                  style={[styles.quickAction, { backgroundColor: COLORS.SECONDARY + '20' }]}
+                  onPress={handleRecalculateBalances}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.SECONDARY }]}>
+                    <Ionicons name="calculator" size={20} color={COLORS.WHITE} />
+                  </View>
+                  <Text style={styles.quickActionText}>Bakiye Hesapla</Text>
+                </TouchableOpacity>
               </View>
+            </Card>
+
+            {/* Recent Transactions Card */}
+            <Card style={styles.recentTransactionsCard}>
+              {/* Header */}
+              <View style={styles.recentTransactionsHeader}>
+                <View style={styles.recentTransactionsTitle}>
+                  <Ionicons name="time-outline" size={24} color={COLORS.PRIMARY} />
+                  <Text style={styles.recentTransactionsText}>Son İşlemler</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.viewAllButton}
+                  onPress={() => navigation.navigate('Transactions')}
+                >
+                  <Text style={styles.viewAllButtonText}>Tümünü Gör</Text>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.PRIMARY} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Content */}
+              {transactionViewModel.isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                  <Text style={styles.loadingText}>İşlemler yükleniyor...</Text>
+                </View>
+              ) : transactionViewModel.transactions.length > 0 ? (
+                <View style={styles.recentTransactionsList}>
+                  {transactionViewModel.transactions.slice(0, 3).map((transaction: any, index: number) => (
+                    <TouchableOpacity 
+                      key={transaction.id} 
+                      style={[
+                        styles.recentTransactionItem,
+                        index === transactionViewModel.transactions.slice(0, 3).length - 1 && styles.lastTransactionItem
+                      ]}
+                      onPress={() => navigation.navigate('Transactions')}
+                    >
+                      <View style={styles.transactionIconWrapper}>
+                        <CategoryIcon
+                          iconName={transaction.categoryIcon || 'receipt'}
+                          color={getCategoryDetails(transaction.category, transaction.type).color}
+                          size="small"
+                        />
+                      </View>
+                      
+                      <View style={styles.transactionDetails}>
+                        <Text style={styles.transactionTitle}>{transaction.description}</Text>
+                        <View style={styles.transactionSubInfo}>
+                          <Text style={styles.transactionCat}>{transaction.category}</Text>
+                          <Text style={styles.transactionDot}>•</Text>
+                          <Text style={styles.transactionTime}>{formatDate(transaction.date)}</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.transactionAmountWrapper}>
+                        <Text style={[
+                          styles.recentTransactionAmount,
+                          { color: transaction.type === 'income' ? COLORS.SUCCESS : COLORS.ERROR }
+                        ]}>
+                          {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                        </Text>
+                        <View style={[
+                          styles.transactionTypeIndicator,
+                          { backgroundColor: transaction.type === 'income' ? COLORS.SUCCESS : COLORS.ERROR }
+                        ]}>
+                          <Ionicons 
+                            name={transaction.type === 'income' ? 'trending-up' : 'trending-down'} 
+                            size={12} 
+                            color={COLORS.WHITE} 
+                          />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyRecentTransactions}>
+                  <View style={styles.emptyIcon}>
+                    <Ionicons name="receipt-outline" size={32} color={COLORS.TEXT_TERTIARY} />
+                  </View>
+                  <Text style={styles.emptyTitle}>Henüz işlem yok</Text>
+                  <Text style={styles.emptyDescription}>İlk işleminizi ekleyin ve burada görün</Text>
+                  <TouchableOpacity 
+                    style={styles.addFirstTransactionButton}
+                    onPress={() => navigation.navigate('AddTransaction')}
+                  >
+                    <Ionicons name="add" size={20} color={COLORS.WHITE} />
+                    <Text style={styles.addFirstTransactionText}>İşlem Ekle</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </Card>
+          </ResponsiveGrid>
+        </View>
+
+        {/* Financial Summary */}
+        <View style={styles.bottomSection}>
+          <Card style={styles.financialSummaryCard}>
+            <Text style={styles.cardTitle}>Finansal Özet</Text>
+            
+            {/* Profit/Loss Section */}
+            <View style={styles.profitLossSection}>
+              {(() => {
+                const { totalIncome, totalExpenses, netProfit } = getFinancialSummary();
+                const isProfit = netProfit >= 0;
+                
+                return (
+                  <>
+                    <View style={styles.profitLossHeader}>
+                      <View style={[styles.profitLossIcon, { backgroundColor: isProfit ? COLORS.SUCCESS : COLORS.ERROR }]}>
+                        <Ionicons 
+                          name={isProfit ? 'trending-up' : 'trending-down'} 
+                          size={20} 
+                          color={COLORS.WHITE} 
+                        />
+                      </View>
+                      <View style={styles.profitLossInfo}>
+                        <Text style={styles.profitLossLabel}>
+                          {isProfit ? 'Net Kar' : 'Net Zarar'}
+                        </Text>
+                        <Text style={[
+                          styles.profitLossAmount,
+                          { color: isProfit ? COLORS.SUCCESS : COLORS.ERROR }
+                        ]}>
+                          {isProfit ? '+' : ''}{formatCurrency(Math.abs(netProfit))}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.incomeExpenseRow}>
+                      <View style={styles.incomeExpenseItem}>
+                        <Text style={styles.incomeExpenseLabel}>Toplam Gelir</Text>
+                        <Text style={[styles.incomeExpenseAmount, { color: COLORS.SUCCESS }]}>
+                          +{formatCurrency(totalIncome)}
+                        </Text>
+                      </View>
+                      <View style={styles.incomeExpenseItem}>
+                        <Text style={styles.incomeExpenseLabel}>Toplam Gider</Text>
+                        <Text style={[styles.incomeExpenseAmount, { color: COLORS.ERROR }]}>
+                          -{formatCurrency(totalExpenses)}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
+            </View>
+
+            {/* Account Types Section */}
+            {getAccountsSummary().length > 0 && (
+              <>
+                <View style={styles.sectionDivider} />
+                <View style={styles.accountTypesSection}>
+                  <Text style={styles.sectionSubtitle}>En Yüksek Bakiyeli Hesaplar</Text>
+                  <View style={styles.accountTypesList}>
+                    {getAccountsSummary().slice(0, 3).map((account, index) => {
+                      const typeInfo = getAccountTypeInfo(account.type);
+                      return (
+                        <View key={account.id} style={styles.accountTypeItem}>
+                          <View style={styles.accountTypeLeft}>
+                            <View style={[styles.accountTypeIcon, { backgroundColor: typeInfo.color }]}>
+                              <Ionicons name={typeInfo.icon as any} size={14} color={COLORS.WHITE} />
+                            </View>
+                            <View style={styles.accountTypeInfo}>
+                              <Text style={styles.accountTypeName}>{account.name}</Text>
+                              <Text style={styles.accountTypeCount}>{typeInfo.name}</Text>
+                            </View>
+                          </View>
+                          <Text style={[
+                            styles.accountTypeBalance,
+                            { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                          ]}>
+                            {formatAccountBalance(account.balance)}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              </>
             )}
           </Card>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    );
+  };
+
+  // Helper function for account type info
+  const getAccountTypeInfo = (type: string) => {
+    const typeMap: { [key: string]: { name: string; icon: string; color: string } } = {
+      cash: { name: 'Nakit', icon: 'cash', color: COLORS.SUCCESS },
+      debit_card: { name: 'Banka Kartı', icon: 'card', color: COLORS.PRIMARY },
+      credit_card: { name: 'Kredi Kartı', icon: 'card-outline', color: COLORS.ERROR },
+      savings: { name: 'Tasarruf', icon: 'wallet', color: COLORS.WARNING },
+      investment: { name: 'Yatırım', icon: 'trending-up', color: COLORS.SECONDARY },
+    };
+    return typeMap[type] || { name: type, icon: 'help', color: COLORS.TEXT_SECONDARY };
+  };
+
+  // Render accounts management section
+  const renderAccountsSection = () => {
+    if (!accountViewModel?.accounts || accountViewModel.accounts.length === 0) {
+      return (
+        <View style={styles.accountsSection}>
+          <Card style={styles.accountsCard}>
+            <Text style={styles.cardTitle}>Hesaplarım</Text>
+            <View style={styles.emptyAccountsState}>
+              <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
+              <Text style={styles.emptyStateText}>Henüz hesap yok</Text>
+              <Text style={styles.emptySubtext}>İlk hesabınızı oluşturun</Text>
+              <TouchableOpacity
+                style={styles.addAccountButton}
+                onPress={() => navigation.navigate('AddAccount')}
+              >
+                <Text style={styles.addAccountButtonText}>Hesap Oluştur</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.accountsSection}>
+        <Card style={styles.accountsCard}>
+          <View style={styles.accountsHeader}>
+            <Text style={styles.cardTitle}>Hesaplarım</Text>
+            <TouchableOpacity
+              style={styles.addAccountIconButton}
+              onPress={() => navigation.navigate('AddAccount')}
+            >
+              <Ionicons name="add" size={20} color={COLORS.PRIMARY} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.accountsList}>
+            {accountViewModel.accounts.map((account, index) => {
+              const typeInfo = getAccountTypeInfo(account.type);
+              return (
+                <View key={account.id} style={[
+                  styles.accountListItem,
+                  index === accountViewModel.accounts.length - 1 && styles.lastAccountItem
+                ]}>
+                  <View style={styles.accountItemLeft}>
+                    <View style={[styles.accountItemIcon, { backgroundColor: account.color }]}>
+                      <Ionicons 
+                        name={account.icon as any} 
+                        size={20} 
+                        color={COLORS.WHITE} 
+                      />
+                    </View>
+                    <View style={styles.accountItemInfo}>
+                      <Text style={styles.accountItemName}>{account.name}</Text>
+                      <Text style={styles.accountItemType}>{typeInfo.name}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.accountItemRight}>
+                    <Text style={[
+                      styles.accountItemBalance,
+                      { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                    ]}>
+                      {formatAccountBalance(account.balance)}
+                    </Text>
+                    <View style={styles.accountItemActions}>
+                      <TouchableOpacity
+                        style={styles.accountActionButton}
+                        onPress={() => handleEditAccount(account)}
+                      >
+                        <Ionicons name="create-outline" size={16} color={COLORS.PRIMARY} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.accountActionButton}
+                        onPress={() => handleDeleteAccount(account)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={COLORS.ERROR} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </Card>
+      </View>
+    );
+  };
+
+  // Mobile layout
+  if (!isWeb) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Dashboard</Text>
+          <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
+            <Ionicons 
+              name={refreshing ? "refresh" : "refresh-outline"} 
+              size={24} 
+              color={COLORS.PRIMARY} 
+            />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[COLORS.PRIMARY]}
+              tintColor={COLORS.PRIMARY}
+            />
+          }
+        >
+          {renderContent()}
+          {renderAccountsSection()}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Web layout
+  return (
+    <WebLayout title="Dashboard" activeRoute="dashboard" navigation={navigation}>
+      {renderContent()}
+      {renderAccountsSection()}
+    </WebLayout>
   );
 });
 
@@ -351,6 +662,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.lg,
   },
+  headerTitle: {
+    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.md : TYPOGRAPHY.sizes.lg,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  refreshButton: {
+    padding: SPACING.xs,
+  },
   greeting: {
     fontSize: isSmallDevice ? TYPOGRAPHY.sizes.sm : TYPOGRAPHY.sizes.md,
     color: COLORS.TEXT_SECONDARY,
@@ -363,6 +682,9 @@ const styles = StyleSheet.create({
   },
   profileButton: {
     padding: SPACING.xs,
+  },
+  section: {
+    marginBottom: SPACING.xl,
   },
   balanceCard: {
     marginHorizontal: SPACING.md,
@@ -385,9 +707,6 @@ const styles = StyleSheet.create({
   },
   balanceActionButton: {
     padding: SPACING.sm,
-  },
-  section: {
-    marginBottom: SPACING.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -437,9 +756,8 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
-    fontWeight: '500',
-    marginTop: SPACING.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: TYPOGRAPHY.sizes.sm,
@@ -465,32 +783,6 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: '600',
     color: COLORS.WHITE,
-  },
-  transactionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: SPACING.md,
-  },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  transactionInfo: {
-    marginLeft: SPACING.md,
-  },
-  transactionDescription: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_PRIMARY,
-    fontWeight: '500',
-  },
-  transactionDate: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
-  },
-  transactionAmount: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: '700',
   },
   statsCard: {
     marginHorizontal: SPACING.md,
@@ -518,9 +810,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   statLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
+    fontSize: TYPOGRAPHY.sizes.xs,
     color: COLORS.TEXT_SECONDARY,
-    marginLeft: SPACING.xs,
+    textAlign: 'center',
   },
   statAmount: {
     fontSize: TYPOGRAPHY.sizes.sm,
@@ -534,8 +826,456 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: SPACING.xs,
+  },
+  summaryCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    alignItems: 'center',
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  summaryTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
+  },
+  summaryAmount: {
+    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.xxl : TYPOGRAPHY.sizes.xxxl,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  summaryIcon: {
+    padding: SPACING.xs,
+  },
+  summaryDetails: {
+    padding: SPACING.md,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  summaryLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  summaryValue: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  actionsCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
+  },
+  actionButton: {
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  actionText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+  },
+  transactionsCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    alignItems: 'center',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  viewAllText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.PRIMARY,
+    fontWeight: '500',
+  },
+  transactionsList: {
+    paddingVertical: SPACING.sm,
+  },
+  emptyTransactions: {
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  emptyText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+  },
+  accountTypesCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    alignItems: 'center',
+  },
+  accountTypesList: {
+    paddingVertical: SPACING.xs,
+  },
+  accountTypeItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  accountTypeName: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+  },
+  accountTypeBalance: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  webGridRow: {
+    flexDirection: 'row',
+    marginBottom: SPACING.lg,
+    gap: SPACING.lg,
+    width: '100%',
+  },
+  webGridItem: {
+    flex: 1,
+    minWidth: 0, // Allow items to shrink
+  },
+  dashboardContainer: {
+    flex: 1,
+  },
+  mainSection: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.lg,
+  },
+  quickActionsCard: {
+    marginBottom: SPACING.lg,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  quickAction: {
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: 16,
+    width: isWeb ? 'auto' : (width - SPACING.md * 3 - SPACING.sm * 3) / 2,
+    minWidth: isWeb ? 140 : 'auto',
+    flex: isWeb ? 1 : 0,
+  },
+  accountTypeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  accountTypeIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  bottomSection: {
+    paddingHorizontal: SPACING.md,
+    flex: 1,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+  },
+  transactionCategory: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  emptySubtext: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  recentTransactionsCard: {
+    marginBottom: SPACING.lg,
+  },
+  recentTransactionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  recentTransactionsTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentTransactionsText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginLeft: SPACING.sm,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllButtonText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.PRIMARY,
+    fontWeight: '500',
+  },
+  recentTransactionsList: {
+    paddingVertical: SPACING.sm,
+  },
+  recentTransactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  lastTransactionItem: {
+    borderBottomWidth: 0,
+  },
+  transactionIconWrapper: {
+    marginRight: SPACING.sm,
+  },
+  transactionDetails: {
+    flex: 1,
+  },
+  transactionTitle: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+  },
+  transactionSubInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  transactionCat: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  transactionDot: {
+    marginHorizontal: SPACING.xs,
+  },
+  transactionTime: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  transactionAmountWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recentTransactionAmount: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  transactionTypeIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: SPACING.xs,
+  },
+  emptyRecentTransactions: {
+    alignItems: 'center',
+    padding: SPACING.xl,
+  },
+  emptyIcon: {
+    marginBottom: SPACING.sm,
+  },
+  emptyTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+  },
+  emptyDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  addFirstTransactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: 8,
+    marginTop: SPACING.sm,
+  },
+  addFirstTransactionText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+    color: COLORS.WHITE,
+    marginLeft: SPACING.xs,
+  },
+  financialSummaryCard: {
+    marginBottom: SPACING.lg,
+  },
+  profitLossSection: {
+    padding: SPACING.md,
+  },
+  profitLossHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  profitLossIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  profitLossInfo: {
+    flex: 1,
+  },
+  profitLossLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  profitLossAmount: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  incomeExpenseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  incomeExpenseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  incomeExpenseLabel: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+    marginRight: SPACING.xs,
+  },
+  incomeExpenseAmount: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: COLORS.BORDER,
+    marginVertical: SPACING.sm,
+  },
+  accountTypesSection: {
+    padding: SPACING.md,
+  },
+  sectionSubtitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
+  },
+  accountTypeInfo: {
+    flex: 1,
+  },
+  accountTypeCount: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  accountsSection: {
+    marginBottom: SPACING.xl,
+  },
+  accountsCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  accountsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  addAccountIconButton: {
+    padding: SPACING.xs,
+  },
+  accountItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  accountItemIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  accountItemInfo: {
+    flex: 1,
+  },
+  accountItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  accountItemName: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+  },
+  accountItemType: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  accountItemBalance: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  accountItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  accountActionButton: {
+    padding: SPACING.xs,
+  },
+  accountListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  lastAccountItem: {
+    borderBottomWidth: 0,
   },
 });
 

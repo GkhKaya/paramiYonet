@@ -19,17 +19,23 @@ import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { CategoryIcon } from '../components/common/CategoryIcon';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { useAuth } from '../contexts/AuthContext';
+import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 
-const TransactionsScreen: React.FC = observer(() => {
+interface TransactionsScreenProps {
+  navigation: any;
+}
+
+const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
   const [viewModel, setViewModel] = useState<TransactionViewModel | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -482,6 +488,117 @@ const TransactionsScreen: React.FC = observer(() => {
     );
   }
 
+  // Web layout
+  if (isWeb) {
+    return (
+      <WebLayout title="İşlemler" activeRoute="transactions" navigation={navigation}>
+        <View style={styles.webContent}>
+          {/* Month Selector */}
+          <MonthSelector />
+
+          {/* Search and Filters */}
+          <View style={styles.searchSection}>
+            <Input
+              placeholder="İşlem ara..."
+              value={viewModel?.searchTerm || ''}
+              onChangeText={(term) => viewModel?.setSearchTerm(term)}
+              leftIcon="search"
+            />
+            
+            <View style={styles.filterScrollContainer}>
+              {/* Sol Scroll Indicator */}
+              <View style={styles.filterScrollIndicatorLeft}>
+                <Ionicons name="chevron-back" size={14} color={COLORS.TEXT_TERTIARY} />
+              </View>
+              
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScrollView}
+                contentContainerStyle={styles.filterContainer}
+              >
+                <FilterButton
+                  title="Tümü"
+                  isActive={!viewModel?.filters.type}
+                  onPress={() => viewModel?.setFilters({ type: undefined })}
+                />
+                <FilterButton
+                  title="Gelir"
+                  isActive={viewModel?.filters.type === TransactionType.INCOME}
+                  onPress={() => viewModel?.setFilters({ type: TransactionType.INCOME })}
+                />
+                <FilterButton
+                  title="Gider"
+                  isActive={viewModel?.filters.type === TransactionType.EXPENSE}
+                  onPress={() => viewModel?.setFilters({ type: TransactionType.EXPENSE })}
+                />
+              </ScrollView>
+              
+              {/* Sağ Scroll Indicator */}
+              <View style={styles.filterScrollIndicatorRight}>
+                <Ionicons name="chevron-forward" size={14} color={COLORS.TEXT_TERTIARY} />
+              </View>
+            </View>
+          </View>
+
+          {/* Monthly Stats */}
+          <Card style={styles.statsCard}>
+            <View style={styles.statsContent}>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Toplam Gelir</Text>
+                <Text style={[styles.statValue, { color: COLORS.SUCCESS }]}>
+                  {formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Toplam Gider</Text>
+                <Text style={[styles.statValue, { color: COLORS.ERROR }]}>
+                  {formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Net Tutar</Text>
+                <Text style={[
+                  styles.statValue,
+                  { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
+                ]}>
+                  {formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
+                </Text>
+              </View>
+            </View>
+          </Card>
+
+          {/* Transactions List */}
+          <View style={styles.listContainer}>
+            {(viewModel?.dayGroups.length || 0) === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="receipt-outline" size={64} color={COLORS.TEXT_TERTIARY} />
+                <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
+                <Text style={styles.emptyStateText}>
+                  Bu ay için henüz bir işlem kaydı bulunmuyor.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.scrollView}>
+                {viewModel?.dayGroups.map((dayGroup) => (
+                  <View key={dayGroup.date}>
+                    <DayGroupHeader dayGroup={dayGroup} />
+                    {dayGroup.transactions.map((transaction) => (
+                      <TransactionItem key={transaction.id} item={transaction} />
+                    ))}
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+
+          <TransactionModal />
+        </View>
+      </WebLayout>
+    );
+  }
+
+  // Mobile layout
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -965,6 +1082,10 @@ const styles = StyleSheet.create({
   },
   filterScrollIndicatorRight: {
     padding: SPACING.sm,
+  },
+  webContent: {
+    flex: 1,
+    padding: SPACING.md,
   },
 });
 

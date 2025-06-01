@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Dimensions } from 'react-native';
+import { Text, Dimensions, Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import AddAccountScreen from '../views/AddAccountScreen';
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 const baseIconSize = isSmallDevice ? 22 : 24;
+const isWeb = Platform.OS === 'web';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<MainStackParamList>();
@@ -31,7 +32,7 @@ const TabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
+        tabBarStyle: isWeb ? { display: 'none' } : {
           backgroundColor: COLORS.SURFACE,
           borderTopColor: COLORS.BORDER,
           borderTopWidth: 1,

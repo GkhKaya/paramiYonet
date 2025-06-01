@@ -15,17 +15,23 @@ import { observer } from 'mobx-react-lite';
 import { Card } from '../components/common/Card';
 import { CategoryIcon } from '../components/common/CategoryIcon';
 import { CategoryChart } from '../components/charts/CategoryChart';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { TransactionType } from '../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { useAuth } from '../contexts/AuthContext';
 import { ReportsViewModel } from '../viewmodels/ReportsViewModel';
+import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 
-const ReportsScreen: React.FC = observer(() => {
+interface ReportsScreenProps {
+  navigation: any;
+}
+
+const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
   const [reportsViewModel, setReportsViewModel] = useState<ReportsViewModel | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('month');
@@ -415,7 +421,7 @@ const ReportsScreen: React.FC = observer(() => {
     </View>
   );
 
-  const renderTabContent = () => {
+  const renderContent = () => {
     if (reportsViewModel.isLoading) {
       return (
         <View style={styles.centerContainer}>
@@ -437,45 +443,8 @@ const ReportsScreen: React.FC = observer(() => {
       );
     }
 
-    switch (selectedTab) {
-      case 'overview':
-        return <OverviewTab />;
-      case 'categories':
-        return <CategoriesTab />;
-      case 'trends':
-        return <TrendsTab />;
-      default:
-        return <OverviewTab />;
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Raporlar</Text>
-        <TouchableOpacity style={styles.exportButton} onPress={handleRefresh}>
-          <Ionicons 
-            name={refreshing ? "refresh" : "download-outline"} 
-            size={24} 
-            color={COLORS.PRIMARY} 
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[COLORS.PRIMARY]}
-            tintColor={COLORS.PRIMARY}
-          />
-        }
-      >
+    return (
+      <View>
         {/* Period Selector */}
         <PeriodSelector />
 
@@ -483,9 +452,64 @@ const ReportsScreen: React.FC = observer(() => {
         <TabSelector />
 
         {/* Tab Content */}
-        {renderTabContent()}
-      </ScrollView>
-    </SafeAreaView>
+        {(() => {
+          switch (selectedTab) {
+            case 'overview':
+              return <OverviewTab />;
+            case 'categories':
+              return <CategoriesTab />;
+            case 'trends':
+              return <TrendsTab />;
+            default:
+              return <OverviewTab />;
+          }
+        })()}
+      </View>
+    );
+  };
+
+  // Mobile layout
+  if (!isWeb) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Raporlar</Text>
+          <TouchableOpacity style={styles.exportButton} onPress={handleRefresh}>
+            <Ionicons 
+              name={refreshing ? "refresh" : "download-outline"} 
+              size={24} 
+              color={COLORS.PRIMARY} 
+            />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollViewContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[COLORS.PRIMARY]}
+              tintColor={COLORS.PRIMARY}
+            />
+          }
+        >
+          {renderContent()}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Web layout
+  return (
+    <WebLayout title="Raporlar" activeRoute="reports" navigation={navigation}>
+      <View style={styles.webContent}>
+        {renderContent()}
+      </View>
+    </WebLayout>
   );
 });
 
@@ -829,6 +853,9 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.lg,
     paddingVertical: SPACING.md,
+  },
+  webContent: {
+    flex: 1,
   },
 });
 

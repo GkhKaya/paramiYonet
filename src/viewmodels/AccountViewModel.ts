@@ -14,6 +14,7 @@ import {
 import { db } from '../config/firebase';
 import { Account, AccountType, CreateAccountRequest, UpdateAccountRequest, AccountSummary } from '../models/Account';
 import { BaseViewModel } from './BaseViewModel';
+import { Transaction, TransactionType } from '../models/Transaction';
 
 export class AccountViewModel extends BaseViewModel {
   accounts: Account[] = [];
@@ -136,6 +137,8 @@ export class AccountViewModel extends BaseViewModel {
     try {
       this.setLoading(true);
       
+      console.log('Creating account with initial balance:', accountData.initialBalance);
+      
       const newAccount = {
         userId: this.userId,
         name: accountData.name,
@@ -148,7 +151,11 @@ export class AccountViewModel extends BaseViewModel {
         isActive: true,
       };
 
+      console.log('Account data to save:', newAccount);
+
       const docRef = await addDoc(collection(db, 'accounts'), newAccount);
+      
+      console.log('Account created with ID:', docRef.id);
       
       const createdAccount: Account = {
         id: docRef.id,
@@ -234,5 +241,80 @@ export class AccountViewModel extends BaseViewModel {
 
   getAccountsByType = (type: AccountType): Account[] => {
     return this.accounts.filter(account => account.type === type);
+  };
+
+  // Utility function to recalculate balances from transactions
+  recalculateBalancesFromTransactions = async (): Promise<boolean> => {
+    try {
+      console.log('Starting balance recalculation...');
+      
+      // Get all transactions for this user
+      const transactionsQuery = query(
+        collection(db, 'transactions'),
+        where('userId', '==', this.userId)
+      );
+      
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+      const transactions: Transaction[] = [];
+      
+      transactionsSnapshot.forEach((doc) => {
+        const data = doc.data();
+        transactions.push({
+          id: doc.id,
+          userId: data.userId,
+          accountId: data.accountId,
+          type: data.type as TransactionType,
+          amount: data.amount,
+          description: data.description,
+          category: data.category,
+          categoryIcon: data.categoryIcon,
+          date: data.date.toDate(),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        });
+      });
+      
+      console.log('Found transactions:', transactions.length);
+      
+      // Calculate balance for each account
+      const accountBalances: { [accountId: string]: number } = {};
+      
+      // Initialize all accounts with 0 balance
+      this.accounts.forEach(account => {
+        accountBalances[account.id] = 0;
+      });
+      
+      // Calculate balances from transactions
+      transactions.forEach(transaction => {
+        if (transaction.accountId && accountBalances.hasOwnProperty(transaction.accountId)) {
+          if (transaction.type === TransactionType.INCOME) {
+            accountBalances[transaction.accountId] += transaction.amount;
+          } else {
+            accountBalances[transaction.accountId] -= transaction.amount;
+          }
+        }
+      });
+      
+      console.log('Calculated balances:', accountBalances);
+      
+      // Update each account's balance in Firebase
+      const updatePromises = Object.entries(accountBalances).map(async ([accountId, balance]) => {
+        const accountRef = doc(db, 'accounts', accountId);
+        await updateDoc(accountRef, {
+          balance: balance,
+          updatedAt: Timestamp.fromDate(new Date())
+        });
+        console.log(`Updated account ${accountId} balance to ${balance}`);
+      });
+      
+      await Promise.all(updatePromises);
+      
+      console.log('Balance recalculation completed');
+      return true;
+    } catch (error) {
+      console.error('Error recalculating balances:', error);
+      this.setError('Bakiyeler hesaplanırken hata oluştu');
+      return false;
+    }
   };
 } 

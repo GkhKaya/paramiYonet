@@ -15,10 +15,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { Card } from '../components/common/Card';
 import { AccountCard } from '../components/common/AccountCard';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { Account } from '../models/Account';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
+import { isWeb } from '../utils/platform';
 
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
@@ -183,6 +185,114 @@ const AccountsScreen: React.FC<AccountsScreenProps> = observer(({ navigation }) 
     );
   };
 
+  const renderContent = () => {
+    if (!user) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyStateTitle}>Giriş yapmanız gerekiyor</Text>
+        </View>
+      );
+    }
+
+    if (!viewModel) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
+        </View>
+      );
+    }
+
+    if (viewModel.isLoading && viewModel.accounts.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+          <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
+        </View>
+      );
+    }
+
+    return (
+      <ScrollView 
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />
+        }
+      >
+        {/* Account Summary */}
+        <AccountSummaryCard />
+
+        {/* Accounts List */}
+        {viewModel.accounts.length > 0 ? (
+          <View style={styles.accountsList}>
+            <Text style={styles.accountsListTitle}>Hesaplarım ({viewModel.accounts.length})</Text>
+            {viewModel.accounts.map((account) => (
+              <AccountCard
+                key={account.id}
+                account={account}
+                onPress={() => handleAccountPress(account)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Card style={styles.emptyCard}>
+            <View style={styles.emptyState}>
+              <Ionicons name="wallet-outline" size={64} color={COLORS.TEXT_TERTIARY} />
+              <Text style={styles.emptyStateTitle}>Henüz hesap yok</Text>
+              <Text style={styles.emptyStateText}>
+                Hemen ilk hesabınızı oluşturun ve para takibine başlayın
+              </Text>
+              <TouchableOpacity
+                style={styles.addAccountButton}
+                onPress={() => navigation.navigate('AddAccount')}
+              >
+                <Text style={styles.addAccountButtonText}>Hesap Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+
+        {viewModel.error && (
+          <Card style={styles.errorCard}>
+            <View style={styles.errorState}>
+              <Ionicons name="alert-circle-outline" size={48} color={COLORS.ERROR} />
+              <Text style={styles.errorText}>{viewModel.error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+                <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+      </ScrollView>
+    );
+  };
+
+  // Web layout
+  if (isWeb) {
+    return (
+      <WebLayout title="Hesaplarım" activeRoute="accounts" navigation={navigation}>
+        <View style={styles.webContent}>
+          <View style={styles.webHeader}>
+            <Text style={styles.webHeaderTitle}>Hesaplarım</Text>
+            <TouchableOpacity
+              style={styles.webAddButton}
+              onPress={() => navigation.navigate('AddAccount')}
+            >
+              <Ionicons name="add" size={20} color={COLORS.WHITE} />
+              <Text style={styles.webAddButtonText}>Yeni Hesap</Text>
+            </TouchableOpacity>
+          </View>
+          {renderContent()}
+        </View>
+      </WebLayout>
+    );
+  }
+
+  // Mobile layout
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -202,62 +312,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = observer(({ navigation }) 
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-          />
-        }
-      >
-        {/* Account Summary */}
-        <AccountSummaryCard />
-
-        {/* Accounts List */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tüm Hesaplar</Text>
-          
-          {viewModel?.isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={COLORS.PRIMARY} />
-              <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
-            </View>
-          ) : (
-            <View>
-              {(viewModel?.accounts?.length || 0) > 0 ? (
-                <View style={styles.accountsList}>
-                  {viewModel?.accounts?.map((account) => (
-                    <AccountCard
-                      key={account.id}
-                      account={account}
-                      onPress={() => handleAccountPress(account)}
-                      showBalance={true}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <Card style={styles.emptyState}>
-                  <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_SECONDARY} />
-                  <Text style={styles.emptyStateTitle}>Henüz hesap yok</Text>
-                  <Text style={styles.emptyStateText}>
-                    İlk hesabınızı oluşturmak için "+" butonuna tıklayın
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.createFirstAccountButton}
-                    onPress={() => navigation.navigate('AddAccount')}
-                  >
-                    <Text style={styles.createFirstAccountButtonText}>
-                      İlk Hesabımı Oluştur
-                    </Text>
-                  </TouchableOpacity>
-                </Card>
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+      {renderContent()}
     </SafeAreaView>
   );
 });
@@ -395,6 +450,81 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   createFirstAccountButtonText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.WHITE,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyCard: {
+    marginBottom: SPACING.md,
+  },
+  errorCard: {
+    marginBottom: SPACING.md,
+  },
+  errorState: {
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  errorText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.sm,
+  },
+  retryButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.WHITE,
+  },
+  webContent: {
+    flex: 1,
+  },
+  webHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+  },
+  webHeaderTitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  webAddButton: {
+    backgroundColor: COLORS.PRIMARY,
+    padding: SPACING.sm,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  webAddButtonText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.WHITE,
+    marginLeft: SPACING.sm,
+  },
+  accountsListTitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  addAccountButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 8,
+  },
+  addAccountButtonText: {
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
     color: COLORS.WHITE,

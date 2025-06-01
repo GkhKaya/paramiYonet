@@ -13,14 +13,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, APP_CONFIG } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 
-const SettingsScreen: React.FC = () => {
+interface SettingsScreenProps {
+  navigation: any;
+}
+
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -135,6 +141,190 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const renderContent = () => (
+    <ScrollView style={styles.scrollView}>
+      {/* User Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Kullanıcı</Text>
+        <Card style={styles.sectionCard}>
+          <SettingItem
+            icon="person"
+            title="Profil"
+            subtitle={user?.email || 'Kullanıcı'}
+            onPress={() => {
+              // Navigate to profile screen
+              Alert.alert('Profil', 'Profil ayarları yakında gelecek');
+            }}
+          />
+          <SettingItem
+            icon="shield-checkmark"
+            title="Güvenlik"
+            subtitle="Şifre ve güvenlik ayarları"
+            onPress={() => {
+              Alert.alert('Güvenlik', 'Güvenlik ayarları yakında gelecek');
+            }}
+          />
+        </Card>
+      </View>
+
+      {/* App Settings */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Uygulama</Text>
+        <Card style={styles.sectionCard}>
+          <SettingItem
+            icon="notifications"
+            title="Bildirimler"
+            subtitle="Push bildirimleri ve hatırlatıcılar"
+            showArrow={false}
+            rightElement={
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={setNotificationsEnabled}
+                trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+                thumbColor={notificationsEnabled ? COLORS.WHITE : COLORS.TEXT_SECONDARY}
+              />
+            }
+          />
+          <SettingItem
+            icon="finger-print"
+            title="Biyometrik Giriş"
+            subtitle="Parmak izi veya yüz tanıma"
+            showArrow={false}
+            rightElement={
+              <Switch
+                value={biometricEnabled}
+                onValueChange={setBiometricEnabled}
+                trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+                thumbColor={biometricEnabled ? COLORS.WHITE : COLORS.TEXT_SECONDARY}
+              />
+            }
+          />
+          <SettingItem
+            icon="moon"
+            title="Karanlık Mod"
+            subtitle="Koyu renk teması (yakında)"
+            showArrow={false}
+            rightElement={
+              <Switch
+                value={false}
+                onValueChange={() => {}}
+                disabled={true}
+                trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+                thumbColor={COLORS.TEXT_SECONDARY}
+              />
+            }
+          />
+        </Card>
+      </View>
+
+      {/* Data & Backup */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Veri ve Yedekleme</Text>
+        <Card style={styles.sectionCard}>
+          <SettingItem
+            icon="cloud-upload"
+            title="Veri Yedekleme"
+            subtitle="Firebase'e otomatik yedekleme"
+            onPress={() => {
+              Alert.alert('Yedekleme', 'Verileriniz Firebase\'de güvenle saklanıyor');
+            }}
+          />
+          <SettingItem
+            icon="download"
+            title="Verileri İndir"
+            subtitle="Tüm verilerinizi JSON formatında indirin"
+            onPress={() => {
+              Alert.alert(
+                'Veri İndirme',
+                'Bu özellik web versiyonunda kullanılabilir olacak',
+                [{ text: 'Tamam' }]
+              );
+            }}
+          />
+          <SettingItem
+            icon="trash"
+            title="Tüm Verileri Sil"
+            subtitle="Hesabınızı ve tüm verilerinizi kalıcı olarak silin"
+            onPress={() => {
+              Alert.alert(
+                'Verileri Sil',
+                'Bu işlem geri alınamaz. Tüm verileriniz kalıcı olarak silinecek.',
+                [
+                  { text: 'İptal', style: 'cancel' },
+                  { 
+                    text: 'Sil', 
+                    style: 'destructive',
+                    onPress: () => {
+                      Alert.alert('Uyarı', 'Bu özellik henüz aktif değil');
+                    }
+                  }
+                ]
+              );
+            }}
+          />
+        </Card>
+      </View>
+
+      {/* About */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Hakkında</Text>
+        <Card style={styles.sectionCard}>
+          <SettingItem
+            icon="information-circle"
+            title="Uygulama Sürümü"
+            subtitle={`v${APP_CONFIG.VERSION}`}
+            showArrow={false}
+          />
+          <SettingItem
+            icon="help-circle"
+            title="Yardım ve Destek"
+            subtitle="SSS ve destek"
+            onPress={() => {
+              Alert.alert('Destek', 'Destek sayfası yakında gelecek');
+            }}
+          />
+          <SettingItem
+            icon="document-text"
+            title="Gizlilik Politikası"
+            subtitle="Veri kullanımı ve gizlilik"
+            onPress={() => {
+              Alert.alert('Gizlilik', 'Gizlilik politikası yakında gelecek');
+            }}
+          />
+        </Card>
+      </View>
+
+      {/* Logout */}
+      <View style={styles.logoutContainer}>
+        <Button
+          title="Çıkış Yap"
+          onPress={handleLogout}
+          variant="outline"
+        />
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          {APP_CONFIG.NAME} - Kişisel Finans Yönetimi
+        </Text>
+        <Text style={styles.footerText}>
+          © 2024 Tüm hakları saklıdır.
+        </Text>
+      </View>
+    </ScrollView>
+  );
+
+  // Web layout
+  if (isWeb) {
+    return (
+      <WebLayout title="Ayarlar" activeRoute="settings" navigation={navigation}>
+        {renderContent()}
+      </WebLayout>
+    );
+  }
+
+  // Mobile layout
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
@@ -142,148 +332,7 @@ const SettingsScreen: React.FC = () => {
         <Text style={styles.headerTitle}>Ayarlar</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
-        <SettingSection title="Profil">
-          <SettingItem
-            icon="person-outline"
-            title={user?.displayName || 'Kullanıcı'}
-            subtitle={user?.email || 'email@example.com'}
-            onPress={handleProfileEdit}
-          />
-        </SettingSection>
-
-        {/* App Settings */}
-        <SettingSection title="Uygulama Ayarları">
-          <SettingItem
-            icon="globe-outline"
-            title="Para Birimi"
-            subtitle="Türk Lirası (₺)"
-            onPress={handleCurrencyChange}
-          />
-          <SettingItem
-            icon="notifications-outline"
-            title="Bildirimler"
-            subtitle="Günlük hatırlatmalar ve önemli bilgiler"
-            showArrow={false}
-            rightElement={
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-                trackColor={{ false: COLORS.SURFACE, true: COLORS.PRIMARY + '50' }}
-                thumbColor={notificationsEnabled ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
-              />
-            }
-          />
-          <SettingItem
-            icon="moon-outline"
-            title="Karanlık Tema"
-            subtitle="Göz dostu karanlık görünüm"
-            showArrow={false}
-            rightElement={
-              <Switch
-                value={darkModeEnabled}
-                onValueChange={setDarkModeEnabled}
-                trackColor={{ false: COLORS.SURFACE, true: COLORS.PRIMARY + '50' }}
-                thumbColor={darkModeEnabled ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
-              />
-            }
-          />
-        </SettingSection>
-
-        {/* Security */}
-        <SettingSection title="Güvenlik">
-          <SettingItem
-            icon="finger-print-outline"
-            title="Biyometrik Kilit"
-            subtitle="Parmak izi veya yüz tanıma ile güvenlik"
-            showArrow={false}
-            rightElement={
-              <Switch
-                value={biometricEnabled}
-                onValueChange={setBiometricEnabled}
-                trackColor={{ false: COLORS.SURFACE, true: COLORS.PRIMARY + '50' }}
-                thumbColor={biometricEnabled ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
-              />
-            }
-          />
-          <SettingItem
-            icon="key-outline"
-            title="Şifreyi Değiştir"
-            onPress={() => Alert.alert('Şifre Değiştir', 'Şifre değiştirme özelliği yakında gelecek')}
-          />
-        </SettingSection>
-
-        {/* Data Management */}
-        <SettingSection title="Veri Yönetimi">
-          <SettingItem
-            icon="cloud-upload-outline"
-            title="Yedekleme"
-            subtitle="Verilerinizi buluta yedekleyin"
-            onPress={handleBackup}
-          />
-          <SettingItem
-            icon="download-outline"
-            title="Veri Dışa Aktarma"
-            subtitle="Excel veya CSV formatında indir"
-            onPress={handleExportData}
-          />
-        </SettingSection>
-
-        {/* Support */}
-        <SettingSection title="Destek & Bilgi">
-          <SettingItem
-            icon="help-circle-outline"
-            title="Yardım Merkezi"
-            onPress={() => Alert.alert('Yardım', 'Yardım sayfası yakında gelecek')}
-          />
-          <SettingItem
-            icon="document-text-outline"
-            title="Gizlilik Politikası"
-            onPress={() => Alert.alert('Gizlilik', 'Gizlilik politikası yakında gelecek')}
-          />
-          <SettingItem
-            icon="information-circle-outline"
-            title="Uygulama Hakkında"
-            subtitle={`Sürüm ${APP_CONFIG.VERSION}`}
-            onPress={() => Alert.alert('Hakkında', `${APP_CONFIG.NAME}\nSürüm: ${APP_CONFIG.VERSION}\n\nPara yönetimi uygulaması`)}
-          />
-        </SettingSection>
-
-        {/* Danger Zone */}
-        <SettingSection title="Tehlikeli Bölge">
-          <SettingItem
-            icon="trash-outline"
-            title="Hesabı Sil"
-            subtitle="Tüm verilerinizi kalıcı olarak siler"
-            onPress={handleDeleteAccount}
-            showArrow={false}
-            rightElement={
-              <Ionicons name="warning" size={20} color={COLORS.ERROR} />
-            }
-          />
-        </SettingSection>
-
-        {/* Logout Button */}
-        <View style={styles.logoutContainer}>
-          <Button
-            title="Çıkış Yap"
-            onPress={handleLogout}
-            variant="outline"
-            size="large"
-          />
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {APP_CONFIG.NAME} ile paranızı daha iyi yönetin
-          </Text>
-          <Text style={styles.footerVersion}>
-            Sürüm {APP_CONFIG.VERSION}
-          </Text>
-        </View>
-      </ScrollView>
+      {renderContent()}
     </SafeAreaView>
   );
 };

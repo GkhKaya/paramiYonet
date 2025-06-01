@@ -25,6 +25,7 @@ import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
+import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -36,9 +37,10 @@ interface AddTransactionScreenProps {
       defaultType?: 'income' | 'expense';
     };
   };
+  navigation: any;
 }
 
-const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ route }) => {
+const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ route, navigation }) => {
   const { user } = useAuth();
   const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
   const [amount, setAmount] = useState('');
@@ -47,16 +49,41 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     route?.params?.defaultType === 'income' ? TransactionType.INCOME : TransactionType.EXPENSE
   );
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedAccount, setSelectedAccount] = useState<string>('');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
   
-  const categories = selectedType === TransactionType.INCOME 
+  const availableCategories = selectedType === TransactionType.INCOME 
     ? DEFAULT_INCOME_CATEGORIES 
     : DEFAULT_EXPENSE_CATEGORIES;
+
+  // Helper functions
+  const formatAmountToWords = (amount: number): string => {
+    if (amount < 1000) return '';
+    if (amount < 1000000) return `${(amount / 1000).toFixed(1)} bin`;
+    if (amount < 1000000000) return `${(amount / 1000000).toFixed(1)} milyon`;
+    return `${(amount / 1000000000).toFixed(1)} milyar`;
+  };
+
+  const isFormValid = (): boolean => {
+    return (
+      parseFloat(amount) > 0 &&
+      description.trim().length > 0 &&
+      selectedCategory.length > 0 &&
+      selectedAccountId.length > 0 &&
+      !loading
+    );
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
   // Initialize AccountViewModel when user is available
   useEffect(() => {
@@ -70,29 +97,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
 
   // Set default account when accounts are loaded
   useEffect(() => {
-    if (accountViewModel?.accounts && accountViewModel.accounts.length > 0 && !selectedAccount) {
-      setSelectedAccount(accountViewModel.accounts[0].id);
+    if (accountViewModel?.accounts && accountViewModel.accounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(accountViewModel.accounts[0].id);
     }
-  }, [accountViewModel?.accounts, selectedAccount]);
-
-  const formatCurrency = (value: string) => {
-    // Remove non-numeric characters except decimal point
-    const numericValue = value.replace(/[^0-9.]/g, '');
-    return numericValue;
-  };
-
-  const handleAmountChange = (value: string) => {
-    const formatted = formatCurrency(value);
-    setAmount(formatted);
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
+  }, [accountViewModel?.accounts, selectedAccountId]);
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
@@ -102,10 +110,6 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     if (selectedDate) {
       setSelectedDate(selectedDate);
     }
-  };
-
-  const showDatepicker = () => {
-    setShowDatePicker(true);
   };
 
   const handleSave = async () => {
@@ -119,7 +123,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       return;
     }
 
-    if (!selectedAccount) {
+    if (!selectedAccountId) {
       Alert.alert('Hata', 'Lütfen bir hesap seçin');
       return;
     }
@@ -130,13 +134,13 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
 
     try {
       const transactionViewModel = new TransactionViewModel(user.id);
       
       // Get selected category details
-      const category = categories.find(cat => cat.name === selectedCategory);
+      const category = availableCategories.find(cat => cat.name === selectedCategory);
       
       const transactionData = {
         userId: user.id,
@@ -145,13 +149,18 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         type: selectedType,
         category: selectedCategory,
         categoryIcon: category?.icon || 'help-circle-outline',
-        accountId: selectedAccount,
+        accountId: selectedAccountId,
         date: selectedDate,
       };
 
       const success = await transactionViewModel.addTransaction(transactionData);
       
       if (success) {
+        // Force reload accounts to update balance
+        if (accountViewModel) {
+          await accountViewModel.loadAccounts();
+        }
+        
         Alert.alert('Başarılı', 'İşlem kaydedildi', [
           { text: 'Tamam', onPress: () => {
             // Reset form
@@ -159,6 +168,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             setDescription('');
             setSelectedCategory('');
             setSelectedDate(new Date());
+            navigation.goBack();
           }}
         ]);
       } else {
@@ -168,79 +178,111 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       console.error('Save transaction error:', error);
       Alert.alert('Hata', 'İşlem kaydedilirken bir hata oluştu');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const TypeSelector = () => (
-    <View style={styles.typeSelector}>
-      <TouchableOpacity
-        style={[
-          styles.typeButton,
-          selectedType === TransactionType.EXPENSE && styles.typeButtonActive,
-          { borderColor: COLORS.ERROR }
-        ]}
-        onPress={() => {
-          setSelectedType(TransactionType.EXPENSE);
-          setSelectedCategory('');
-        }}
-      >
-        <Ionicons 
-          name="remove-circle-outline" 
-          size={24} 
-          color={selectedType === TransactionType.EXPENSE ? COLORS.WHITE : COLORS.ERROR} 
-        />
-        <Text style={[
-          styles.typeButtonText,
-          selectedType === TransactionType.EXPENSE && styles.typeButtonTextActive
-        ]}>
-          Gider
-        </Text>
-      </TouchableOpacity>
+  // Mobile Layout (Original Design)
+  const renderMobileLayout = () => (
+    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      {/* Transaction Type Selector */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>İşlem Türü</Text>
+        <View style={styles.typeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              selectedType === TransactionType.EXPENSE && styles.typeButtonActive,
+              { borderColor: COLORS.ERROR }
+            ]}
+            onPress={() => setSelectedType(TransactionType.EXPENSE)}
+          >
+            <Ionicons 
+              name="remove-circle-outline" 
+              size={24} 
+              color={selectedType === TransactionType.EXPENSE ? COLORS.WHITE : COLORS.ERROR} 
+            />
+            <Text style={[
+              styles.typeButtonText,
+              selectedType === TransactionType.EXPENSE && styles.typeButtonTextActive
+            ]}>
+              Gider
+            </Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[
-          styles.typeButton,
-          selectedType === TransactionType.INCOME && styles.typeButtonActive,
-          { borderColor: COLORS.SUCCESS }
-        ]}
-        onPress={() => {
-          setSelectedType(TransactionType.INCOME);
-          setSelectedCategory('');
-        }}
-      >
-        <Ionicons 
-          name="add-circle-outline" 
-          size={24} 
-          color={selectedType === TransactionType.INCOME ? COLORS.WHITE : COLORS.SUCCESS} 
-        />
-        <Text style={[
-          styles.typeButtonText,
-          selectedType === TransactionType.INCOME && styles.typeButtonTextActive
-        ]}>
-          Gelir
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const CategorySelector = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Kategori</Text>
-      <View style={styles.categoryScrollContainer}>
-        {/* Sol Scroll Indicator */}
-        <View style={styles.scrollIndicatorLeft}>
-          <Ionicons name="chevron-back" size={16} color={COLORS.TEXT_TERTIARY} />
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              selectedType === TransactionType.INCOME && styles.typeButtonActive,
+              { borderColor: COLORS.SUCCESS }
+            ]}
+            onPress={() => setSelectedType(TransactionType.INCOME)}
+          >
+            <Ionicons 
+              name="add-circle-outline" 
+              size={24} 
+              color={selectedType === TransactionType.INCOME ? COLORS.WHITE : COLORS.SUCCESS} 
+            />
+            <Text style={[
+              styles.typeButtonText,
+              selectedType === TransactionType.INCOME && styles.typeButtonTextActive
+            ]}>
+              Gelir
+            </Text>
+          </TouchableOpacity>
         </View>
-        
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoryScrollView}
-          contentContainerStyle={styles.categoryScrollContent}
-        >
-          <View style={styles.categoriesContainer}>
-            {categories.map((category, index) => (
+      </View>
+
+      {/* Amount Input */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Tutar</Text>
+        <Card style={styles.mobileAmountCard}>
+          <View style={styles.amountContainer}>
+            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+            <Input
+              value={amount}
+              onChangeText={setAmount}
+              placeholder="0,00"
+              keyboardType="numeric"
+              containerStyle={styles.amountInput}
+              inputStyle={styles.amountInputText}
+              textAlign="center"
+              variant="outlined"
+              autoFocus={true}
+            />
+          </View>
+          {parseFloat(amount) > 0 && (
+            <Text style={styles.amountWords}>
+              {formatAmountToWords(parseFloat(amount))}
+            </Text>
+          )}
+        </Card>
+      </View>
+
+      {/* Description Input */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Açıklama</Text>
+        <Input
+          value={description}
+          onChangeText={setDescription}
+          placeholder="İşlem açıklaması girin"
+          variant="outlined"
+          leftIcon="document-text-outline"
+          multiline={true}
+          numberOfLines={3}
+        />
+      </View>
+
+      {/* Category Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Kategori</Text>
+        <View style={styles.categoryContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollContent}
+          >
+            {availableCategories.map((category, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
@@ -249,11 +291,20 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 ]}
                 onPress={() => setSelectedCategory(category.name)}
               >
-                <CategoryIcon
-                  iconName={category.icon}
-                  color={selectedCategory === category.name ? COLORS.PRIMARY : category.color}
-                  size="medium"
-                />
+                <View style={[
+                  styles.categoryIconContainer,
+                  { 
+                    backgroundColor: selectedCategory === category.name 
+                      ? category.color 
+                      : category.color + '20' 
+                  }
+                ]}>
+                  <CategoryIcon
+                    iconName={category.icon}
+                    color={selectedCategory === category.name ? COLORS.WHITE : category.color}
+                    size="medium"
+                  />
+                </View>
                 <Text style={[
                   styles.categoryText,
                   selectedCategory === category.name && styles.categoryTextActive
@@ -262,69 +313,84 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
-        </ScrollView>
-        
-        {/* Sağ Scroll Indicator */}
-        <View style={styles.scrollIndicatorRight}>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_TERTIARY} />
+          </ScrollView>
         </View>
       </View>
-    </View>
-  );
 
-  const AccountSelector = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Hesap</Text>
-      {accountViewModel?.isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-          <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
-        </View>
-      ) : (
-        <View>
-          {(accountViewModel?.accounts?.length || 0) > 0 ? (
-            <View style={styles.accountsContainer}>
-              {accountViewModel?.accounts?.map((account) => (
-                <TouchableOpacity
-                  key={account.id}
-                  style={[
-                    styles.accountItem,
-                    selectedAccount === account.id && styles.accountItemActive
-                  ]}
-                  onPress={() => setSelectedAccount(account.id)}
-                >
-                  <View style={styles.accountInfo}>
-                    <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
-                      <Ionicons name={account.icon as any} size={16} color={COLORS.WHITE} />
-                    </View>
-                    <Text style={styles.accountName}>{account.name}</Text>
+      {/* Account Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Hesap</Text>
+        {accountViewModel?.isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
+          </View>
+        ) : (accountViewModel?.accounts.length || 0) > 0 ? (
+          <View style={styles.accountsContainer}>
+            {accountViewModel?.accounts.map((account) => (
+              <TouchableOpacity
+                key={account.id}
+                style={[
+                  styles.accountItem,
+                  selectedAccountId === account.id && styles.accountItemActive
+                ]}
+                onPress={() => setSelectedAccountId(account.id)}
+              >
+                <View style={styles.accountInfo}>
+                  <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                    <Ionicons 
+                      name={account.icon as any} 
+                      size={20} 
+                      color={COLORS.WHITE} 
+                    />
                   </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
+                  <View style={styles.accountDetails}>
+                    <Text style={styles.accountName}>{account.name}</Text>
+                    <Text style={styles.accountBalance}>
+                      {formatCurrency(typeof account.balance === 'string' ? parseFloat(account.balance) : account.balance)}
+                    </Text>
+                  </View>
+                </View>
+                {selectedAccountId === account.id && (
+                  <View style={styles.selectedIndicator}>
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <Card style={styles.emptyAccountsCard}>
             <View style={styles.emptyAccountsContainer}>
-              <Text style={styles.emptyAccountsText}>Henüz hesap eklemediniz</Text>
-              <Text style={styles.emptyAccountsSubtext}>İşlem eklemek için önce bir hesap oluşturun</Text>
+              <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
+              <Text style={styles.emptyAccountsText}>Henüz hesap yok</Text>
+              <Text style={styles.emptyAccountsSubtext}>
+                İşlem eklemek için önce bir hesap oluşturmalısınız
+              </Text>
+              <TouchableOpacity
+                style={styles.createAccountButton}
+                onPress={() => navigation.navigate('AddAccount')}
+              >
+                <Text style={styles.createAccountButtonText}>Hesap Oluştur</Text>
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
-      )}
-    </View>
-  );
+          </Card>
+        )}
+      </View>
 
-  const DateSelector = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Tarih</Text>
-      <TouchableOpacity style={styles.dateSelector} onPress={showDatepicker}>
-        <View style={styles.dateInfo}>
-          <Ionicons name="calendar-outline" size={20} color={COLORS.PRIMARY} />
-          <Text style={styles.dateText}>{formatDate(selectedDate)}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_TERTIARY} />
-      </TouchableOpacity>
-      
+      {/* Date Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Tarih</Text>
+        <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+          <View style={styles.dateInfo}>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.PRIMARY} />
+            <Text style={styles.dateText}>{selectedDate.toLocaleDateString('tr-TR')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Date Picker Modal */}
       {showDatePicker && (
         <DateTimePicker
           value={selectedDate}
@@ -334,69 +400,285 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           maximumDate={new Date()}
         />
       )}
-    </View>
+    </ScrollView>
+  );
+
+  // Web Layout (New Side-by-Side Design)
+  const renderWebLayout = () => (
+    <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      {/* Transaction Type Selector */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>İşlem Türü</Text>
+        <View style={styles.typeSelector}>
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              selectedType === TransactionType.INCOME && styles.typeButtonActive,
+              { borderColor: COLORS.SUCCESS }
+            ]}
+            onPress={() => setSelectedType(TransactionType.INCOME)}
+          >
+            <View style={[
+              styles.typeIconContainer,
+              { backgroundColor: selectedType === TransactionType.INCOME ? COLORS.SUCCESS : COLORS.SUCCESS + '20' }
+            ]}>
+              <Ionicons 
+                name="trending-up" 
+                size={24} 
+                color={selectedType === TransactionType.INCOME ? COLORS.WHITE : COLORS.SUCCESS} 
+              />
+            </View>
+            <Text style={[
+              styles.typeButtonText,
+              selectedType === TransactionType.INCOME && styles.typeButtonTextActive
+            ]}>
+              Gelir
+            </Text>
+            <Text style={styles.typeDescription}>Para girişi</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.typeButton,
+              selectedType === TransactionType.EXPENSE && styles.typeButtonActive,
+              { borderColor: COLORS.ERROR }
+            ]}
+            onPress={() => setSelectedType(TransactionType.EXPENSE)}
+          >
+            <View style={[
+              styles.typeIconContainer,
+              { backgroundColor: selectedType === TransactionType.EXPENSE ? COLORS.ERROR : COLORS.ERROR + '20' }
+            ]}>
+              <Ionicons 
+                name="trending-down" 
+                size={24} 
+                color={selectedType === TransactionType.EXPENSE ? COLORS.WHITE : COLORS.ERROR} 
+              />
+            </View>
+            <Text style={[
+              styles.typeButtonText,
+              selectedType === TransactionType.EXPENSE && styles.typeButtonTextActive
+            ]}>
+              Gider
+            </Text>
+            <Text style={styles.typeDescription}>Para çıkışı</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Date Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Tarih</Text>
+        <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
+          <View style={styles.dateInfo}>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.PRIMARY} />
+            <Text style={styles.dateText}>{selectedDate.toLocaleDateString('tr-TR')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Amount and Description Row (Side by Side) */}
+      <View style={styles.rowSection}>
+        {/* Amount Input */}
+        <View style={styles.halfSection}>
+          <Text style={styles.sectionTitle}>Tutar</Text>
+          <Card style={styles.webAmountCard}>
+            <View style={styles.amountContainer}>
+              <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+              <Input
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0,00"
+                keyboardType="numeric"
+                containerStyle={styles.amountInput}
+                inputStyle={styles.amountInputText}
+                textAlign="center"
+                variant="outlined"
+                autoFocus={true}
+              />
+            </View>
+            {parseFloat(amount) > 0 && (
+              <Text style={styles.amountWords}>
+                {formatAmountToWords(parseFloat(amount))}
+              </Text>
+            )}
+          </Card>
+        </View>
+
+        {/* Description Input */}
+        <View style={styles.halfSection}>
+          <Text style={styles.sectionTitle}>Açıklama</Text>
+          <View style={styles.descriptionContainer}>
+            <Input
+              value={description}
+              onChangeText={setDescription}
+              placeholder="İşlem açıklaması girin"
+              variant="outlined"
+              leftIcon="document-text-outline"
+              multiline={true}
+              numberOfLines={4}
+              containerStyle={styles.descriptionInput}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Category Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Kategori</Text>
+        <View style={styles.categoryContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryScrollContent}
+          >
+            {availableCategories.map((category, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.categoryItem,
+                  selectedCategory === category.name && styles.categoryItemActive
+                ]}
+                onPress={() => setSelectedCategory(category.name)}
+              >
+                <View style={[
+                  styles.categoryIconContainer,
+                  { 
+                    backgroundColor: selectedCategory === category.name 
+                      ? category.color 
+                      : category.color + '20' 
+                  }
+                ]}>
+                  <CategoryIcon
+                    iconName={category.icon}
+                    color={selectedCategory === category.name ? COLORS.WHITE : category.color}
+                    size="medium"
+                  />
+                </View>
+                <Text style={[
+                  styles.categoryText,
+                  selectedCategory === category.name && styles.categoryTextActive
+                ]}>
+                  {category.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+
+      {/* Account Selection */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Hesap</Text>
+        {accountViewModel?.isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
+          </View>
+        ) : (accountViewModel?.accounts.length || 0) > 0 ? (
+          <View style={styles.accountsContainer}>
+            {accountViewModel?.accounts.map((account) => (
+              <TouchableOpacity
+                key={account.id}
+                style={[
+                  styles.accountItem,
+                  selectedAccountId === account.id && styles.accountItemActive
+                ]}
+                onPress={() => setSelectedAccountId(account.id)}
+              >
+                <View style={styles.accountInfo}>
+                  <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                    <Ionicons 
+                      name={account.icon as any} 
+                      size={20} 
+                      color={COLORS.WHITE} 
+                    />
+                  </View>
+                  <View style={styles.accountDetails}>
+                    <Text style={styles.accountName}>{account.name}</Text>
+                    <Text style={styles.accountBalance}>
+                      {formatCurrency(typeof account.balance === 'string' ? parseFloat(account.balance) : account.balance)}
+                    </Text>
+                  </View>
+                </View>
+                {selectedAccountId === account.id && (
+                  <View style={styles.selectedIndicator}>
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <Card style={styles.emptyAccountsCard}>
+            <View style={styles.emptyAccountsContainer}>
+              <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
+              <Text style={styles.emptyAccountsText}>Henüz hesap yok</Text>
+              <Text style={styles.emptyAccountsSubtext}>
+                İşlem eklemek için önce bir hesap oluşturmalısınız
+              </Text>
+              <TouchableOpacity
+                style={styles.createAccountButton}
+                onPress={() => navigation.navigate('AddAccount')}
+              >
+                <Text style={styles.createAccountButtonText}>Hesap Oluştur</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+      </View>
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
+      )}
+    </ScrollView>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>İşlem Ekle</Text>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Yeni İşlem</Text>
+        <View style={styles.headerRight} />
+      </View>
 
-        {/* Type Selector */}
-        <TypeSelector />
+      {/* Render different layouts based on platform */}
+      {isWeb ? renderWebLayout() : renderMobileLayout()}
 
-        {/* Amount Input */}
-        <Card style={styles.amountCard}>
-          <Text style={styles.amountLabel}>Tutar</Text>
-          <View style={styles.amountInputContainer}>
-            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
-            <Input
-              placeholder="0,00"
-              value={amount}
-              onChangeText={handleAmountChange}
-              keyboardType="numeric"
-              variant="filled"
-              containerStyle={styles.amountInput}
-              inputStyle={styles.amountInputText}
-            />
-          </View>
-        </Card>
-
-        {/* Description Input */}
-        <View style={styles.section}>
-          <Input
-            label="Açıklama"
-            placeholder="İşlem açıklaması..."
-            value={description}
-            onChangeText={setDescription}
-            variant="outlined"
-          />
-        </View>
-
-        {/* Date Selector */}
-        <DateSelector />
-
-        {/* Category Selector */}
-        <CategorySelector />
-
-        {/* Account Selector */}
-        <AccountSelector />
-
-        {/* Save Button */}
-        <View style={styles.saveButtonContainer}>
-          <Button
-            title="İşlemi Kaydet"
-            onPress={handleSave}
-            variant="primary"
-            size="large"
-            loading={saving}
-            disabled={saving}
-          />
-        </View>
-      </ScrollView>
+      {/* Save Button */}
+      <View style={styles.saveButtonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.saveButton,
+            !isFormValid() && styles.saveButtonDisabled
+          ]}
+          onPress={handleSave}
+          disabled={!isFormValid() || loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={COLORS.WHITE} />
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={20} color={COLORS.WHITE} />
+              <Text style={styles.saveButtonText}>İşlemi Kaydet</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 });
@@ -410,6 +692,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.lg,
   },
@@ -418,11 +703,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.TEXT_PRIMARY,
     textAlign: 'center',
+    flex: 1,
+  },
+  backButton: {
+    padding: SPACING.xs,
+  },
+  headerRight: {
+    width: 40, // Same width as back button for centering
+  },
+  section: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
   },
   typeSelector: {
     flexDirection: 'row',
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
     gap: SPACING.sm,
   },
   typeButton: {
@@ -431,6 +731,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
     borderRadius: 12,
     borderWidth: 2,
     backgroundColor: COLORS.SURFACE,
@@ -440,24 +741,42 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.PRIMARY,
   },
   typeButtonText: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
+    textAlign: 'center',
   },
   typeButtonTextActive: {
     color: COLORS.WHITE,
   },
-  amountCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
+  typeIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  amountLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
+  typeDescription: {
+    fontSize: TYPOGRAPHY.sizes.xs,
     color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.sm,
+    textAlign: 'center',
   },
-  amountInputContainer: {
+  // Mobile Amount Card
+  mobileAmountCard: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+  },
+  // Web Amount Card (for side-by-side layout)
+  webAmountCard: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    alignItems: 'center',
+    height: 120,
+    justifyContent: 'center',
+  },
+  amountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
@@ -472,62 +791,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   amountInputText: {
-    fontSize: TYPOGRAPHY.sizes.xl,
+    fontSize: 28,
     fontWeight: '700',
     textAlign: 'center',
-  },
-  section: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
   },
-  categoryScrollContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  scrollIndicatorLeft: {
-    padding: SPACING.sm,
-  },
-  scrollIndicatorRight: {
-    padding: SPACING.sm,
-  },
-  categoryScrollView: {
-    flex: 1,
-  },
-  categoryScrollContent: {
-    padding: SPACING.sm,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    paddingVertical: SPACING.sm,
-  },
-  categoryItem: {
-    alignItems: 'center',
-    marginRight: SPACING.md,
-    padding: SPACING.sm,
-    borderRadius: 12,
-    minWidth: 80,
-  },
-  categoryItemActive: {
-    backgroundColor: COLORS.SURFACE,
-  },
-  categoryText: {
+  amountWords: {
     fontSize: TYPOGRAPHY.sizes.xs,
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
     marginTop: SPACING.xs,
   },
-  categoryTextActive: {
-    color: COLORS.PRIMARY,
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryScrollContent: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+  },
+  categoryItem: {
+    alignItems: 'center',
+    marginRight: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: 16,
+    minWidth: 80,
+  },
+  categoryItemActive: {
+    backgroundColor: COLORS.SURFACE,
+    transform: [{ scale: 1.05 }],
+  },
+  categoryIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xs,
+  },
+  categoryText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_PRIMARY,
+    textAlign: 'center',
     fontWeight: '500',
   },
+  categoryTextActive: {
+    color: COLORS.PRIMARY,
+    fontWeight: '600',
+  },
   accountsContainer: {
-    gap: SPACING.sm,
+    paddingHorizontal: SPACING.sm,
   },
   accountItem: {
     flexDirection: 'row',
@@ -535,77 +849,149 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: SPACING.md,
     backgroundColor: COLORS.SURFACE,
-    borderRadius: 12,
+    borderRadius: 16,
+    marginBottom: SPACING.sm,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   accountItemActive: {
     borderColor: COLORS.PRIMARY,
-    backgroundColor: COLORS.CARD,
+    backgroundColor: COLORS.PRIMARY + '10',
   },
   accountInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   accountIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.sm,
+    marginRight: SPACING.md,
+  },
+  accountDetails: {
+    flex: 1,
   },
   accountName: {
     fontSize: TYPOGRAPHY.sizes.md,
     color: COLORS.TEXT_PRIMARY,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  saveButtonContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.xl,
+  accountBalance: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: 2,
+  },
+  selectedIndicator: {
+    padding: SPACING.xs,
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: SPACING.md,
     backgroundColor: COLORS.SURFACE,
-    borderRadius: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
   },
   dateInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   dateText: {
     fontSize: TYPOGRAPHY.sizes.md,
     color: COLORS.TEXT_PRIMARY,
     marginLeft: SPACING.sm,
+    fontWeight: '500',
+  },
+  emptyAccountsCard: {
+    marginHorizontal: 0,
+    marginBottom: 0,
+    paddingVertical: SPACING.xl,
+  },
+  emptyAccountsContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+  },
+  emptyAccountsText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+    marginTop: SPACING.sm,
+  },
+  emptyAccountsSubtext: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.lg,
+  },
+  createAccountButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderRadius: 12,
+  },
+  createAccountButtonText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.WHITE,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: SPACING.md,
+    paddingVertical: SPACING.lg,
   },
   loadingText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
     marginLeft: SPACING.sm,
   },
-  emptyAccountsContainer: {
-    flexDirection: 'column',
+  saveButtonContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.lg,
+    backgroundColor: COLORS.BACKGROUND,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+  },
+  saveButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: SPACING.md,
+    backgroundColor: COLORS.PRIMARY,
+    paddingVertical: SPACING.md,
+    borderRadius: 16,
+    minHeight: 56,
   },
-  emptyAccountsText: {
+  saveButtonDisabled: {
+    backgroundColor: COLORS.TEXT_TERTIARY,
+  },
+  saveButtonText: {
     fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
+    fontWeight: '600',
+    color: COLORS.WHITE,
+    marginLeft: SPACING.sm,
   },
-  emptyAccountsSubtext: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+  // Web-specific styles for side-by-side layout
+  rowSection: {
+    flexDirection: 'row',
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    gap: SPACING.md,
+  },
+  halfSection: {
+    flex: 1,
+  },
+  descriptionContainer: {
+    flex: 1,
+    height: 120,
+  },
+  descriptionInput: {
+    flex: 1,
   },
 });
 
