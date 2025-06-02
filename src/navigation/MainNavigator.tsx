@@ -2,13 +2,14 @@ import React from 'react';
 import { Text, Dimensions, Platform } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants';
 import { MainStackParamList, MainTabParamList } from '../types';
+import { isWeb } from '../utils/platform';
 
 // Import screens
-import DashboardScreen from '../views/DashboardScreen';
+import CleanDashboardScreen from '../views/CleanDashboardScreen';
 import TransactionsScreen from '../views/TransactionsScreen';
 import AddTransactionScreen from '../views/AddTransactionScreen';
 import ReportsScreen from '../views/ReportsScreen';
@@ -20,7 +21,6 @@ import AddAccountScreen from '../views/AddAccountScreen';
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 const baseIconSize = isSmallDevice ? 22 : 24;
-const isWeb = Platform.OS === 'web';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createStackNavigator<MainStackParamList>();
@@ -30,93 +30,80 @@ const TabNavigator: React.FC = () => {
   
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: isWeb ? { display: 'none' } : {
-          backgroundColor: COLORS.SURFACE,
-          borderTopColor: COLORS.BORDER,
-          borderTopWidth: 1,
-          paddingBottom: Math.max(insets.bottom, isSmallDevice ? 6 : 8),
-          paddingTop: isSmallDevice ? 6 : 8,
-          height: Math.max(70 + insets.bottom, isSmallDevice ? 70 : 80),
+      screenOptions={({ route }) => ({
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: string;
+
+          switch (route.name) {
+            case 'Dashboard':
+              iconName = focused ? 'home' : 'home-outline';
+              break;
+            case 'Transactions':
+              iconName = focused ? 'list' : 'list-outline';
+              break;
+            case 'Accounts':
+              iconName = focused ? 'wallet' : 'wallet-outline';
+              break;
+            case 'Reports':
+              iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+              break;
+            case 'Settings':
+              iconName = focused ? 'settings' : 'settings-outline';
+              break;
+            default:
+              iconName = 'circle';
+          }
+
+          return <Ionicons name={iconName as any} size={size} color={color} />;
         },
         tabBarActiveTintColor: COLORS.PRIMARY,
         tabBarInactiveTintColor: COLORS.TEXT_SECONDARY,
-        tabBarLabelStyle: {
-          fontSize: isSmallDevice ? 11 : 12,
-          fontWeight: '500',
-          marginTop: 2,
+        tabBarStyle: {
+          backgroundColor: COLORS.SURFACE,
+          borderTopColor: COLORS.BORDER,
+          borderTopWidth: 1,
+          paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8),
+          height: Math.max(65 + insets.bottom, Platform.OS === 'ios' ? 85 : 65),
+          ...(isWeb && {
+            display: 'none',
+          }),
         },
-      }}
+        headerShown: false,
+      })}
     >
       <Tab.Screen
         name="Dashboard"
-        component={DashboardScreen}
+        component={CleanDashboardScreen}
         options={{
-          tabBarLabel: 'Ana Sayfa',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'home' : 'home-outline'} 
-              size={baseIconSize} 
-              color={color} 
-            />
-          ),
+          title: 'Ana Sayfa',
         }}
       />
       <Tab.Screen
         name="Transactions"
         component={TransactionsScreen}
         options={{
-          tabBarLabel: 'İşlemler',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'list' : 'list-outline'} 
-              size={baseIconSize} 
-              color={color} 
-            />
-          ),
+          title: 'İşlemler',
         }}
       />
       <Tab.Screen
-        name="AddTransaction"
-        component={AddTransactionScreen}
+        name="Accounts"
+        component={AccountsScreen}
         options={{
-          tabBarLabel: 'Ekle',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'add-circle' : 'add-circle-outline'} 
-              size={baseIconSize + 2} 
-              color={color} 
-            />
-          ),
+          title: 'Hesaplar',
         }}
       />
       <Tab.Screen
         name="Reports"
         component={ReportsScreen}
         options={{
-          tabBarLabel: 'Raporlar',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'bar-chart' : 'bar-chart-outline'} 
-              size={baseIconSize} 
-              color={color} 
-            />
-          ),
+          title: 'Raporlar',
         }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Ayarlar',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? 'settings' : 'settings-outline'} 
-              size={baseIconSize} 
-              color={color} 
-            />
-          ),
+          title: 'Ayarlar',
         }}
       />
     </Tab.Navigator>
@@ -125,15 +112,17 @@ const TabNavigator: React.FC = () => {
 
 const MainNavigator: React.FC = () => {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="MainTabs" component={TabNavigator} />
-      <Stack.Screen name="Accounts" component={AccountsScreen} />
-      <Stack.Screen name="AddAccount" component={AddAccountScreen} />
-    </Stack.Navigator>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.BACKGROUND }} edges={['top']}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="MainTabs" component={TabNavigator} />
+        <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
+        <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+      </Stack.Navigator>
+    </SafeAreaView>
   );
 };
 

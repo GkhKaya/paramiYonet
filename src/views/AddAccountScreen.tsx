@@ -274,7 +274,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity

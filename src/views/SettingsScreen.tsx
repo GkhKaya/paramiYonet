@@ -122,23 +122,44 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Çıkış Yap',
-      'Çıkış yapmak istediğinizden emin misiniz?',
-      [
-        { text: 'İptal', style: 'cancel' },
-        { 
-          text: 'Çıkış Yap', 
-          onPress: async () => {
-            try {
-              await signOut();
-            } catch (error) {
-              Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu.');
-            }
+    console.log('Logout button pressed'); // Debug log
+    
+    // Web'de Alert.alert problemli olabileceği için platform kontrolü yapalım
+    if (isWeb) {
+      // Web'de browser'ın native confirm'ini kullan
+      const confirmLogout = window.confirm('Çıkış yapmak istediğinizden emin misiniz?');
+      if (confirmLogout) {
+        performLogout();
+      }
+    } else {
+      // Mobile'da Alert.alert kullan
+      Alert.alert(
+        'Çıkış Yap',
+        'Çıkış yapmak istediğinizden emin misiniz?',
+        [
+          { text: 'İptal', style: 'cancel' },
+          { 
+            text: 'Çıkış Yap', 
+            onPress: performLogout
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
+  };
+
+  const performLogout = async () => {
+    try {
+      console.log('Attempting to sign out...'); // Debug log
+      await signOut();
+      console.log('Sign out successful'); // Debug log
+    } catch (error) {
+      console.error('Sign out error:', error); // Debug log
+      if (isWeb) {
+        window.alert('Çıkış yapılırken bir hata oluştu.');
+      } else {
+        Alert.alert('Hata', 'Çıkış yapılırken bir hata oluştu.');
+      }
+    }
   };
 
   const renderContent = () => (
@@ -306,10 +327,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          {APP_CONFIG.NAME} - Kişisel Finans Yönetimi
-        </Text>
-        <Text style={styles.footerText}>
-          © 2024 Tüm hakları saklıdır.
+          Made by Devosuit © 2025 All rights reserved.
         </Text>
       </View>
     </ScrollView>

@@ -132,7 +132,7 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          © 2024 ParamıYönet - Kişisel Finans Yönetimi
+          Made by Devosuit © 2025 All rights reserved.
         </Text>
       </View>
     </View>
@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.CARD,
     borderRightWidth: 1,
     borderRightColor: COLORS.BORDER,
+    minHeight: '100%',
   },
   sidebarCollapsed: {
     width: 80,
@@ -238,9 +239,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.md,
     borderRadius: 12,
+    backgroundColor: 'transparent',
   },
   navItemActive: {
-    backgroundColor: COLORS.PRIMARY + '20',
+    backgroundColor: COLORS.PRIMARY,
   },
   navItemCollapsed: {
     justifyContent: 'center',

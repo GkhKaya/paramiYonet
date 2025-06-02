@@ -18,6 +18,7 @@ import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { CategoryIcon } from '../components/common/CategoryIcon';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { TransactionType } from '../models/Transaction';
 import { AccountType, Account } from '../models/Account';
@@ -389,17 +390,6 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
         </TouchableOpacity>
       </View>
-
-      {/* Date Picker Modal */}
-      {showDatePicker && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
-      )}
     </ScrollView>
   );
 
@@ -628,8 +618,81 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           </Card>
         )}
       </View>
+    </ScrollView>
+  );
 
-      {/* Date Picker Modal */}
+  return (
+    <>
+      {isWeb ? (
+        // Web Layout
+        <WebLayout title="Yeni İşlem" activeRoute="transactions" navigation={navigation}>
+          <View style={styles.webContainer}>
+            {renderWebLayout()}
+            
+            {/* Save Button for Web */}
+            <View style={styles.webSaveButtonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  !isFormValid() && styles.saveButtonDisabled
+                ]}
+                onPress={handleSave}
+                disabled={!isFormValid() || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color={COLORS.WHITE} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={20} color={COLORS.WHITE} />
+                    <Text style={styles.saveButtonText}>İşlemi Kaydet</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </WebLayout>
+      ) : (
+        // Mobile Layout
+        <SafeAreaView style={styles.container} edges={['bottom']}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Yeni İşlem</Text>
+            <View style={styles.headerRight} />
+          </View>
+
+          {/* Mobile Content */}
+          {renderMobileLayout()}
+
+          {/* Save Button */}
+          <View style={styles.saveButtonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                !isFormValid() && styles.saveButtonDisabled
+              ]}
+              onPress={handleSave}
+              disabled={!isFormValid() || loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={COLORS.WHITE} />
+              ) : (
+                <>
+                  <Ionicons name="checkmark" size={20} color={COLORS.WHITE} />
+                  <Text style={styles.saveButtonText}>İşlemi Kaydet</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      )}
+
+      {/* Date Picker Modal (for both platforms) */}
       {showDatePicker && (
         <DateTimePicker
           value={selectedDate}
@@ -639,47 +702,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           maximumDate={new Date()}
         />
       )}
-    </ScrollView>
-  );
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yeni İşlem</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      {/* Render different layouts based on platform */}
-      {isWeb ? renderWebLayout() : renderMobileLayout()}
-
-      {/* Save Button */}
-      <View style={styles.saveButtonContainer}>
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            !isFormValid() && styles.saveButtonDisabled
-          ]}
-          onPress={handleSave}
-          disabled={!isFormValid() || loading}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={COLORS.WHITE} />
-          ) : (
-            <>
-              <Ionicons name="checkmark" size={20} color={COLORS.WHITE} />
-              <Text style={styles.saveButtonText}>İşlemi Kaydet</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </>
   );
 });
 
@@ -992,6 +1015,12 @@ const styles = StyleSheet.create({
   },
   descriptionInput: {
     flex: 1,
+  },
+  webContainer: {
+    flex: 1,
+  },
+  webSaveButtonContainer: {
+    padding: SPACING.md,
   },
 });
 

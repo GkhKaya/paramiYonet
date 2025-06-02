@@ -64,17 +64,18 @@ export type RootStackParamList = {
 
 export type MainStackParamList = {
   MainTabs: undefined;
+  AddTransaction: { defaultType?: 'income' | 'expense' } | undefined;
+  AddAccount: { editAccount?: any } | undefined;
   Accounts: undefined;
-  AddAccount: undefined;
   EditAccount: { accountId: string };
 };
 
 export type MainTabParamList = {
   Dashboard: undefined;
   Transactions: undefined;
+  Accounts: undefined;
   Reports: undefined;
   Settings: undefined;
-  AddTransaction: { defaultType?: 'income' | 'expense' } | undefined;
 };
 
 // Theme types

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   signInWithEmailAndPassword,
@@ -16,11 +16,13 @@ import { User } from '../models/User';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  dataLoading: boolean;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   signUp: (email: string, password: string, displayName: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   getSavedCredentials: () => Promise<{ email: string; password: string } | null>;
   clearSavedCredentials: () => Promise<void>;
+  tryAutoLogin: () => Promise<boolean>;
 }
 
 // AsyncStorage keys
@@ -37,10 +39,12 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // İlk yükleme kontrolü
 
   useEffect(() => {
     // Firebase auth state değişikliklerini dinle
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         // Firebase user'ı uygulama User modeline dönüştür
         const appUser: User = {
@@ -52,14 +56,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           updatedAt: new Date(),
         };
         setUser(appUser);
+        setLoading(false);
+        setDataLoading(false);
+        setIsInitialLoad(false);
       } else {
         setUser(null);
+        
+        // Sadece ilk yüklemede auto-login dene
+        if (isInitialLoad) {
+          try {
+            console.log('Initial load: checking for saved credentials...');
+            const rememberMe = await AsyncStorage.getItem(REMEMBER_ME_KEY);
+            if (rememberMe === 'true') {
+              const email = await AsyncStorage.getItem(SAVED_EMAIL_KEY);
+              const password = await AsyncStorage.getItem(SAVED_PASSWORD_KEY);
+              
+              if (email && password) {
+                console.log('Attempting auto-login with saved credentials...');
+                // Firebase auth state dinleyici içinde signIn çağırmayalım, 
+                // bunun yerine direkt Firebase signIn yapalım
+                await signInWithEmailAndPassword(auth, email, password);
+                // Bu işlem başarılıysa onAuthStateChanged tekrar tetiklenecek
+                return; // Loading'i burada false yapmayalım
+              }
+            }
+          } catch (error) {
+            console.error('Auto-login failed:', error);
+            // Hatalı kayıtlı bilgileri temizle
+            await AsyncStorage.removeItem(REMEMBER_ME_KEY);
+            await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
+            await AsyncStorage.removeItem(SAVED_PASSWORD_KEY);
+          }
+        } else {
+          console.log('Not initial load, skipping auto-login');
+        }
+        
+        setLoading(false);
+        setDataLoading(false);
+        setIsInitialLoad(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [isInitialLoad]);
 
   const signIn = async (email: string, password: string, rememberMe?: boolean): Promise<boolean> => {
     try {
@@ -159,13 +198,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async (): Promise<void> => {
     try {
+      console.log('Starting signOut process...'); // Debug log
       setLoading(true);
+      console.log('Calling firebaseSignOut...'); // Debug log
       await firebaseSignOut(auth);
+      console.log('Firebase signOut successful, clearing credentials...'); // Debug log
+      // Çıkış yaparken kaydedilmiş bilgileri temizle
+      await clearSavedCredentials();
+      console.log('Credentials cleared successfully'); // Debug log
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
     } finally {
       setLoading(false);
+      console.log('signOut process completed'); // Debug log
     }
   };
 
@@ -189,22 +235,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const clearSavedCredentials = async (): Promise<void> => {
     try {
+      console.log('Clearing saved credentials..., Platform:', Platform.OS); // Debug log
       await AsyncStorage.removeItem(REMEMBER_ME_KEY);
+      console.log('REMEMBER_ME_KEY removed'); // Debug log
       await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
+      console.log('SAVED_EMAIL_KEY removed'); // Debug log
       await AsyncStorage.removeItem(SAVED_PASSWORD_KEY);
+      console.log('SAVED_PASSWORD_KEY removed'); // Debug log
+      console.log('All saved credentials cleared'); // Debug log
     } catch (error) {
       console.error('Error clearing saved credentials:', error);
+    }
+  };
+
+  const tryAutoLogin = async (): Promise<boolean> => {
+    try {
+      const savedCredentials = await getSavedCredentials();
+      if (savedCredentials) {
+        console.log('Saved credentials found, attempting auto-login...');
+        // Otomatik giriş yapmayı dene (rememberMe parametresi false çünkü zaten kaydedilmiş)
+        const success = await signIn(savedCredentials.email, savedCredentials.password, false);
+        return success;
+      }
+      return false;
+    } catch (error) {
+      console.error('Auto-login failed:', error);
+      // Hatalı kayıtlı bilgileri temizle
+      await clearSavedCredentials();
+      return false;
     }
   };
 
   const contextValue: AuthContextType = {
     user,
     loading,
+    dataLoading,
     signIn,
     signUp,
     signOut,
     getSavedCredentials,
     clearSavedCredentials,
+    tryAutoLogin,
   };
 
   return (
