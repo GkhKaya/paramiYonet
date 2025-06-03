@@ -27,6 +27,7 @@ import { useFocusEffect } from '@react-navigation/native';
 // Custom Components
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
 import { QuickActions, createCommonQuickActions } from '../components/dashboard/QuickActions';
+import { RecentTransactions } from '../components/dashboard/RecentTransactions';
 import { AccountsList, AccountItem } from '../components/dashboard/AccountsList';
 import { WebLayout } from '../components/layout/WebLayout';
 
@@ -270,6 +271,13 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
       <QuickActions
         actions={quickActions}
         columns={2}
+      />
+
+      {/* Son İşlemler */}
+      <RecentTransactions
+        transactions={transactionViewModel?.recentTransactions || []}
+        onViewAll={navigateToTransactions}
+        loading={!transactionViewModel}
       />
 
       {/* Hesaplar Listesi */}

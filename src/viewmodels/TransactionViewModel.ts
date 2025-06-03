@@ -52,7 +52,7 @@ const createMockTransactions = (): Transaction[] => {
       userId: 'default-user',
       accountId: 'account-1',
       category: 'Maaş',
-      categoryIcon: 'wallet',
+      categoryIcon: 'cash',
       type: TransactionType.INCOME,
       amount: 15000,
       description: 'Aylık maaş',
@@ -135,6 +135,7 @@ export class TransactionViewModel {
       error: observable,
       monthlyStats: computed,
       dayGroups: computed,
+      recentTransactions: computed,
       loadTransactions: action,
       addTransaction: action,
       updateTransaction: action,
@@ -166,6 +167,13 @@ export class TransactionViewModel {
       netAmount: totalIncome - totalExpense,
       transactionCount: this.filteredTransactions.length,
     };
+  }
+
+  get recentTransactions(): Transaction[] {
+    // Tüm işlemleri tarihe göre sırala ve son 3'ünü al
+    return [...this.transactions]
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 3);
   }
 
   get dayGroups(): DayGroup[] {
