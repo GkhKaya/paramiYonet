@@ -15,7 +15,7 @@ const navigationItems = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home-outline', routeName: 'Dashboard' },
   { id: 'transactions', label: 'İşlemler', icon: 'list-outline', routeName: 'Transactions' },
   { id: 'reports', label: 'Raporlar', icon: 'analytics-outline', routeName: 'Reports' },
-  { id: 'accounts', label: 'Hesaplar', icon: 'card-outline', routeName: 'Accounts' },
+  { id: 'addTransaction', label: 'Ekle', icon: 'add-circle-outline', routeName: 'AddTransaction' },
   { id: 'settings', label: 'Ayarlar', icon: 'settings-outline', routeName: 'Settings' },
 ];
 
@@ -35,13 +35,7 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
 
   const handleNavigation = (item: typeof navigationItems[0]) => {
     if (navigation && item.routeName) {
-      // For accounts, navigate to the stack screen
-      if (item.routeName === 'Accounts') {
-        navigation.navigate('Accounts');
-      } else {
-        // For other routes, navigate to the tab
-        navigation.navigate(item.routeName);
-      }
+      navigation.navigate(item.routeName);
     }
   };
 

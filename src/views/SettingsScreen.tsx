@@ -28,9 +28,6 @@ interface SettingsScreenProps {
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(true);
 
   const SettingItem = ({
     icon,
@@ -188,47 +185,48 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         </Card>
       </View>
 
-      {/* App Settings */}
+      {/* App Settings - This whole section might be removed or simplified */}
+      {/*
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Uygulama</Text>
         <Card style={styles.sectionCard}>
-          <SettingItem
+          <SettingItem // Removed Notifications
             icon="notifications"
             title="Bildirimler"
             subtitle="Push bildirimleri ve hatırlatıcılar"
             showArrow={false}
             rightElement={
               <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                value={notificationsEnabled} // This state will be removed
+                onValueChange={setNotificationsEnabled} // This state setter will be removed
                 trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
                 thumbColor={notificationsEnabled ? COLORS.WHITE : COLORS.TEXT_SECONDARY}
               />
             }
           />
-          <SettingItem
+          <SettingItem // Removed Biometric Entry
             icon="finger-print"
             title="Biyometrik Giriş"
             subtitle="Parmak izi veya yüz tanıma"
             showArrow={false}
             rightElement={
               <Switch
-                value={biometricEnabled}
-                onValueChange={setBiometricEnabled}
+                value={biometricEnabled} // This state will be removed
+                onValueChange={setBiometricEnabled} // This state setter will be removed
                 trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
                 thumbColor={biometricEnabled ? COLORS.WHITE : COLORS.TEXT_SECONDARY}
               />
             }
           />
-          <SettingItem
+          <SettingItem // Removed Dark Mode
             icon="moon"
             title="Karanlık Mod"
             subtitle="Koyu renk teması (yakında)"
             showArrow={false}
             rightElement={
               <Switch
-                value={false}
-                onValueChange={() => {}}
+                value={false} // Was darkModeEnabled, this state will be removed
+                onValueChange={() => {}} // Was setDarkModeEnabled, this state setter will be removed
                 disabled={true}
                 trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
                 thumbColor={COLORS.TEXT_SECONDARY}
@@ -237,19 +235,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           />
         </Card>
       </View>
+      */}
 
       {/* Data & Backup */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Veri ve Yedekleme</Text>
         <Card style={styles.sectionCard}>
-          <SettingItem
-            icon="cloud-upload"
-            title="Veri Yedekleme"
-            subtitle="Firebase'e otomatik yedekleme"
-            onPress={() => {
-              Alert.alert('Yedekleme', 'Verileriniz Firebase\'de güvenle saklanıyor');
-            }}
-          />
           <SettingItem
             icon="download"
             title="Verileri İndir"

@@ -625,7 +625,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     <>
       {isWeb ? (
         // Web Layout
-        <WebLayout title="Yeni İşlem" activeRoute="transactions" navigation={navigation}>
+        <WebLayout title="Yeni İşlem" activeRoute="addTransaction" navigation={navigation}>
           <View style={styles.webContainer}>
             {renderWebLayout()}
             
