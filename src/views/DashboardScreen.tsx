@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../components/common/Card';
 import { AccountCard } from '../components/common/AccountCard';
 import { CategoryIcon } from '../components/common/CategoryIcon';
+import { ProgressCircle } from '../components/charts/ProgressCircle';
 import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { Account, AccountType } from '../models/Account';
@@ -421,27 +422,43 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
               {(() => {
                 const { totalIncome, totalExpenses, netProfit } = getFinancialSummary();
                 const isProfit = netProfit >= 0;
+                const expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0;
                 
                 return (
                   <>
-                    <View style={styles.profitLossHeader}>
-                      <View style={[styles.profitLossIcon, { backgroundColor: isProfit ? COLORS.SUCCESS : COLORS.ERROR }]}>
-                        <Ionicons 
-                          name={isProfit ? 'trending-up' : 'trending-down'} 
-                          size={20} 
-                          color={COLORS.WHITE} 
-                        />
+                    {/* Top row with profit/loss and progress circle */}
+                    <View style={styles.profitLossTopRow}>
+                      <View style={styles.profitLossLeft}>
+                        <View style={styles.profitLossHeader}>
+                          <View style={[styles.profitLossIcon, { backgroundColor: isProfit ? COLORS.SUCCESS : COLORS.ERROR }]}>
+                            <Ionicons 
+                              name={isProfit ? 'trending-up' : 'trending-down'} 
+                              size={20} 
+                              color={COLORS.WHITE} 
+                            />
+                          </View>
+                          <View style={styles.profitLossInfo}>
+                            <Text style={styles.profitLossLabel}>
+                              {isProfit ? 'Net Kar' : 'Net Zarar'}
+                            </Text>
+                            <Text style={[
+                              styles.profitLossAmount,
+                              { color: isProfit ? COLORS.SUCCESS : COLORS.ERROR }
+                            ]}>
+                              {isProfit ? '+' : ''}{formatCurrency(Math.abs(netProfit))}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                      <View style={styles.profitLossInfo}>
-                        <Text style={styles.profitLossLabel}>
-                          {isProfit ? 'Net Kar' : 'Net Zarar'}
-                        </Text>
-                        <Text style={[
-                          styles.profitLossAmount,
-                          { color: isProfit ? COLORS.SUCCESS : COLORS.ERROR }
-                        ]}>
-                          {isProfit ? '+' : ''}{formatCurrency(Math.abs(netProfit))}
-                        </Text>
+                      
+                      {/* Progress Circle */}
+                      <View style={styles.progressCircleContainer}>
+                        <ProgressCircle
+                          percentage={Math.min(expenseRatio, 100)}
+                          size="small"
+                          centerSubText="Gider Oranı"
+                          progressColor={expenseRatio > 80 ? COLORS.ERROR : expenseRatio > 60 ? COLORS.WARNING : COLORS.SUCCESS}
+                        />
                       </View>
                     </View>
                     
@@ -1140,6 +1157,14 @@ const styles = StyleSheet.create({
   profitLossSection: {
     padding: SPACING.md,
   },
+  profitLossTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  profitLossLeft: {
+    flex: 1,
+  },
   profitLossHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1165,6 +1190,11 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: '700',
     color: COLORS.TEXT_PRIMARY,
+  },
+  progressCircleContainer: {
+    width: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   incomeExpenseRow: {
     flexDirection: 'row',
