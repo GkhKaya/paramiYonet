@@ -8,6 +8,7 @@ import {
   Dimensions,
   Alert,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, APP_CONFIG } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { isWeb } from '../utils/platform';
+import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
+import { Transaction } from '../models/Transaction';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -28,6 +31,7 @@ interface SettingsScreenProps {
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { user, signOut } = useAuth();
+  const [exportingData, setExportingData] = useState(false);
 
   const SettingItem = ({
     icon,
@@ -97,10 +101,74 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     ]);
   };
 
-  const handleExportData = () => {
-    Alert.alert('Veri Dışa Aktarma', 'Verileriniz dışa aktarılıyor...', [
-      { text: 'Tamam', onPress: () => console.log('Export started') }
-    ]);
+  const handleExportData = async () => {
+    if (!user || !isWeb) {
+      Alert.alert('Hata', 'Bu özellik yalnızca web platformunda ve giriş yapmış kullanıcılar için geçerlidir.');
+      return;
+    }
+
+    setExportingData(true);
+    try {
+      const viewModel = new TransactionViewModel(user.id);
+      await viewModel.loadTransactions();
+
+      if (viewModel.transactions.length === 0) {
+        if (isWeb) {
+          window.alert('Dışa aktarılacak herhangi bir işlem bulunamadı.');
+        } else {
+          Alert.alert('Bilgi', 'Dışa aktarılacak herhangi bir işlem bulunamadı.');
+        }
+        setExportingData(false);
+        return;
+      }
+
+      const jsonData = {
+        userInfo: {
+          userId: user.id,
+          email: user.email,
+        },
+        exportDate: new Date().toISOString(),
+        transactions: viewModel.transactions.map(t => ({
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          description: t.description,
+          category: t.category,
+          categoryIcon: t.categoryIcon,
+          accountId: t.accountId,
+          date: t.date instanceof Date ? t.date.toISOString() : String(t.date),
+          createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
+          updatedAt: t.updatedAt instanceof Date ? t.updatedAt.toISOString() : String(t.updatedAt),
+        })),
+      };
+
+      const jsonString = JSON.stringify(jsonData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `parami_yonet_veriler_${user.id}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (isWeb) {
+        window.alert('Verileriniz başarıyla JSON dosyası olarak indirildi.');
+      } else {
+        Alert.alert('Başarılı', 'Verileriniz başarıyla JSON dosyası olarak indirildi.');
+      }
+
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      if (isWeb) {
+        window.alert('Veriler dışa aktarılırken bir hata oluştu.');
+      } else {
+        Alert.alert('Hata', 'Veriler dışa aktarılırken bir hata oluştu.');
+      }
+    } finally {
+      setExportingData(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -245,13 +313,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             icon="download"
             title="Verileri İndir"
             subtitle="Tüm verilerinizi JSON formatında indirin"
-            onPress={() => {
-              Alert.alert(
-                'Veri İndirme',
-                'Bu özellik web versiyonunda kullanılabilir olacak',
-                [{ text: 'Tamam' }]
-              );
-            }}
+            onPress={handleExportData}
+            showArrow={!exportingData}
+            rightElement={
+              exportingData ? (
+                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              ) : null
+            }
           />
           <SettingItem
             icon="trash"
