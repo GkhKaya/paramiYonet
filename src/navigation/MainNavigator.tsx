@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Dimensions, Platform } from 'react-native';
+import { Text, Dimensions, Platform, TouchableOpacity } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
@@ -41,8 +41,8 @@ const TabNavigator: React.FC = () => {
             case 'Transactions':
               iconName = focused ? 'list' : 'list-outline';
               break;
-            case 'Accounts':
-              iconName = focused ? 'wallet' : 'wallet-outline';
+            case 'AddTransaction':
+              iconName = focused ? 'add-circle' : 'add-circle-outline';
               break;
             case 'Reports':
               iconName = focused ? 'bar-chart' : 'bar-chart-outline';
@@ -86,10 +86,10 @@ const TabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Accounts"
-        component={AccountsScreen}
+        name="AddTransaction"
+        component={AddTransactionScreen}
         options={{
-          title: 'Hesaplar',
+          title: 'Ekle',
         }}
       />
       <Tab.Screen
@@ -119,7 +119,6 @@ const MainNavigator: React.FC = () => {
         }}
       >
         <Stack.Screen name="MainTabs" component={TabNavigator} />
-        <Stack.Screen name="AddTransaction" component={AddTransactionScreen} />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
       </Stack.Navigator>
     </SafeAreaView>

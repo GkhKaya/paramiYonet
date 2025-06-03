@@ -168,25 +168,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
     return result;
   };
 
-  const QuickActionButton = ({ 
-    icon, 
-    title, 
-    onPress, 
-    color = COLORS.PRIMARY 
-  }: {
-    icon: string;
-    title: string;
-    onPress: () => void;
-    color?: string;
-  }) => (
-    <TouchableOpacity style={styles.quickActionButton} onPress={onPress}>
-      <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
-        <Ionicons name={icon as any} size={isSmallDevice ? 20 : 24} color="white" />
-      </View>
-      <Text style={styles.quickActionText}>{title}</Text>
-    </TouchableOpacity>
-  );
-
   const handleRefresh = async () => {
     await onRefresh();
   };
@@ -293,33 +274,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
         {/* Main Section - Quick Actions & Recent Transactions */}
         <View style={styles.mainSection}>
           <ResponsiveGrid>
-            {/* Quick Actions Card */}
-            <Card style={styles.quickActionsCard}>
-              <Text style={styles.cardTitle}>Hızlı İşlemler</Text>
-              <View style={styles.quickActionsGrid}>
-                <TouchableOpacity 
-                  style={[styles.quickAction, { backgroundColor: COLORS.PRIMARY + '20' }]}
-                  onPress={() => navigation.navigate('AddAccount')}
-                >
-                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.PRIMARY }]}>
-                    <Ionicons name="add" size={20} color={COLORS.WHITE} />
-                  </View>
-                  <Text style={styles.quickActionText}>Yeni Hesap</Text>
-                </TouchableOpacity>
-
-                {/* Temporary debug button */}
-                <TouchableOpacity 
-                  style={[styles.quickAction, { backgroundColor: COLORS.SECONDARY + '20' }]}
-                  onPress={handleRecalculateBalances}
-                >
-                  <View style={[styles.quickActionIcon, { backgroundColor: COLORS.SECONDARY }]}>
-                    <Ionicons name="calculator" size={20} color={COLORS.WHITE} />
-                  </View>
-                  <Text style={styles.quickActionText}>Bakiye Hesapla</Text>
-                </TouchableOpacity>
-              </View>
-            </Card>
-
             {/* Recent Transactions Card */}
             <Card style={styles.recentTransactionsCard}>
               {/* Header */}
@@ -748,25 +702,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.md,
   },
-  quickActionButton: {
-    alignItems: 'center',
-    width: (width - SPACING.md * 2 - SPACING.sm * 3) / 4,
-    marginBottom: SPACING.md,
-  },
-  quickActionIcon: {
-    width: isSmallDevice ? 48 : 56,
-    height: isSmallDevice ? 48 : 56,
-    borderRadius: isSmallDevice ? 24 : 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xs,
-  },
-  quickActionText: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.xs : TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_PRIMARY,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
   emptyState: {
     alignItems: 'center',
     paddingVertical: SPACING.xl,
@@ -984,36 +919,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.md,
     paddingBottom: SPACING.lg,
-  },
-  quickActionsCard: {
-    marginBottom: SPACING.lg,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: SPACING.sm,
-  },
-  quickAction: {
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderRadius: 16,
-    width: isWeb ? 'auto' : (width - SPACING.md * 3 - SPACING.sm * 3) / 2,
-    minWidth: isWeb ? 140 : 'auto',
-    flex: isWeb ? 1 : 0,
-  },
-  accountTypeLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  accountTypeIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SPACING.sm,
   },
   bottomSection: {
     paddingHorizontal: SPACING.md,
@@ -1306,6 +1211,19 @@ const styles = StyleSheet.create({
   },
   lastAccountItem: {
     borderBottomWidth: 0,
+  },
+  accountTypeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  accountTypeIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
   },
 });
 

@@ -8,19 +8,23 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { Card } from '../components/common/Card';
 import { CategoryIcon } from '../components/common/CategoryIcon';
+import { AccountCard } from '../components/common/AccountCard';
 import { CategoryChart } from '../components/charts/CategoryChart';
 import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { TransactionType } from '../models/Transaction';
+import { Account } from '../models/Account';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { useAuth } from '../contexts/AuthContext';
 import { ReportsViewModel } from '../viewmodels/ReportsViewModel';
+import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
@@ -34,8 +38,9 @@ interface ReportsScreenProps {
 const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
   const [reportsViewModel, setReportsViewModel] = useState<ReportsViewModel | null>(null);
+  const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('month');
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'categories' | 'trends'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'categories' | 'trends' | 'accounts'>('overview');
   const [refreshing, setRefreshing] = useState(false);
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
@@ -44,9 +49,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   useEffect(() => {
     if (user?.id) {
       const reportsVm = new ReportsViewModel(user.id);
+      const accountVm = new AccountViewModel(user.id);
       setReportsViewModel(reportsVm);
+      setAccountViewModel(accountVm);
+      // Load initial data
+      accountVm.loadAccounts();
     } else {
       setReportsViewModel(null);
+      setAccountViewModel(null);
     }
   }, [user?.id]);
 
@@ -58,9 +68,10 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   };
 
   const handleRefresh = async () => {
-    if (reportsViewModel) {
+    if (reportsViewModel && accountViewModel) {
       setRefreshing(true);
       reportsViewModel.refreshData();
+      await accountViewModel.loadAccounts();
       setTimeout(() => setRefreshing(false), 1000); // Give time for refresh
     }
   };
@@ -97,6 +108,46 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
 
   const currentData = getCurrentData();
   const currentCategories = getCurrentCategories();
+
+  const handleEditAccount = (account: Account) => {
+    navigation.navigate('AddAccount', { editAccount: account });
+  };
+
+  const handleDeleteAccount = (account: Account) => {
+    Alert.alert(
+      'Hesabı Sil',
+      `"${account.name}" hesabını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Sil',
+          style: 'destructive',
+          onPress: async () => {
+            if (accountViewModel) {
+              const success = await accountViewModel.deleteAccount(account.id);
+              if (success) {
+                Alert.alert('Başarılı', 'Hesap başarıyla silindi');
+              } else {
+                Alert.alert('Hata', 'Hesap silinirken hata oluştu');
+              }
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Account type translation function
+  const getAccountTypeLabel = (type: string) => {
+    const typeMap: { [key: string]: string } = {
+      cash: 'Nakit',
+      debit_card: 'Banka Kartı',
+      credit_card: 'Kredi Kartı',
+      savings: 'Tasarruf Hesabı',
+      investment: 'Yatırım Hesabı',
+    };
+    return typeMap[type] || type;
+  };
 
   // Loading state
   if (!user) {
@@ -189,6 +240,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
           >
             <Text style={[styles.tabText, selectedTab === 'trends' && styles.tabTextActive]}>
               Eğilimler
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, selectedTab === 'accounts' && styles.tabActive]}
+            onPress={() => setSelectedTab('accounts')}
+          >
+            <Text style={[styles.tabText, selectedTab === 'accounts' && styles.tabTextActive]}>
+              Hesaplar
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -421,6 +480,98 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     </View>
   );
 
+  const AccountsTab = () => {
+    if (!accountViewModel) return null;
+
+    return (
+      <View>
+        {/* Account Summary */}
+        <Card style={styles.accountSummaryCard}>
+          <View style={styles.accountSummaryHeader}>
+            <Text style={styles.accountSummaryTitle}>Hesap Özeti</Text>
+            <TouchableOpacity 
+              style={styles.addAccountButton}
+              onPress={() => navigation.navigate('AddAccount')}
+            >
+              <Ionicons name="add" size={20} color={COLORS.PRIMARY} />
+              <Text style={styles.addAccountText}>Hesap Ekle</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.totalBalanceContainer}>
+            <Text style={styles.totalBalanceLabel}>Toplam Bakiye</Text>
+            <Text style={styles.totalBalanceAmount}>
+              {formatCurrency(accountViewModel.totalBalance)}
+            </Text>
+          </View>
+        </Card>
+
+        {/* Accounts List */}
+        <Card style={styles.accountsListCard}>
+          <Text style={styles.accountsListTitle}>Tüm Hesaplar</Text>
+          {accountViewModel.accounts.length > 0 ? (
+            <View style={styles.accountsList}>
+              {accountViewModel.accounts.map((account, index) => (
+                <View key={account.id} style={[
+                  styles.accountItem,
+                  index === accountViewModel.accounts.length - 1 && styles.lastAccountItem
+                ]}>
+                  <View style={styles.accountLeft}>
+                    <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                      <Ionicons 
+                        name={account.icon as any} 
+                        size={20} 
+                        color={COLORS.WHITE} 
+                      />
+                    </View>
+                    <View style={styles.accountInfo}>
+                      <Text style={styles.accountName}>{account.name}</Text>
+                      <Text style={styles.accountType}>{getAccountTypeLabel(account.type)}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.accountRight}>
+                    <Text style={[
+                      styles.accountBalance,
+                      { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                    ]}>
+                      {formatCurrency(account.balance)}
+                    </Text>
+                    <View style={styles.accountActions}>
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.editButton]}
+                        onPress={() => handleEditAccount(account)}
+                      >
+                        <Ionicons name="create-outline" size={16} color={COLORS.WHITE} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.deleteButton]}
+                        onPress={() => handleDeleteAccount(account)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={COLORS.WHITE} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyAccounts}>
+              <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
+              <Text style={styles.emptyAccountsText}>Henüz hesap eklenmedi</Text>
+              <TouchableOpacity 
+                style={styles.addFirstAccountButton}
+                onPress={() => navigation.navigate('AddAccount')}
+              >
+                <Text style={styles.addFirstAccountText}>İlk Hesabını Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Card>
+      </View>
+    );
+  };
+
   const renderContent = () => {
     if (reportsViewModel.isLoading) {
       return (
@@ -460,6 +611,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               return <CategoriesTab />;
             case 'trends':
               return <TrendsTab />;
+            case 'accounts':
+              return <AccountsTab />;
             default:
               return <OverviewTab />;
           }
@@ -856,6 +1009,146 @@ const styles = StyleSheet.create({
   },
   webContent: {
     flex: 1,
+  },
+  accountSummaryCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  accountSummaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  accountSummaryTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  addAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.sm,
+    borderRadius: 8,
+    backgroundColor: COLORS.PRIMARY,
+  },
+  addAccountText: {
+    color: COLORS.WHITE,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+    marginLeft: SPACING.xs,
+  },
+  totalBalanceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalBalanceLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    fontWeight: '600',
+  },
+  totalBalanceAmount: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  accountsListCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  accountsListTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  accountsList: {
+    gap: SPACING.md,
+  },
+  accountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  accountLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  accountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountInfo: {
+    marginLeft: SPACING.sm,
+  },
+  accountName: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+  },
+  accountType: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  accountRight: {
+    alignItems: 'flex-end',
+    minWidth: 100,
+  },
+  accountBalance: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  accountActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.xs,
+  },
+  accountActionButton: {
+    padding: SPACING.xs,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+  },
+  editButton: {
+    backgroundColor: COLORS.PRIMARY,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.ERROR,
+  },
+  emptyAccounts: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+  },
+  emptyAccountsText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  addFirstAccountButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: 8,
+  },
+  addFirstAccountText: {
+    color: COLORS.WHITE,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+  },
+  lastAccountItem: {
+    borderBottomWidth: 0,
   },
 });
 

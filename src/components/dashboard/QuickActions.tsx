@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BaseText } from '../ui/BaseComponents';
 import { COLORS, SPACING, LAYOUT, BORDER_RADIUS } from '../../constants/ui';
@@ -30,7 +30,7 @@ interface QuickAction {
 interface QuickActionsProps {
   /** Hızlı eylem listesi */
   actions: QuickAction[];
-  /** Grid düzeninde kaç sütun olacak (varsayılan: 2) */
+  /** Grid düzeninde kaç sütun olacak (kullanılmıyor - horizontal layout için) */
   columns?: number;
 }
 
@@ -49,7 +49,6 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
         key={index}
         style={[
           styles.actionButton,
-          { width: `${100 / columns - 2}%` }, // Grid layout için genişlik hesabı
           action.disabled && styles.actionButtonDisabled,
         ]}
         onPress={action.onPress}
@@ -84,19 +83,6 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
     );
   };
 
-  /**
-   * Eylemleri satırlara böler (grid layout için)
-   */
-  const getActionRows = (): QuickAction[][] => {
-    const rows: QuickAction[][] = [];
-    
-    for (let i = 0; i < actions.length; i += columns) {
-      rows.push(actions.slice(i, i + columns));
-    }
-    
-    return rows;
-  };
-
   if (actions.length === 0) {
     return null;
   }
@@ -112,26 +98,15 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
         Hızlı İşlemler
       </BaseText>
       
-      {/* Eylem Butonları Grid */}
-      <View style={styles.actionsGrid}>
-        {getActionRows().map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.actionRow}>
-            {row.map((action, actionIndex) => 
-              renderActionButton(action, rowIndex * columns + actionIndex)
-            )}
-            
-            {/* Eksik butonlar için boş alan (grid hizalama) */}
-            {row.length < columns && 
-              Array.from({ length: columns - row.length }).map((_, emptyIndex) => (
-                <View
-                  key={`empty-${emptyIndex}`}
-                  style={[styles.emptySlot, { width: `${100 / columns - 2}%` }]}
-                />
-              ))
-            }
-          </View>
-        ))}
-      </View>
+      {/* Horizontal ScrollView ile Eylem Butonları */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.actionsContainer}
+        style={styles.actionsScrollView}
+      >
+        {actions.map((action, index) => renderActionButton(action, index))}
+      </ScrollView>
     </View>
   );
 };
@@ -199,7 +174,6 @@ export const createCommonQuickActions = (
  */
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.lg,
     backgroundColor: COLORS.SURFACE,
   },
@@ -208,19 +182,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: SPACING.md,
     color: COLORS.TEXT_PRIMARY,
+    paddingHorizontal: SPACING.md,
   },
 
-  // Grid Layout
-  actionsGrid: {
-    gap: SPACING.sm,
+  // Horizontal ScrollView
+  actionsScrollView: {
+    flexGrow: 0,
   },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
-  },
-  emptySlot: {
-    // Grid hizalama için boş alan
+  actionsContainer: {
+    paddingHorizontal: SPACING.md,
+    gap: SPACING.md,
   },
 
   // Eylem Butonu
@@ -231,6 +202,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.SURFACE,
     minHeight: 100,
     justifyContent: 'center',
+    width: 80, // Sabit genişlik horizontal layout için
   },
   actionButtonDisabled: {
     opacity: 0.6,

@@ -73,7 +73,7 @@ export type MainStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   Transactions: undefined;
-  Accounts: undefined;
+  AddTransaction: { defaultType?: 'income' | 'expense' } | undefined;
   Reports: undefined;
   Settings: undefined;
 };
