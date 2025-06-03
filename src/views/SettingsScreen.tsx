@@ -360,7 +360,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Yardım ve Destek"
             subtitle="SSS ve destek"
             onPress={() => {
-              Alert.alert('Destek', 'Destek sayfası yakında gelecek');
+              navigation.navigate('HelpAndSupport');
             }}
           />
           <SettingItem

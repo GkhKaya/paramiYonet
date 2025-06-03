@@ -16,6 +16,7 @@ import ReportsScreen from '../views/ReportsScreen';
 import SettingsScreen from '../views/SettingsScreen';
 import AccountsScreen from '../views/AccountsScreen';
 import AddAccountScreen from '../views/AddAccountScreen';
+import HelpAndSupportScreen from '../views/HelpAndSupportScreen';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -120,6 +121,7 @@ const MainNavigator: React.FC = () => {
       >
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+        <Stack.Screen name="HelpAndSupport" component={HelpAndSupportScreen} />
       </Stack.Navigator>
     </SafeAreaView>
   );
