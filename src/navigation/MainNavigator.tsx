@@ -17,6 +17,7 @@ import SettingsScreen from '../views/SettingsScreen';
 import AccountsScreen from '../views/AccountsScreen';
 import AddAccountScreen from '../views/AddAccountScreen';
 import HelpAndSupportScreen from '../views/HelpAndSupportScreen';
+import SecurityScreen from '../views/SecurityScreen';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -122,6 +123,46 @@ const MainNavigator: React.FC = () => {
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
         <Stack.Screen name="HelpAndSupport" component={HelpAndSupportScreen} />
+        <Stack.Screen 
+          name="Security" 
+          component={SecurityScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 250,
+                },
+              },
+            },
+          }}
+        />
       </Stack.Navigator>
     </SafeAreaView>
   );

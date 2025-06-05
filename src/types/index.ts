@@ -69,6 +69,7 @@ export type MainStackParamList = {
   Accounts: undefined;
   EditAccount: { accountId: string };
   HelpAndSupport: undefined;
+  Security: undefined;
 };
 
 export type MainTabParamList = {

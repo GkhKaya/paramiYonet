@@ -247,7 +247,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Güvenlik"
             subtitle="Şifre ve güvenlik ayarları"
             onPress={() => {
-              Alert.alert('Güvenlik', 'Güvenlik ayarları yakında gelecek');
+              navigation.navigate('Security');
             }}
           />
         </Card>

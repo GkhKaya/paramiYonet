@@ -3,7 +3,12 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
-  User
+  User as FirebaseUser,
+  updatePassword,
+  updateEmail,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   collection, 
@@ -28,12 +33,12 @@ import { User as UserModel } from '../models/User';
 
 class FirebaseService {
   // Authentication methods
-  async signUp(email: string, password: string): Promise<User> {
+  async signUp(email: string, password: string): Promise<FirebaseUser> {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   }
 
-  async signIn(email: string, password: string): Promise<User> {
+  async signIn(email: string, password: string): Promise<FirebaseUser> {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   }
@@ -42,7 +47,7 @@ class FirebaseService {
     await signOut(auth);
   }
 
-  getCurrentUser(): User | null {
+  getCurrentUser(): FirebaseUser | null {
     return auth.currentUser;
   }
 
@@ -100,7 +105,7 @@ const COLLECTIONS = {
 
 // User Operations
 export class UserService {
-  static async createUser(user: User): Promise<string> {
+  static async createUser(user: UserModel): Promise<string> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, user.id);
       await setDoc(userRef, {
@@ -119,7 +124,7 @@ export class UserService {
     }
   }
 
-  static async getUser(userId: string): Promise<User | null> {
+  static async getUser(userId: string): Promise<UserModel | null> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const userSnap = await getDoc(userRef);
@@ -144,7 +149,7 @@ export class UserService {
     }
   }
 
-  static async updateUser(userId: string, updates: Partial<User>): Promise<void> {
+  static async updateUser(userId: string, updates: Partial<UserModel>): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const updateData: any = { ...updates };
@@ -399,5 +404,85 @@ const getWeekKey = (date: Date): string => {
   startOfWeek.setDate(date.getDate() - date.getDay());
   return startOfWeek.toISOString().split('T')[0];
 };
+
+// Security Services
+export class SecurityService {
+  static async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        throw new Error('Kullanıcı oturumu bulunamadı');
+      }
+
+      // Mevcut şifre ile yeniden kimlik doğrulama
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Şifreyi güncelle
+      await updatePassword(user, newPassword);
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('Mevcut şifre hatalı');
+      } else if (error.code === 'auth/weak-password') {
+        throw new Error('Yeni şifre çok zayıf. En az 6 karakter olmalıdır.');
+      } else if (error.code === 'auth/requires-recent-login') {
+        throw new Error('Bu işlem için tekrar giriş yapmanız gerekiyor');
+      }
+      
+      throw error;
+    }
+  }
+
+  static async changeEmail(newEmail: string, currentPassword: string): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        throw new Error('Kullanıcı oturumu bulunamadı');
+      }
+
+      // Mevcut şifre ile yeniden kimlik doğrulama
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // E-posta adresini güncelle
+      await updateEmail(user, newEmail);
+
+      // Firestore'daki kullanıcı bilgilerini de güncelle
+      await UserService.updateUser(user.uid, { email: newEmail });
+    } catch (error: any) {
+      console.error('Error changing email:', error);
+      
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('Şifre hatalı');
+      } else if (error.code === 'auth/email-already-in-use') {
+        throw new Error('Bu e-posta adresi zaten kullanımda');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Geçersiz e-posta adresi');
+      } else if (error.code === 'auth/requires-recent-login') {
+        throw new Error('Bu işlem için tekrar giriş yapmanız gerekiyor');
+      }
+      
+      throw error;
+    }
+  }
+
+  static async sendPasswordResetEmail(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      console.error('Error sending password reset email:', error);
+      
+      if (error.code === 'auth/user-not-found') {
+        throw new Error('Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı');
+      } else if (error.code === 'auth/invalid-email') {
+        throw new Error('Geçersiz e-posta adresi');
+      }
+      
+      throw error;
+    }
+  }
+}
 
 export default new FirebaseService(); 
