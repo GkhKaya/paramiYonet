@@ -18,6 +18,8 @@ import AccountsScreen from '../views/AccountsScreen';
 import AddAccountScreen from '../views/AddAccountScreen';
 import HelpAndSupportScreen from '../views/HelpAndSupportScreen';
 import SecurityScreen from '../views/SecurityScreen';
+import ProfileScreen from '../views/ProfileScreen';
+import RecurringPaymentsScreen from '../views/RecurringPaymentsScreen';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -122,6 +124,131 @@ const MainNavigator: React.FC = () => {
       >
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+        <Stack.Screen 
+          name="Profile" 
+          component={ProfileScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 250,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="RecurringPayments" 
+          component={RecurringPaymentsScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 250,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="Analytics" 
+          component={() => (
+            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.BACKGROUND }}>
+              <Text style={{ fontSize: 18, color: COLORS.TEXT_PRIMARY }}>Analizler</Text>
+              <Text style={{ fontSize: 14, color: COLORS.TEXT_SECONDARY, marginTop: 8 }}>Yakında gelecek...</Text>
+            </SafeAreaView>
+          )}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 250,
+                },
+              },
+            },
+          }}
+        />
         <Stack.Screen name="HelpAndSupport" component={HelpAndSupportScreen} />
         <Stack.Screen 
           name="Security" 

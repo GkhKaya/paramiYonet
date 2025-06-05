@@ -239,7 +239,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             subtitle={user?.email || 'Kullanıcı'}
             onPress={() => {
               // Navigate to profile screen
-              Alert.alert('Profil', 'Profil ayarları yakında gelecek');
+              navigation.navigate('Profile');
             }}
           />
           <SettingItem

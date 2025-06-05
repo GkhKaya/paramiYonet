@@ -68,6 +68,9 @@ export type MainStackParamList = {
   AddAccount: { editAccount?: any } | undefined;
   Accounts: undefined;
   EditAccount: { accountId: string };
+  Profile: undefined;
+  RecurringPayments: undefined;
+  Analytics: undefined;
   HelpAndSupport: undefined;
   Security: undefined;
 };

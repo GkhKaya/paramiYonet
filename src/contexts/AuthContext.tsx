@@ -20,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   signUp: (email: string, password: string, displayName: string) => Promise<boolean>;
   signOut: () => Promise<void>;
+  updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>;
   getSavedCredentials: () => Promise<{ email: string; password: string } | null>;
   clearSavedCredentials: () => Promise<void>;
   tryAutoLogin: () => Promise<boolean>;
@@ -266,6 +267,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const updateUserProfile = async (updates: { displayName?: string; photoURL?: string }): Promise<void> => {
+    try {
+      if (!auth.currentUser) {
+        throw new Error('No authenticated user');
+      }
+      
+      setLoading(true);
+      await updateProfile(auth.currentUser, updates);
+      
+      // Update local user state
+      if (user) {
+        const updatedUser: User = {
+          ...user,
+          displayName: updates.displayName || user.displayName,
+          photoURL: updates.photoURL || user.photoURL,
+          updatedAt: new Date(),
+        };
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const contextValue: AuthContextType = {
     user,
     loading,
@@ -273,6 +301,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signUp,
     signOut,
+    updateUserProfile,
     getSavedCredentials,
     clearSavedCredentials,
     tryAutoLogin,
