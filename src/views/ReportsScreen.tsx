@@ -324,6 +324,102 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
           </Text>
         </Card>
 
+        {/* Comparison with Previous Period */}
+        <Card style={styles.comparisonCard}>
+          <View style={styles.comparisonHeader}>
+            <Text style={styles.comparisonTitle}>
+              {selectedPeriod === 'month' ? 'Önceki Ay ile Karşılaştırma' : 'Önceki Hafta ile Karşılaştırma'}
+            </Text>
+            <Ionicons name="analytics" size={20} color={COLORS.PRIMARY} />
+          </View>
+          
+          {(() => {
+            const previousSummary = selectedPeriod === 'month' 
+              ? reportsViewModel!.previousMonthlySummary 
+              : reportsViewModel!.previousWeeklySummary;
+            
+            const incomeChange = currentData.income - previousSummary.totalIncome;
+            const expenseChange = currentData.expense - previousSummary.totalExpense;
+            const incomeChangePercent = previousSummary.totalIncome > 0 
+              ? ((incomeChange / previousSummary.totalIncome) * 100) 
+              : 0;
+            const expenseChangePercent = previousSummary.totalExpense > 0 
+              ? ((expenseChange / previousSummary.totalExpense) * 100) 
+              : 0;
+
+            return (
+              <View style={styles.comparisonContent}>
+                {/* Income Comparison */}
+                <View style={styles.comparisonRow}>
+                  <View style={styles.comparisonLeft}>
+                    <View style={styles.comparisonIcon}>
+                      <Ionicons name="trending-up" size={16} color={COLORS.SUCCESS} />
+                    </View>
+                    <Text style={styles.comparisonLabel}>Gelir</Text>
+                  </View>
+                  <View style={styles.comparisonRight}>
+                    <Text style={styles.comparisonCurrent}>
+                      {formatCurrency(currentData.income)}
+                    </Text>
+                    <View style={styles.comparisonChange}>
+                      <Ionicons 
+                        name={incomeChange >= 0 ? "arrow-up" : "arrow-down"} 
+                        size={12} 
+                        color={incomeChange >= 0 ? COLORS.SUCCESS : COLORS.ERROR} 
+                      />
+                      <Text style={[
+                        styles.comparisonChangeText,
+                        { color: incomeChange >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
+                      ]}>
+                        {formatCurrency(Math.abs(incomeChange))} ({Math.abs(incomeChangePercent).toFixed(1)}%)
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Expense Comparison */}
+                <View style={styles.comparisonRow}>
+                  <View style={styles.comparisonLeft}>
+                    <View style={styles.comparisonIcon}>
+                      <Ionicons name="trending-down" size={16} color={COLORS.ERROR} />
+                    </View>
+                    <Text style={styles.comparisonLabel}>Gider</Text>
+                  </View>
+                  <View style={styles.comparisonRight}>
+                    <Text style={styles.comparisonCurrent}>
+                      {formatCurrency(currentData.expense)}
+                    </Text>
+                    <View style={styles.comparisonChange}>
+                      <Ionicons 
+                        name={expenseChange >= 0 ? "arrow-up" : "arrow-down"} 
+                        size={12} 
+                        color={expenseChange >= 0 ? COLORS.ERROR : COLORS.SUCCESS} 
+                      />
+                      <Text style={[
+                        styles.comparisonChangeText,
+                        { color: expenseChange >= 0 ? COLORS.ERROR : COLORS.SUCCESS }
+                      ]}>
+                        {formatCurrency(Math.abs(expenseChange))} ({Math.abs(expenseChangePercent).toFixed(1)}%)
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Previous Period Summary */}
+                <View style={styles.previousPeriodSummary}>
+                  <Text style={styles.previousPeriodTitle}>
+                    {selectedPeriod === 'month' ? 'Önceki Ay' : 'Önceki Hafta'}:
+                  </Text>
+                  <Text style={styles.previousPeriodText}>
+                    Gelir: {formatCurrency(previousSummary.totalIncome)} • 
+                    Gider: {formatCurrency(previousSummary.totalExpense)}
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
+        </Card>
+
         {/* Quick Stats */}
         <Card style={styles.statsCard}>
           <Text style={styles.statsTitle}>Hızlı İstatistikler</Text>
@@ -350,8 +446,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
 
   const CategoriesTab = () => (
     <View>
-      {/* Chart for Monthly Expenses */}
-      {selectedPeriod === 'month' && currentCategories.expense.length > 0 && (
+      {/* Expense Categories Chart */}
+      {currentCategories.expense.length > 0 ? (
         <Card style={styles.chartCard}>
           <CategoryChart
             data={currentCategories.expense.map(cat => ({
@@ -360,95 +456,41 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               color: cat.color,
               percentage: cat.percentage
             }))}
-            title="Aylık Gider Dağılımı"
+            title="Gider Kategorileri Dağılımı"
             showValues={true}
           />
         </Card>
-      )}
-
-      {/* Expense Categories */}
-      <Card style={styles.categoriesCard}>
-        <Text style={styles.categoriesTitle}>Gider Kategorileri</Text>
-        {currentCategories.expense.length > 0 ? (
-          currentCategories.expense.map((category, index) => (
-            <View key={index} style={styles.categoryItem}>
-              <View style={styles.categoryLeft}>
-                <CategoryIcon
-                  iconName={category.icon}
-                  color={category.color}
-                  size="small"
-                />
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryPercentage}>%{category.percentage}</Text>
-                </View>
-              </View>
-              <View style={styles.categoryRight}>
-                <Text style={styles.categoryAmount}>
-                  {formatCurrency(category.amount)}
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill,
-                      { 
-                        width: `${category.percentage}%`,
-                        backgroundColor: category.color
-                      }
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-          ))
-        ) : (
+      ) : (
+        <Card style={styles.emptyChartCard}>
           <View style={styles.emptyCategory}>
+            <Ionicons name="pie-chart-outline" size={48} color={COLORS.TEXT_TERTIARY} />
             <Text style={styles.emptyCategoryText}>Bu dönemde gider bulunamadı</Text>
           </View>
-        )}
-      </Card>
+        </Card>
+      )}
 
-      {/* Income Categories */}
-      <Card style={styles.categoriesCard}>
-        <Text style={styles.categoriesTitle}>Gelir Kategorileri</Text>
-        {currentCategories.income.length > 0 ? (
-          currentCategories.income.map((category, index) => (
-            <View key={index} style={styles.categoryItem}>
-              <View style={styles.categoryLeft}>
-                <CategoryIcon
-                  iconName={category.icon}
-                  color={category.color}
-                  size="small"
-                />
-                <View style={styles.categoryInfo}>
-                  <Text style={styles.categoryName}>{category.name}</Text>
-                  <Text style={styles.categoryPercentage}>%{category.percentage}</Text>
-                </View>
-              </View>
-              <View style={styles.categoryRight}>
-                <Text style={styles.categoryAmount}>
-                  {formatCurrency(category.amount)}
-                </Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill,
-                      { 
-                        width: `${category.percentage}%`,
-                        backgroundColor: category.color
-                      }
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-          ))
-        ) : (
+      {/* Income Categories Chart */}
+      {currentCategories.income.length > 0 ? (
+        <Card style={styles.chartCard}>
+          <CategoryChart
+            data={currentCategories.income.map(cat => ({
+              name: cat.name,
+              value: cat.amount,
+              color: cat.color,
+              percentage: cat.percentage
+            }))}
+            title="Gelir Kategorileri Dağılımı"
+            showValues={true}
+          />
+        </Card>
+      ) : (
+        <Card style={styles.emptyChartCard}>
           <View style={styles.emptyCategory}>
+            <Ionicons name="pie-chart-outline" size={48} color={COLORS.TEXT_TERTIARY} />
             <Text style={styles.emptyCategoryText}>Bu dönemde gelir bulunamadı</Text>
           </View>
-        )}
-      </Card>
+        </Card>
+      )}
     </View>
   );
 
@@ -926,6 +968,77 @@ const styles = StyleSheet.create({
     fontSize: isSmallDevice ? TYPOGRAPHY.sizes.lg : TYPOGRAPHY.sizes.xl,
     fontWeight: '700',
   },
+  comparisonCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  comparisonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  comparisonTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  comparisonContent: {
+    padding: SPACING.md,
+  },
+  comparisonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  comparisonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  comparisonIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  comparisonLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  comparisonRight: {
+    alignItems: 'flex-end',
+  },
+  comparisonCurrent: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  comparisonChange: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  comparisonChangeText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+    marginLeft: SPACING.xs,
+  },
+  previousPeriodSummary: {
+    marginTop: SPACING.md,
+  },
+  previousPeriodTitle: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+    marginBottom: SPACING.xs,
+  },
+  previousPeriodText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+  },
   netCard: {
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.lg,
@@ -1111,6 +1224,12 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.lg,
     paddingVertical: SPACING.md,
+  },
+  emptyChartCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+    alignItems: 'center',
   },
   webContent: {
     flex: 1,

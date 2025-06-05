@@ -64,12 +64,16 @@ export class ReportsViewModel {
       error: observable,
       weeklyTransactions: computed,
       monthlyTransactions: computed,
+      previousWeekTransactions: computed,
+      previousMonthTransactions: computed,
       weeklyExpenseCategories: computed,
       monthlyExpenseCategories: computed,
       weeklyIncomeCategories: computed,
       monthlyIncomeCategories: computed,
       weeklySummary: computed,
       monthlySummary: computed,
+      previousWeeklySummary: computed,
+      previousMonthlySummary: computed,
       lastMonthsTrends: computed,
       setLoading: action,
       setError: action,
@@ -202,6 +206,33 @@ export class ReportsViewModel {
     );
   }
 
+  // Previous period transactions for comparison
+  get previousWeekTransactions() {
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+    
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    return this.transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= twoWeeksAgo && transactionDate < oneWeekAgo;
+    });
+  }
+
+  get previousMonthTransactions() {
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    
+    return this.transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= twoMonthsAgo && transactionDate < oneMonthAgo;
+    });
+  }
+
   // Category analysis
   private calculateCategoryReports = (transactions: Transaction[], type: TransactionType): CategoryReport[] => {
     const categoryMap = new Map<string, { amount: number; count: number }>();
@@ -299,6 +330,15 @@ export class ReportsViewModel {
 
   get monthlySummary(): ReportSummary {
     return this.calculateSummary(this.monthlyTransactions, 30);
+  }
+
+  // Previous period summaries for comparison
+  get previousWeeklySummary(): ReportSummary {
+    return this.calculateSummary(this.previousWeekTransactions, 7);
+  }
+
+  get previousMonthlySummary(): ReportSummary {
+    return this.calculateSummary(this.previousMonthTransactions, 30);
   }
 
   // Trends calculation
