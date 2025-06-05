@@ -16,7 +16,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.adevelopr.paramiyonet",
+      "bundleIdentifier": "com.gkhkaya.paramiyonet",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.adevelopr.paramiyonet"
+      "package": "com.gkhkaya.paramiyonet"
     },
     "web": {
       "favicon": "./assets/favicon.png"

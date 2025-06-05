@@ -1,12 +1,22 @@
-import { makeObservable, observable, action } from 'mobx';
+import { makeObservable, observable, action, computed } from 'mobx';
 import { Budget } from '../models/Budget';
+import { Transaction, TransactionType } from '../models/Transaction';
+import { BudgetService } from '../services/BudgetService';
 import { DEFAULT_EXPENSE_CATEGORIES } from '../models/Category'; // İkon ve renk almak için
 
+export interface BudgetWithCalculations extends Budget {
+  isOverBudget: boolean;
+  daysRemaining: number;
+  dailyBudgetRemaining: number;
+  status: 'healthy' | 'warning' | 'over_budget';
+}
+
 export class BudgetViewModel {
+  userId: string;
   budgets: Budget[] = [];
   isLoading = false;
   error: string | null = null;
-  userId: string;
+  private unsubscribe: (() => void) | null = null;
 
   constructor(userId: string) {
     this.userId = userId;
@@ -14,12 +24,16 @@ export class BudgetViewModel {
       budgets: observable,
       isLoading: observable,
       error: observable,
-      setBudgets: action,
+      activeBudgets: computed,
+      totalBudgetedAmount: computed,
+      totalSpentAmount: computed,
+      overallBudgetStatus: computed,
       setLoading: action,
       setError: action,
-      loadBudgets: action, // Gerçek yükleme fonksiyonu daha sonra eklenecek
+      setBudgets: action,
     });
-    this.loadMockBudgets(); // Başlangıçta sahte bütçeleri yükle
+
+    this.initializeBudgets();
   }
 
   setLoading = (loading: boolean) => {
@@ -34,57 +48,228 @@ export class BudgetViewModel {
     this.budgets = budgets;
   };
 
-  // TODO: Firebase'den bütçeleri yüklemek için gerçek fonksiyon
-  loadBudgets = async () => {
+  private initializeBudgets = () => {
     this.setLoading(true);
-    // Firebase'den veri çekme mantığı buraya gelecek
-    // Şimdilik sahte bütçeleri kullanıyoruz
-    this.loadMockBudgets(); 
-    this.setLoading(false);
+    this.loadBudgets();
   };
 
-  // Sahte bütçe verileri (UI geliştirme için)
-  private loadMockBudgets = () => {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  private loadBudgets = () => {
+    // Real-time listener kullan
+    this.unsubscribe = BudgetService.listenToBudgets(this.userId, (budgets) => {
+      this.setBudgets(budgets);
+      this.setLoading(false);
+    });
+  };
 
-    const marketCategory = DEFAULT_EXPENSE_CATEGORIES.find(c => c.name === 'Market');
-    const foodCategory = DEFAULT_EXPENSE_CATEGORIES.find(c => c.name === 'Yemek');
+  // Computed properties
+  get activeBudgets(): Budget[] {
+    const now = new Date();
+    return this.budgets.filter(budget => 
+      budget.endDate >= now && budget.startDate <= now
+    );
+  }
 
-    const mockBudgets: Budget[] = [
-      {
-        id: '1',
+  get totalBudgetedAmount(): number {
+    return this.activeBudgets.reduce((total, budget) => total + budget.budgetedAmount, 0);
+  }
+
+  get totalSpentAmount(): number {
+    return this.activeBudgets.reduce((total, budget) => total + budget.spentAmount, 0);
+  }
+
+  get overallBudgetStatus(): 'healthy' | 'warning' | 'over_budget' {
+    const spentPercentage = this.totalBudgetedAmount > 0 
+      ? (this.totalSpentAmount / this.totalBudgetedAmount) * 100 
+      : 0;
+
+    if (spentPercentage >= 100) return 'over_budget';
+    if (spentPercentage >= 80) return 'warning';
+    return 'healthy';
+  }
+
+  // Budget operations
+  createBudget = async (budgetData: {
+    categoryName: string;
+    budgetedAmount: number;
+    period: 'monthly' | 'weekly';
+  }): Promise<boolean> => {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      // Kategori bilgilerini al
+      const category = DEFAULT_EXPENSE_CATEGORIES.find(
+        cat => cat.name === budgetData.categoryName
+      );
+
+      // Tarih aralığını hesapla
+      const startDate = new Date();
+      const endDate = new Date();
+
+      if (budgetData.period === 'monthly') {
+        startDate.setDate(1); // Ayın ilk günü
+        endDate.setMonth(endDate.getMonth() + 1, 0); // Ayın son günü
+      } else {
+        // Haftalık için şu anki haftanın başlangıcı ve sonu
+        const dayOfWeek = startDate.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        startDate.setDate(startDate.getDate() + diffToMonday);
+        endDate.setDate(startDate.getDate() + 6);
+      }
+
+      const newBudget: Omit<Budget, 'id'> = {
         userId: this.userId,
-        categoryName: 'Market',
-        categoryIcon: marketCategory?.icon || 'basket',
-        categoryColor: marketCategory?.color || '#4ECDC4',
-        budgetedAmount: 2000,
-        spentAmount: 0, // ReportsViewModel'da hesaplanacak
-        remainingAmount: 2000, // ReportsViewModel'da hesaplanacak
-        progressPercentage: 0, // ReportsViewModel'da hesaplanacak
-        period: 'monthly',
-        startDate: firstDayOfMonth,
-        endDate: lastDayOfMonth,
-        createdAt: today,
-      },
-      {
-        id: '2',
-        userId: this.userId,
-        categoryName: 'Yemek',
-        categoryIcon: foodCategory?.icon || 'restaurant',
-        categoryColor: foodCategory?.color || '#FF6B6B',
-        budgetedAmount: 1500,
+        categoryName: budgetData.categoryName,
+        categoryIcon: category?.icon || 'ellipsis-horizontal',
+        categoryColor: category?.color || '#95A5A6',
+        budgetedAmount: budgetData.budgetedAmount,
         spentAmount: 0,
-        remainingAmount: 1500,
+        remainingAmount: budgetData.budgetedAmount,
         progressPercentage: 0,
-        period: 'monthly',
-        startDate: firstDayOfMonth,
-        endDate: lastDayOfMonth,
-        createdAt: today,
-      },
-      // İsterseniz haftalık bütçe örneği de eklenebilir
-    ];
-    this.setBudgets(mockBudgets);
+        period: budgetData.period,
+        startDate,
+        endDate,
+        createdAt: new Date(),
+      };
+
+      await BudgetService.createBudget(newBudget);
+      return true;
+    } catch (error) {
+      console.error('Error creating budget:', error);
+      this.setError('Bütçe oluşturulurken hata oluştu');
+      return false;
+    } finally {
+      this.setLoading(false);
+    }
+  };
+
+  updateBudget = async (budgetId: string, updates: Partial<Budget>): Promise<boolean> => {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await BudgetService.updateBudget(budgetId, updates);
+      return true;
+    } catch (error) {
+      console.error('Error updating budget:', error);
+      this.setError('Bütçe güncellenirken hata oluştu');
+      return false;
+    } finally {
+      this.setLoading(false);
+    }
+  };
+
+  deleteBudget = async (budgetId: string): Promise<boolean> => {
+    try {
+      this.setLoading(true);
+      this.setError(null);
+
+      await BudgetService.deleteBudget(budgetId);
+      return true;
+    } catch (error) {
+      console.error('Error deleting budget:', error);
+      this.setError('Bütçe silinirken hata oluştu');
+      return false;
+    } finally {
+      this.setLoading(false);
+    }
+  };
+
+  // Transaction entegrasyonu
+  updateBudgetProgress = async (transactions: Transaction[]): Promise<void> => {
+    try {
+      for (const budget of this.activeBudgets) {
+        // Bu bütçe kategorisindeki harcamaları hesapla
+        const categoryTransactions = transactions.filter(t => 
+          t.type === TransactionType.EXPENSE &&
+          t.category === budget.categoryName &&
+          t.date >= budget.startDate &&
+          t.date <= budget.endDate
+        );
+
+        const spentAmount = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+        // Eğer spent amount değiştiyse güncelle
+        if (spentAmount !== budget.spentAmount) {
+          await BudgetService.updateBudgetProgress(
+            budget.id, 
+            spentAmount, 
+            budget.budgetedAmount
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error updating budget progress:', error);
+    }
+  };
+
+  // Utility methods
+  getBudgetWithCalculations = (budget: Budget): BudgetWithCalculations => {
+    const now = new Date();
+    const daysRemaining = Math.max(0, Math.ceil(
+      (budget.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    ));
+
+    const dailyBudgetRemaining = daysRemaining > 0 
+      ? budget.remainingAmount / daysRemaining 
+      : 0;
+
+    const isOverBudget = budget.spentAmount > budget.budgetedAmount;
+    
+    let status: 'healthy' | 'warning' | 'over_budget' = 'healthy';
+    if (isOverBudget) {
+      status = 'over_budget';
+    } else if (budget.progressPercentage >= 80) {
+      status = 'warning';
+    }
+
+    return {
+      ...budget,
+      isOverBudget,
+      daysRemaining,
+      dailyBudgetRemaining,
+      status,
+    };
+  };
+
+  getBudgetByCategory = (categoryName: string): Budget | undefined => {
+    return this.activeBudgets.find(budget => budget.categoryName === categoryName);
+  };
+
+  getCategoryBudgetStatus = (categoryName: string): {
+    hasBudget: boolean;
+    isOverBudget: boolean;
+    progressPercentage: number;
+  } => {
+    const budget = this.getBudgetByCategory(categoryName);
+    
+    if (!budget) {
+      return {
+        hasBudget: false,
+        isOverBudget: false,
+        progressPercentage: 0,
+      };
+    }
+
+    return {
+      hasBudget: true,
+      isOverBudget: budget.spentAmount > budget.budgetedAmount,
+      progressPercentage: budget.progressPercentage,
+    };
+  };
+
+  formatCurrency = (amount: number): string => {
+    return `₺${amount.toLocaleString('tr-TR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  // Cleanup
+  dispose = () => {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
   };
 } 

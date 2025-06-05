@@ -120,6 +120,7 @@ export const COLLECTIONS = {
   TRANSACTIONS: 'transactions',
   ACCOUNTS: 'accounts',
   CATEGORIES: 'categories',
+  BUDGETS: 'budgets',
 };
 
 // Validation

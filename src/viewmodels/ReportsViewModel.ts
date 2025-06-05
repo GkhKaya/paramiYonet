@@ -13,7 +13,9 @@ import {
 import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { Account } from '../models/Account';
+import { Budget } from '../models/Budget';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
+import { BudgetViewModel } from './BudgetViewModel';
 
 export interface CategoryReport {
   name: string;
@@ -47,11 +49,14 @@ export class ReportsViewModel {
   userId: string;
   transactions: Transaction[] = [];
   accounts: Account[] = [];
+  budgetViewModel: BudgetViewModel;
   isLoading = false;
   error: string | null = null;
 
   constructor(userId: string) {
     this.userId = userId;
+    this.budgetViewModel = new BudgetViewModel(userId);
+    
     makeObservable(this, {
       transactions: observable,
       accounts: observable,
@@ -85,6 +90,8 @@ export class ReportsViewModel {
 
   setTransactions = (transactions: Transaction[]) => {
     this.transactions = transactions;
+    // Transactions değiştiğinde budget progress'i güncelle
+    this.budgetViewModel.updateBudgetProgress(transactions);
   };
 
   setAccounts = (accounts: Account[]) => {
@@ -343,5 +350,53 @@ export class ReportsViewModel {
   refreshData = () => {
     this.setLoading(true);
     this.initializeReports();
+  };
+
+  // Budget methods
+  get budgets(): Budget[] {
+    return this.budgetViewModel.budgets;
+  }
+
+  get activeBudgets(): Budget[] {
+    return this.budgetViewModel.activeBudgets;
+  }
+
+  createBudget = async (budgetData: {
+    categoryName: string;
+    budgetedAmount: number;
+    period: 'monthly' | 'weekly';
+  }): Promise<boolean> => {
+    return this.budgetViewModel.createBudget(budgetData);
+  };
+
+  updateBudget = async (budgetId: string, updates: Partial<Budget>): Promise<boolean> => {
+    return this.budgetViewModel.updateBudget(budgetId, updates);
+  };
+
+  deleteBudget = async (budgetId: string): Promise<boolean> => {
+    return this.budgetViewModel.deleteBudget(budgetId);
+  };
+
+  getBudgetSummary = () => {
+    const totalBudgeted = this.budgetViewModel.totalBudgetedAmount;
+    const totalSpent = this.budgetViewModel.totalSpentAmount;
+    const status = this.budgetViewModel.overallBudgetStatus;
+    const activeBudgetCount = this.activeBudgets.length;
+    const overBudgetCount = this.activeBudgets.filter(
+      budget => budget.spentAmount > budget.budgetedAmount
+    ).length;
+
+    return {
+      totalBudgeted,
+      totalSpent,
+      activeBudgetCount,
+      overBudgetCount,
+      status,
+    };
+  };
+
+  // Cleanup
+  dispose = () => {
+    this.budgetViewModel.dispose();
   };
 } 
