@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models
 import { useAuth } from '../contexts/AuthContext';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
+import { RecurringPaymentViewModel } from '../viewmodels/RecurringPaymentViewModel';
 import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
@@ -44,6 +46,7 @@ interface AddTransactionScreenProps {
 const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ route, navigation }) => {
   const { user } = useAuth();
   const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
+  const [recurringPaymentViewModel, setRecurringPaymentViewModel] = useState<RecurringPaymentViewModel | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [selectedType, setSelectedType] = useState<TransactionType>(
@@ -54,6 +57,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [reminderDays, setReminderDays] = useState('3');
+  const [autoCreateTransaction, setAutoCreateTransaction] = useState(true);
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
   
@@ -90,9 +97,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   useEffect(() => {
     if (user?.id) {
       const accountVm = new AccountViewModel(user.id);
+      const recurringVm = new RecurringPaymentViewModel(user.id);
       setAccountViewModel(accountVm);
+      setRecurringPaymentViewModel(recurringVm);
     } else {
       setAccountViewModel(null);
+      setRecurringPaymentViewModel(null);
     }
   }, [user?.id]);
 
@@ -135,6 +145,15 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       return;
     }
 
+    // Recurring payment validation
+    if (isRecurring) {
+      const numericReminderDays = parseInt(reminderDays);
+      if (isNaN(numericReminderDays) || numericReminderDays < 0) {
+        Alert.alert('Hata', 'Lütfen geçerli bir hatırlatma gün sayısı girin');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -157,18 +176,48 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       const success = await transactionViewModel.addTransaction(transactionData);
       
       if (success) {
+        // If recurring payment is enabled and this is an expense, create recurring payment
+        if (isRecurring && selectedType === TransactionType.EXPENSE && recurringPaymentViewModel) {
+          try {
+            const recurringPaymentData = {
+              name: description.trim(),
+              amount: numericAmount,
+              category: selectedCategory,
+              accountId: selectedAccountId,
+              frequency,
+              startDate: selectedDate,
+              reminderDays: parseInt(reminderDays),
+              autoCreateTransaction,
+            };
+
+            await recurringPaymentViewModel.createRecurringPayment(recurringPaymentData);
+          } catch (recurringError) {
+            console.error('Error creating recurring payment:', recurringError);
+            // Don't fail the whole operation if recurring payment fails
+            Alert.alert('Uyarı', 'İşlem kaydedildi ancak düzenli ödeme oluşturulamadı');
+          }
+        }
+        
         // Force reload accounts to update balance
         if (accountViewModel) {
           await accountViewModel.loadAccounts();
         }
         
-        Alert.alert('Başarılı', 'İşlem kaydedildi', [
+        const successMessage = isRecurring && selectedType === TransactionType.EXPENSE 
+          ? 'İşlem kaydedildi ve düzenli ödeme oluşturuldu' 
+          : 'İşlem kaydedildi';
+        
+        Alert.alert('Başarılı', successMessage, [
           { text: 'Tamam', onPress: () => {
             // Reset form
             setAmount('');
             setDescription('');
             setSelectedCategory('');
             setSelectedDate(new Date());
+            setIsRecurring(false);
+            setFrequency('monthly');
+            setReminderDays('3');
+            setAutoCreateTransaction(true);
             navigation.goBack();
           }}
         ]);
@@ -390,6 +439,80 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
         </TouchableOpacity>
       </View>
+
+      {/* Recurring Payment Section - Only for Expenses */}
+      {selectedType === TransactionType.EXPENSE && (
+        <View style={styles.section}>
+          <View style={styles.recurringHeader}>
+            <Text style={styles.sectionTitle}>Düzenli Ödeme</Text>
+            <Switch
+              value={isRecurring}
+              onValueChange={setIsRecurring}
+              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+              thumbColor={COLORS.WHITE}
+            />
+          </View>
+          
+          {isRecurring && (
+            <View style={styles.recurringOptions}>
+              {/* Frequency Selection */}
+              <View style={styles.frequencySection}>
+                <Text style={styles.recurringSubtitle}>Tekrar Sıklığı</Text>
+                <View style={styles.frequencyGrid}>
+                  {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((freq) => (
+                    <TouchableOpacity
+                      key={freq}
+                      style={[
+                        styles.frequencyButton,
+                        frequency === freq && styles.frequencyButtonActive
+                      ]}
+                      onPress={() => setFrequency(freq)}
+                    >
+                      <Text style={[
+                        styles.frequencyButtonText,
+                        frequency === freq && styles.frequencyButtonTextActive
+                      ]}>
+                        {freq === 'daily' ? 'Günlük' : 
+                         freq === 'weekly' ? 'Haftalık' : 
+                         freq === 'monthly' ? 'Aylık' : 'Yıllık'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Reminder Days */}
+              <View style={styles.reminderSection}>
+                <Text style={styles.recurringSubtitle}>Kaç Gün Önce Hatırlat</Text>
+                <Input
+                  value={reminderDays}
+                  onChangeText={setReminderDays}
+                  placeholder="3"
+                  keyboardType="numeric"
+                  variant="outlined"
+                  containerStyle={styles.reminderInput}
+                />
+              </View>
+
+              {/* Auto Create Transaction */}
+              <View style={styles.autoTransactionSection}>
+                <View style={styles.autoTransactionHeader}>
+                  <Text style={styles.recurringSubtitle}>Otomatik İşlem Oluştur</Text>
+                  <Switch
+                    value={autoCreateTransaction}
+                    onValueChange={setAutoCreateTransaction}
+                    trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+                    thumbColor={COLORS.WHITE}
+                  />
+                </View>
+                <Text style={styles.autoTransactionDescription}>
+                  Ödeme yapıldığında otomatik olarak gider işlemi oluşturulsun
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 
@@ -618,6 +741,80 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           </Card>
         )}
       </View>
+
+      {/* Recurring Payment Section - Only for Expenses */}
+      {selectedType === TransactionType.EXPENSE && (
+        <View style={styles.section}>
+          <View style={styles.recurringHeader}>
+            <Text style={styles.sectionTitle}>Düzenli Ödeme</Text>
+            <Switch
+              value={isRecurring}
+              onValueChange={setIsRecurring}
+              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+              thumbColor={COLORS.WHITE}
+            />
+          </View>
+          
+          {isRecurring && (
+            <View style={styles.recurringOptions}>
+              {/* Frequency Selection */}
+              <View style={styles.frequencySection}>
+                <Text style={styles.recurringSubtitle}>Tekrar Sıklığı</Text>
+                <View style={styles.frequencyGrid}>
+                  {(['daily', 'weekly', 'monthly', 'yearly'] as const).map((freq) => (
+                    <TouchableOpacity
+                      key={freq}
+                      style={[
+                        styles.frequencyButton,
+                        frequency === freq && styles.frequencyButtonActive
+                      ]}
+                      onPress={() => setFrequency(freq)}
+                    >
+                      <Text style={[
+                        styles.frequencyButtonText,
+                        frequency === freq && styles.frequencyButtonTextActive
+                      ]}>
+                        {freq === 'daily' ? 'Günlük' : 
+                         freq === 'weekly' ? 'Haftalık' : 
+                         freq === 'monthly' ? 'Aylık' : 'Yıllık'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Reminder Days */}
+              <View style={styles.reminderSection}>
+                <Text style={styles.recurringSubtitle}>Kaç Gün Önce Hatırlat</Text>
+                <Input
+                  value={reminderDays}
+                  onChangeText={setReminderDays}
+                  placeholder="3"
+                  keyboardType="numeric"
+                  variant="outlined"
+                  containerStyle={styles.reminderInput}
+                />
+              </View>
+
+              {/* Auto Create Transaction */}
+              <View style={styles.autoTransactionSection}>
+                <View style={styles.autoTransactionHeader}>
+                  <Text style={styles.recurringSubtitle}>Otomatik İşlem Oluştur</Text>
+                  <Switch
+                    value={autoCreateTransaction}
+                    onValueChange={setAutoCreateTransaction}
+                    trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+                    thumbColor={COLORS.WHITE}
+                  />
+                </View>
+                <Text style={styles.autoTransactionDescription}>
+                  Ödeme yapıldığında otomatik olarak gider işlemi oluşturulsun
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
     </ScrollView>
   );
 
@@ -1021,6 +1218,74 @@ const styles = StyleSheet.create({
   },
   webSaveButtonContainer: {
     padding: SPACING.md,
+  },
+  recurringHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  recurringOptions: {
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 12,
+    padding: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  recurringSubtitle: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: TYPOGRAPHY.weights.medium as any,
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.sm,
+  },
+  frequencySection: {
+    marginBottom: SPACING.md,
+  },
+  frequencyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  frequencyButton: {
+    flex: 1,
+    minWidth: '22%',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    borderRadius: 8,
+    backgroundColor: COLORS.BACKGROUND,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    alignItems: 'center',
+  },
+  frequencyButtonActive: {
+    backgroundColor: COLORS.PRIMARY,
+    borderColor: COLORS.PRIMARY,
+  },
+  frequencyButtonText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    fontWeight: TYPOGRAPHY.weights.medium as any,
+    color: COLORS.TEXT_PRIMARY,
+  },
+  frequencyButtonTextActive: {
+    color: COLORS.WHITE,
+  },
+  reminderSection: {
+    marginBottom: SPACING.md,
+  },
+  reminderInput: {
+    width: 100,
+  },
+  autoTransactionSection: {
+    marginBottom: SPACING.sm,
+  },
+  autoTransactionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
+  },
+  autoTransactionDescription: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
   },
 });
 
