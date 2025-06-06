@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
+  Dimensions,
+  StatusBar,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
-import { Card } from '../../components/common/Card';
-import { Input } from '../../components/common/Input';
-import { Button } from '../../components/common/Button';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
+
+const { width, height } = Dimensions.get('window');
 
 interface RegisterScreenProps {
   onNavigateToLogin: () => void;
@@ -34,6 +37,22 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
+
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Simple fade in animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const handleRegister = async () => {
     if (!displayName || !email || !password || !confirmPassword) {
@@ -57,114 +76,184 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
     }
   };
 
+  const isFormValid = displayName && email && password && confirmPassword;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView 
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="wallet-outline" size={80} color={COLORS.PRIMARY} />
-            </View>
-            <Text style={styles.title}>Hesap Oluştur</Text>
-            <Text style={styles.subtitle}>
-              Yeni hesabınızı oluşturup finansal yönetimi başlatın
-            </Text>
-          </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <KeyboardAvoidingView 
+            style={styles.keyboardView}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+                {/* Welcome Title */}
+                <Text style={styles.welcomeTitle}>Create account.</Text>
+                
+                {/* Full Name Input */}
+                <View style={styles.inputSection}>
+                  <Text style={styles.inputLabel}>Full name</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      value={displayName}
+                      onChangeText={setDisplayName}
+                      onFocus={() => setNameFocused(true)}
+                      onBlur={() => setNameFocused(false)}
+                      autoCapitalize="words"
+                      placeholderTextColor="#666666"
+                    />
+                    <View style={[
+                      styles.underline,
+                      nameFocused && styles.underlineFocused
+                    ]} />
+                  </View>
+                </View>
 
-          {/* Register Form */}
-          <Card style={styles.formCard}>
-            <View style={styles.formContent}>
-              <Input
-                label="Ad Soyad"
-                placeholder="Ad ve soyadınızı girin"
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
-                leftIcon="person-outline"
-              />
+                {/* Email Input */}
+                <View style={styles.inputSection}>
+                  <Text style={styles.inputLabel}>Email address</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      value={email}
+                      onChangeText={setEmail}
+                      onFocus={() => setEmailFocused(true)}
+                      onBlur={() => setEmailFocused(false)}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      placeholderTextColor="#666666"
+                    />
+                    <View style={[
+                      styles.underline,
+                      emailFocused && styles.underlineFocused
+                    ]} />
+                  </View>
+                </View>
 
-              <Input
-                label="E-posta"
-                placeholder="ornek@email.com"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                leftIcon="mail-outline"
-                containerStyle={styles.input}
-              />
+                {/* Password Input */}
+                <View style={styles.inputSection}>
+                  <Text style={styles.inputLabel}>Password</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={[styles.input, styles.passwordInput]}
+                      value={password}
+                      onChangeText={setPassword}
+                      onFocus={() => setPasswordFocused(true)}
+                      onBlur={() => setPasswordFocused(false)}
+                      secureTextEntry={!showPassword}
+                      placeholderTextColor="#666666"
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeButton}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <Ionicons 
+                        name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#666666" 
+                      />
+                    </TouchableOpacity>
+                    <View style={[
+                      styles.underline,
+                      passwordFocused && styles.underlineFocused
+                    ]} />
+                  </View>
+                </View>
 
-              <Input
-                label="Şifre"
-                placeholder="En az 6 karakter"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                leftIcon="lock-closed-outline"
-                rightIcon={showPassword ? "eye-off-outline" : "eye-outline"}
-                onRightIconPress={() => setShowPassword(!showPassword)}
-                containerStyle={styles.input}
-              />
+                {/* Confirm Password Input */}
+                <View style={styles.inputSection}>
+                  <Text style={styles.inputLabel}>Confirm password</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={[styles.input, styles.passwordInput]}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      onFocus={() => setConfirmPasswordFocused(true)}
+                      onBlur={() => setConfirmPasswordFocused(false)}
+                      secureTextEntry={!showConfirmPassword}
+                      placeholderTextColor="#666666"
+                    />
+                    <TouchableOpacity 
+                      style={styles.eyeButton}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      <Ionicons 
+                        name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} 
+                        size={20} 
+                        color="#666666" 
+                      />
+                    </TouchableOpacity>
+                    <View style={[
+                      styles.underline,
+                      confirmPasswordFocused && styles.underlineFocused
+                    ]} />
+                  </View>
+                </View>
 
-              <Input
-                label="Şifre Tekrar"
-                placeholder="Şifrenizi tekrar girin"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showConfirmPassword}
-                leftIcon="lock-closed-outline"
-                rightIcon={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
-                onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                containerStyle={styles.input}
-              />
+                {/* Sign Up Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.signUpButton,
+                    !isFormValid && styles.signUpButtonDisabled
+                  ]}
+                  onPress={handleRegister}
+                  disabled={!isFormValid || loading}
+                >
+                  <Text style={styles.signUpButtonText}>
+                    {loading ? 'Creating account...' : 'Sign up'}
+                  </Text>
+                </TouchableOpacity>
 
-              <Button
-                title="Hesap Oluştur"
-                onPress={handleRegister}
-                loading={loading}
-                disabled={!displayName || !email || !password || !confirmPassword}
-                style={styles.registerButton}
-              />
-            </View>
-          </Card>
+                {/* Sign In Button */}
+                <TouchableOpacity
+                  style={styles.signInButton}
+                  onPress={onNavigateToLogin}
+                >
+                  <Text style={styles.signInButtonText}>Sign in</Text>
+                </TouchableOpacity>
 
-          {/* Terms */}
-          <View style={styles.termsSection}>
-            <Text style={styles.termsText}>
-              Hesap oluşturarak{' '}
-              <Text style={styles.linkText}>Kullanım Şartları</Text>
-              {' '}ve{' '}
-              <Text style={styles.linkText}>Gizlilik Politikası</Text>
-              'nı kabul etmiş olursunuz.
-            </Text>
-          </View>
+                {/* Social Login Buttons */}
+                <View style={styles.socialContainer}>
+                  <TouchableOpacity style={styles.googleButton}>
+                    <View style={styles.socialButtonContent}>
+                      <View style={styles.googleIcon}>
+                        <Text style={styles.googleIconText}>G</Text>
+                      </View>
+                      <Text style={styles.socialButtonText}>Continue with Google</Text>
+                    </View>
+                  </TouchableOpacity>
 
-          {/* Login Navigation */}
-          <View style={styles.loginSection}>
-            <Text style={styles.loginText}>Zaten hesabınız var mı? </Text>
-            <TouchableOpacity onPress={onNavigateToLogin}>
-              <Text style={styles.loginLink}>Giriş Yap</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+                  <TouchableOpacity style={styles.appleButton}>
+                    <View style={styles.socialButtonContent}>
+                      <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
+                      <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000',
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,
@@ -174,68 +263,126 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: SPACING.lg,
-    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    minHeight: height,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: SPACING.xxl,
+  content: {
+    flex: 1,
   },
-  logoContainer: {
-    marginBottom: SPACING.lg,
+  welcomeTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 40,
   },
-  title: {
-    fontSize: TYPOGRAPHY.sizes.xxxl,
-    fontWeight: '800',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
+  inputSection: {
+    marginBottom: 32,
   },
-  subtitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    color: COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
-    lineHeight: 24,
+  inputLabel: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginBottom: 12,
+    fontWeight: '500',
   },
-  formCard: {
-    marginBottom: SPACING.lg,
-  },
-  formContent: {
-    padding: SPACING.lg,
+  inputContainer: {
+    position: 'relative',
   },
   input: {
-    marginBottom: SPACING.sm,
+    fontSize: 18,
+    color: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
   },
-  registerButton: {
-    marginTop: SPACING.lg,
+  passwordInput: {
+    paddingRight: 40,
   },
-  termsSection: {
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
+  eyeButton: {
+    position: 'absolute',
+    right: 0,
+    top: 12,
+    padding: 4,
   },
-  termsText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_TERTIARY,
-    textAlign: 'center',
-    lineHeight: 18,
+  underline: {
+    height: 1,
+    backgroundColor: '#333333',
+    marginTop: 8,
   },
-  linkText: {
-    color: COLORS.PRIMARY,
-    fontWeight: '600',
+  underlineFocused: {
+    backgroundColor: '#007AFF',
+    height: 2,
   },
-  loginSection: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  signUpButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginTop: 8,
+    marginBottom: 16,
   },
-  loginText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
+  signUpButtonDisabled: {
+    backgroundColor: '#333333',
   },
-  loginLink: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.PRIMARY,
+  signUpButtonText: {
+    fontSize: 16,
     fontWeight: '600',
+    color: '#000000',
+  },
+  signInButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderRadius: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  signInButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  socialContainer: {
+    gap: 12,
+  },
+  googleButton: {
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  appleButton: {
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  socialButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  googleIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleIconText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#4285F4',
+  },
+  socialButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
 });
 
