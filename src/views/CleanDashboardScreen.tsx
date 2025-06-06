@@ -208,8 +208,7 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
     () => navigateToAddTransaction(TransactionType.EXPENSE),
     navigateToAddAccount,
     navigateToReports,
-    navigateToTransactions,
-    handleRecalculateBalances // Debug amaçlı (production'da kaldırılabilir)
+    navigateToTransactions
   );
 
   // Content component for both web and mobile
