@@ -115,6 +115,21 @@ const TabNavigator: React.FC = () => {
   );
 };
 
+// Placeholder component for screens under development
+const PlaceholderScreen: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
+  <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.BACKGROUND }}>
+    <Text style={{ fontSize: 18, color: COLORS.TEXT_PRIMARY }}>{title}</Text>
+    {subtitle && (
+      <Text style={{ fontSize: 14, color: COLORS.TEXT_SECONDARY, marginTop: 8 }}>{subtitle}</Text>
+    )}
+  </SafeAreaView>
+);
+
+// Analytics Screen Component
+const AnalyticsScreen: React.FC = () => (
+  <PlaceholderScreen title="Analizler" subtitle="Yakında gelecek..." />
+);
+
 const MainNavigator: React.FC = () => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.BACKGROUND }} edges={['top']}>
@@ -208,12 +223,7 @@ const MainNavigator: React.FC = () => {
         />
         <Stack.Screen 
           name="Analytics" 
-          component={() => (
-            <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.BACKGROUND }}>
-              <Text style={{ fontSize: 18, color: COLORS.TEXT_PRIMARY }}>Analizler</Text>
-              <Text style={{ fontSize: 14, color: COLORS.TEXT_SECONDARY, marginTop: 8 }}>Yakında gelecek...</Text>
-            </SafeAreaView>
-          )}
+          component={AnalyticsScreen}
           options={{
             cardStyleInterpolator: ({ current, layouts }) => {
               return {

@@ -21,6 +21,7 @@ export interface AccountItem {
   type: string;
   balance: number;
   isActive: boolean;
+  color: string; // Hesap rengi
 }
 
 interface AccountsListProps {
@@ -123,7 +124,7 @@ export const AccountsList: React.FC<AccountsListProps> = ({
           <View style={styles.accountInfo}>
             <View style={[
               styles.accountIcon,
-              { backgroundColor: typeInfo.color }
+              { backgroundColor: account.color }
             ]}>
               <Ionicons
                 name={typeInfo.icon as any}

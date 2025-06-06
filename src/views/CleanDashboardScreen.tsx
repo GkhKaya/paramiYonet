@@ -167,6 +167,7 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
       type: account.type,
       balance: account.balance,
       isActive: account.isActive,
+      color: account.color,
     }));
   };
 

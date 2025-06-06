@@ -16,6 +16,27 @@ import { Account, AccountType, CreateAccountRequest, UpdateAccountRequest, Accou
 import { BaseViewModel } from './BaseViewModel';
 import { Transaction, TransactionType } from '../models/Transaction';
 import GoldPriceService from '../services/GoldPriceService';
+import { COLORS } from '../constants';
+
+// Hesap tipine göre default renk getiren yardımcı fonksiyon
+const getDefaultColorForAccountType = (type: string): string => {
+  switch (type) {
+    case AccountType.CASH:
+      return COLORS.SUCCESS;
+    case AccountType.DEBIT_CARD:
+      return COLORS.PRIMARY;
+    case AccountType.CREDIT_CARD:
+      return COLORS.ERROR;
+    case AccountType.SAVINGS:
+      return COLORS.WARNING;
+    case AccountType.INVESTMENT:
+      return COLORS.SECONDARY;
+    case AccountType.GOLD:
+      return '#FFD700';
+    default:
+      return COLORS.PRIMARY;
+  }
+};
 
 export class AccountViewModel extends BaseViewModel {
   accounts: Account[] = [];
@@ -150,6 +171,10 @@ export class AccountViewModel extends BaseViewModel {
             ...data,
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
+            // Eğer includeInTotalBalance field'ı yoksa default true yap
+            includeInTotalBalance: data.includeInTotalBalance !== undefined ? data.includeInTotalBalance : true,
+            // Eğer color field'ı yoksa hesap tipine göre default renk ver
+            color: data.color || getDefaultColorForAccountType(data.type),
           } as Account;
         });
         
