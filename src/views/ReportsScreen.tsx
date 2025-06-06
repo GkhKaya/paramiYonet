@@ -542,8 +542,12 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   const AccountsTab = () => {
     if (!accountViewModel) return null;
 
-    const goldAccounts = accountViewModel.accountsWithRealTimeBalances.filter(acc => acc.type === AccountType.GOLD);
-    const otherAccounts = accountViewModel.accountsWithRealTimeBalances.filter(acc => acc.type !== AccountType.GOLD);
+    const allAccounts = accountViewModel.accountsWithRealTimeBalances;
+    const includedAccounts = allAccounts.filter(acc => acc.includeInTotalBalance);
+    const excludedAccounts = allAccounts.filter(acc => !acc.includeInTotalBalance);
+    
+    const goldAccounts = includedAccounts.filter(acc => acc.type === AccountType.GOLD);
+    const otherAccounts = includedAccounts.filter(acc => acc.type !== AccountType.GOLD);
 
     return (
       <View>
@@ -566,6 +570,17 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               {formatCurrency(accountViewModel.totalBalance)}
             </Text>
           </View>
+          
+          {excludedAccounts.length > 0 && (
+            <View style={styles.excludedBalanceInfo}>
+              <Text style={styles.excludedBalanceLabel}>
+                Toplam bakiyeye dahil edilmeyen hesaplar: {excludedAccounts.length} adet
+              </Text>
+              <Text style={styles.excludedBalanceAmount}>
+                {formatCurrency(excludedAccounts.reduce((total, acc) => total + acc.balance, 0))}
+              </Text>
+            </View>
+          )}
         </Card>
 
         {/* Gold Accounts Section */}
@@ -695,6 +710,80 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               >
                 <Text style={styles.addFirstAccountText}>İlk Hesabını Ekle</Text>
               </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+
+        {/* Excluded Accounts Section */}
+        {excludedAccounts.length > 0 && (
+          <Card style={styles.excludedAccountsCard}>
+            <Text style={styles.excludedAccountsTitle}>🚫 Toplam Bakiyeye Dahil Edilmeyen Hesaplar</Text>
+            <View style={styles.accountsList}>
+              {excludedAccounts.map((account, index) => (
+                <View key={account.id} style={[
+                  styles.accountItem,
+                  index === excludedAccounts.length - 1 && styles.lastAccountItem
+                ]}>
+                  <View style={styles.accountLeft}>
+                    <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                      <Ionicons 
+                        name={account.icon as any} 
+                        size={20} 
+                        color={COLORS.WHITE} 
+                      />
+                    </View>
+                    <View style={styles.accountInfo}>
+                      <Text style={styles.accountName}>{account.name}</Text>
+                      <Text style={styles.accountType}>{getAccountTypeLabel(account.type)}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.accountRight}>
+                    {account.type === AccountType.GOLD && account.goldGrams ? (
+                      <View>
+                        <Text style={[
+                          styles.accountBalance,
+                          { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                        ]}>
+                          {formatCurrency(account.balance)}
+                        </Text>
+                        <Text style={styles.goldGrams}>
+                          {(account.goldGrams || 0).toLocaleString('tr-TR')} gram
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[
+                        styles.accountBalance,
+                        { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                      ]}>
+                        {formatCurrency(account.balance)}
+                      </Text>
+                    )}
+                    <View style={styles.accountActions}>
+                      {account.type === AccountType.GOLD && (
+                        <TouchableOpacity
+                          style={[styles.accountActionButton, styles.goldDetailButton]}
+                          onPress={() => handleGoldAccountDetail(account)}
+                        >
+                          <Ionicons name="analytics-outline" size={16} color={COLORS.BLACK} />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.editButton]}
+                        onPress={() => handleEditAccount(account)}
+                      >
+                        <Ionicons name="create-outline" size={16} color={COLORS.WHITE} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.deleteButton]}
+                        onPress={() => handleDeleteAccount(account)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={COLORS.WHITE} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
             </View>
           </Card>
         )}
@@ -1519,6 +1608,33 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   goldAccountsTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  excludedBalanceInfo: {
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 8,
+  },
+  excludedBalanceLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  excludedBalanceAmount: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  excludedAccountsCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  excludedAccountsTitle: {
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,

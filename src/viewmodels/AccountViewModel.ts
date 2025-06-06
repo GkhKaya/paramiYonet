@@ -81,7 +81,9 @@ export class AccountViewModel extends BaseViewModel {
   }
 
   get totalBalance(): number {
-    return this.accountsWithRealTimeBalances.reduce((total, account) => total + account.balance, 0);
+    return this.accountsWithRealTimeBalances
+      .filter(account => account.includeInTotalBalance)
+      .reduce((total, account) => total + account.balance, 0);
   }
 
   get accountSummary(): AccountSummary {
@@ -97,8 +99,12 @@ export class AccountViewModel extends BaseViewModel {
     };
 
     this.accountsWithRealTimeBalances.forEach(account => {
-      summary.totalBalance += account.balance;
+      // Sadece toplam bakiyeye dahil edilenler toplam bakiyeye eklenir
+      if (account.includeInTotalBalance) {
+        summary.totalBalance += account.balance;
+      }
       
+      // Fakat tüm hesaplar kendi kategorilerinde sayılır
       switch (account.type) {
         case AccountType.CASH:
           summary.cashBalance += account.balance;
@@ -173,6 +179,7 @@ export class AccountViewModel extends BaseViewModel {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         isActive: true,
+        includeInTotalBalance: accountData.includeInTotalBalance ?? true, // Default true
         // Altın hesapları için özel alanlar
         ...(accountData.goldGrams && { goldGrams: accountData.goldGrams }),
         ...(accountData.initialGoldPrice && { initialGoldPrice: accountData.initialGoldPrice }),
@@ -204,8 +211,14 @@ export class AccountViewModel extends BaseViewModel {
       
       const accountRef = doc(db, 'accounts', accountData.id);
       const { id, ...updateData } = accountData; // Destructure to remove id
+      
+      // Undefined değerleri filtrele
+      const filteredUpdateData = Object.fromEntries(
+        Object.entries(updateData).filter(([_, value]) => value !== undefined)
+      );
+      
       const finalUpdateData = {
-        ...updateData,
+        ...filteredUpdateData,
         updatedAt: Timestamp.now(),
       };
       

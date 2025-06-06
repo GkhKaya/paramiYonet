@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -111,6 +112,9 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   const [goldGrams, setGoldGrams] = useState(editAccount?.goldGrams ? editAccount.goldGrams.toString() : '');
   const [currentGoldPrice, setCurrentGoldPrice] = useState(4250); // Default fiyat
   const [loading, setLoading] = useState(false);
+  const [includeInTotalBalance, setIncludeInTotalBalance] = useState(
+    editAccount?.includeInTotalBalance !== undefined ? editAccount.includeInTotalBalance : true
+  );
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
   const goldService = GoldPriceService.getInstance();
@@ -252,6 +256,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         icon: selectedTypeData?.icon || 'wallet',
         goldGrams: selectedType === AccountType.GOLD ? goldGramsValue : undefined,
         initialGoldPrice: selectedType === AccountType.GOLD ? currentGoldPrice : undefined,
+        includeInTotalBalance,
       };
 
       success = await viewModel.updateAccountInfo(updateData);
@@ -270,6 +275,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         icon: selectedTypeData?.icon || 'wallet',
         goldGrams: selectedType === AccountType.GOLD ? goldGramsValue : undefined,
         initialGoldPrice: selectedType === AccountType.GOLD ? currentGoldPrice : undefined,
+        includeInTotalBalance,
       };
 
       success = await viewModel.createAccount(accountData);
@@ -445,6 +451,26 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
             {ACCOUNT_COLORS.map((color) => (
               <ColorOption key={color} color={color} />
             ))}
+          </View>
+        </Card>
+
+        {/* Include in Total Balance */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>Bütçe Ayarları</Text>
+          <View style={styles.includeBalanceContainer}>
+            <View style={styles.includeBalanceLeft}>
+              <Text style={styles.includeBalanceLabel}>Toplam Bakiyeye Dahil Et</Text>
+              <Text style={styles.includeBalanceDescription}>
+                Bu hesap ana sayfadaki toplam bakiye hesaplamasına dahil edilsin mi?
+              </Text>
+            </View>
+            <Switch
+              value={includeInTotalBalance}
+              onValueChange={setIncludeInTotalBalance}
+              trackColor={{ false: COLORS.SURFACE, true: COLORS.PRIMARY + '40' }}
+              thumbColor={includeInTotalBalance ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
+              ios_backgroundColor={COLORS.SURFACE}
+            />
           </View>
         </Card>
 
@@ -742,6 +768,24 @@ const styles = StyleSheet.create({
   },
   signToggleButtonDisabled: {
     backgroundColor: COLORS.TEXT_SECONDARY,
+  },
+  includeBalanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  includeBalanceLeft: {
+    flex: 1,
+  },
+  includeBalanceLabel: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+  includeBalanceDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
   },
 });
 

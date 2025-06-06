@@ -11,6 +11,7 @@ export interface Account {
   isActive: boolean;
   goldGrams?: number;
   initialGoldPrice?: number;
+  includeInTotalBalance: boolean;
 }
 
 export enum AccountType {
@@ -30,10 +31,18 @@ export interface CreateAccountRequest {
   icon: string;
   goldGrams?: number;
   initialGoldPrice?: number;
+  includeInTotalBalance?: boolean;
 }
 
-export interface UpdateAccountRequest extends Partial<CreateAccountRequest> {
+export interface UpdateAccountRequest {
   id: string;
+  name?: string;
+  type?: AccountType;
+  color?: string;
+  icon?: string;
+  goldGrams?: number;
+  initialGoldPrice?: number;
+  includeInTotalBalance?: boolean;
 }
 
 export interface AccountSummary {
