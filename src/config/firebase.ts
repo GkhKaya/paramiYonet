@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase konfigürasyonu
 const firebaseConfig = {
@@ -17,8 +16,8 @@ const firebaseConfig = {
 // Firebase uygulamasını başlat
 const app = initializeApp(firebaseConfig);
 
-// Firebase Auth'u AsyncStorage persistence ile başlat
-const auth = initializeAuth(app);
+// Firebase Auth'u başlat (React Native otomatik persistence kullanır)
+const auth = getAuth(app);
 
 // Firestore'u başlat
 const db = getFirestore(app);

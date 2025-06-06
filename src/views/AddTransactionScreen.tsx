@@ -25,6 +25,7 @@ import { TransactionType } from '../models/Transaction';
 import { AccountType, Account } from '../models/Account';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { useAuth } from '../contexts/AuthContext';
+import { useViewModels } from '../contexts/ViewModelContext';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { RecurringPaymentViewModel } from '../viewmodels/RecurringPaymentViewModel';
@@ -45,7 +46,7 @@ interface AddTransactionScreenProps {
 
 const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ route, navigation }) => {
   const { user } = useAuth();
-  const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
+  const { accountViewModel, transactionViewModel } = useViewModels();
   const [recurringPaymentViewModel, setRecurringPaymentViewModel] = useState<RecurringPaymentViewModel | null>(null);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -96,12 +97,9 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   // Initialize AccountViewModel when user is available
   useEffect(() => {
     if (user?.id) {
-      const accountVm = new AccountViewModel(user.id);
       const recurringVm = new RecurringPaymentViewModel(user.id);
-      setAccountViewModel(accountVm);
       setRecurringPaymentViewModel(recurringVm);
     } else {
-      setAccountViewModel(null);
       setRecurringPaymentViewModel(null);
     }
   }, [user?.id]);
@@ -157,18 +155,19 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     setLoading(true);
 
     try {
-      const transactionViewModel = new TransactionViewModel(user.id);
-      
-      // Get selected category details
-      const category = availableCategories.find(cat => cat.name === selectedCategory);
-      
+      if (!transactionViewModel) {
+        Alert.alert('Hata', 'İşlem sistemi hazır değil');
+        setLoading(false);
+        return;
+      }
+
       const transactionData = {
         userId: user.id,
         amount: numericAmount,
         description: description.trim(),
         type: selectedType,
         category: selectedCategory,
-        categoryIcon: category?.icon || 'help-circle-outline',
+        categoryIcon: availableCategories.find(cat => cat.name === selectedCategory)?.icon || 'help-circle-outline',
         accountId: selectedAccountId,
         date: selectedDate,
       };

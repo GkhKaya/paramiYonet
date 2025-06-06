@@ -25,6 +25,7 @@ import { Transaction, TransactionType } from '../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { useAuth } from '../contexts/AuthContext';
+import { useViewModels } from '../contexts/ViewModelContext';
 import { isWeb } from '../utils/platform';
 
 // Get screen dimensions for responsive sizing
@@ -37,7 +38,7 @@ interface TransactionsScreenProps {
 
 const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
-  const [viewModel, setViewModel] = useState<TransactionViewModel | null>(null);
+  const { transactionViewModel: viewModel } = useViewModels();
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -47,16 +48,6 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     category: '',
     date: new Date(),
   });
-
-  // Initialize ViewModel with user ID when available
-  useEffect(() => {
-    if (user?.id) {
-      const vm = new TransactionViewModel(user.id);
-      setViewModel(vm);
-    } else {
-      setViewModel(null);
-    }
-  }, [user?.id]);
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
 

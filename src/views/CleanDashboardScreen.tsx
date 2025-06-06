@@ -37,8 +37,7 @@ import { isWeb } from '../utils/platform';
 
 // Context and ViewModels
 import { useAuth } from '../contexts/AuthContext';
-import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
-import { AccountViewModel } from '../viewmodels/AccountViewModel';
+import { useViewModels } from '../contexts/ViewModelContext';
 import { Account } from '../models/Account';
 import { TransactionType } from '../models/Transaction';
 
@@ -54,38 +53,11 @@ interface CleanDashboardScreenProps {
  */
 const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
-
-  // ViewModels - Business logic katmanı
-  const [transactionViewModel, setTransactionViewModel] = useState<TransactionViewModel | null>(null);
-  const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
+  const { transactionViewModel, accountViewModel, isLoading: viewModelsLoading } = useViewModels();
 
   // UI State
   const [refreshing, setRefreshing] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
-
-  /**
-   * ViewModels'leri kullanıcı kimliği ile başlatır
-   * 
-   * Bu fonksiyon kullanıcı oturum açtığında veya değiştiğinde
-   * gerekli business logic sınıflarını initialize eder.
-   */
-  useEffect(() => {
-    if (user?.id) {
-      // ViewModels'leri oluştur
-      const transactionVm = new TransactionViewModel(user.id);
-      const accountVm = new AccountViewModel(user.id);
-      
-      setTransactionViewModel(transactionVm);
-      setAccountViewModel(accountVm);
-      
-      // İlk veri yüklemesi
-      loadInitialData(transactionVm, accountVm);
-    } else {
-      // Kullanıcı oturumu kapandıysa ViewModels'leri temizle
-      setTransactionViewModel(null);
-      setAccountViewModel(null);
-    }
-  }, [user?.id]);
 
   /**
    * Sayfa odaklandığında veriyi yeniler
@@ -100,21 +72,6 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
       }
     }, [transactionViewModel, accountViewModel])
   );
-
-  /**
-   * İlk veri yüklemesi yapar
-   */
-  const loadInitialData = async (transactionVm: TransactionViewModel, accountVm: AccountViewModel) => {
-    try {
-      await Promise.all([
-        transactionVm.loadTransactions(),
-        accountVm.loadAccounts()
-      ]);
-    } catch (error) {
-      console.error('İlk veri yükleme hatası:', error);
-      Alert.alert('Hata', 'Veriler yüklenirken bir hata oluştu');
-    }
-  };
 
   /**
    * Tüm veriyi yeniler (pull-to-refresh için)
@@ -159,9 +116,9 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
    * Hesapları UI formatına dönüştürür
    */
   const getAccountsForUI = (): AccountItem[] => {
-    if (!accountViewModel?.accounts) return [];
+    if (!accountViewModel?.accountsWithRealTimeBalances) return [];
     
-    return accountViewModel.accounts.map(account => ({
+    return accountViewModel.accountsWithRealTimeBalances.map(account => ({
       id: account.id,
       name: account.name,
       type: account.type,

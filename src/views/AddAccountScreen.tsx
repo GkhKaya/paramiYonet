@@ -284,13 +284,24 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
     setLoading(false);
 
     if (success) {
+      // Başarı mesajı göster ve ana sayfaya yönlendir
       Alert.alert(
         'Başarılı',
         isEditMode ? 'Hesap başarıyla güncellendi' : 'Hesap başarıyla oluşturuldu',
         [
           {
             text: 'Tamam',
-            onPress: () => navigation.goBack()
+            onPress: () => {
+              // Kısa bir gecikme ekle ki Firestore real-time listener güncellensin
+              setTimeout(() => {
+                if (isEditMode) {
+                  navigation.goBack();
+                } else {
+                  // Yeni hesap oluşturulduğunda ana sayfaya dön
+                  navigation.navigate('MainTabs', { screen: 'Dashboard' });
+                }
+              }, 100);
+            }
           }
         ]
       );

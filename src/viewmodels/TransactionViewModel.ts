@@ -180,7 +180,10 @@ export class TransactionViewModel {
     const groups: { [key: string]: DayGroup } = {};
 
     this.filteredTransactions.forEach((transaction) => {
-      const dateKey = transaction.date.toISOString().split('T')[0];
+      // Saat dilimi problemini önlemek için local tarih formatı kullan
+      const dateKey = transaction.date.getFullYear() + '-' + 
+                     (transaction.date.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+                     transaction.date.getDate().toString().padStart(2, '0');
       
       if (!groups[dateKey]) {
         groups[dateKey] = {
@@ -505,13 +508,17 @@ export class TransactionViewModel {
   }
 
   private formatDateDisplay(date: Date): string {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
+    const now = new Date();
+    
+    // Bugünün, dünün ve gelen tarihin Unix timestamp'lerini al (gün bazında)
+    const nowDay = Math.floor(now.getTime() / (24 * 60 * 60 * 1000));
+    const dateDay = Math.floor(date.getTime() / (24 * 60 * 60 * 1000));
+    
+    const dayDiff = nowDay - dateDay;
 
-    if (date.toDateString() === today.toDateString()) {
+    if (dayDiff === 0) {
       return 'Bugün';
-    } else if (date.toDateString() === yesterday.toDateString()) {
+    } else if (dayDiff === 1) {
       return 'Dün';
     } else {
       return date.toLocaleDateString('tr-TR', {

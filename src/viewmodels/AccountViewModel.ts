@@ -43,6 +43,7 @@ export class AccountViewModel extends BaseViewModel {
   selectedAccount: Account | null = null;
   currentGoldPrice: number = 4250; // Default price
   private goldPriceService = GoldPriceService.getInstance();
+  private unsubscribeAccounts?: () => void; // Real-time listener cleanup
 
   constructor(private userId: string) {
     super();
@@ -163,7 +164,7 @@ export class AccountViewModel extends BaseViewModel {
       );
 
       // Real-time listener
-      const unsubscribe = onSnapshot(accountsQuery, (snapshot) => {
+      this.unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
         const accountsData = snapshot.docs.map(doc => {
           const data = doc.data();
           return {
@@ -181,8 +182,6 @@ export class AccountViewModel extends BaseViewModel {
         this.setAccounts(accountsData);
         this.setLoading(false);
       });
-
-      return unsubscribe;
     } catch (error) {
       console.error('Error loading accounts:', error);
       this.setError('Hesaplar yüklenirken hata oluştu');
@@ -390,6 +389,13 @@ export class AccountViewModel extends BaseViewModel {
     } catch (error) {
       console.error('Altın fiyatı yüklenirken hata:', error);
       // Default fiyat zaten set edilmiş
+    }
+  };
+
+  // Cleanup method
+  dispose = () => {
+    if (this.unsubscribeAccounts) {
+      this.unsubscribeAccounts();
     }
   };
 } 
