@@ -809,13 +809,15 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
 
         {/* Budget Summary */}
         {reportsViewModel!.activeBudgets.length > 0 && (
-          <BudgetSummary
-            totalBudgeted={budgetSummary.totalBudgeted}
-            totalSpent={budgetSummary.totalSpent}
-            activeBudgetCount={budgetSummary.activeBudgetCount}
-            overBudgetCount={budgetSummary.overBudgetCount}
-            status={budgetSummary.status}
-          />
+          <View style={styles.budgetSummaryContainer}>
+            <BudgetSummary
+              totalBudgeted={budgetSummary.totalBudgeted}
+              totalSpent={budgetSummary.totalSpent}
+              activeBudgetCount={budgetSummary.activeBudgetCount}
+              overBudgetCount={budgetSummary.overBudgetCount}
+              status={budgetSummary.status}
+            />
+          </View>
         )}
 
         {/* Budget Cards */}
@@ -1639,6 +1641,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: SPACING.md,
+  },
+  budgetSummaryContainer: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
   },
 });
 
