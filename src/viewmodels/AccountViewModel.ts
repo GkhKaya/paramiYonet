@@ -15,26 +15,33 @@ import { db } from '../config/firebase';
 import { Account, AccountType, CreateAccountRequest, UpdateAccountRequest, AccountSummary } from '../models/Account';
 import { BaseViewModel } from './BaseViewModel';
 import { Transaction, TransactionType } from '../models/Transaction';
+import GoldPriceService from '../services/GoldPriceService';
 
 export class AccountViewModel extends BaseViewModel {
   accounts: Account[] = [];
   selectedAccount: Account | null = null;
+  currentGoldPrice: number = 4250; // Default price
+  private goldPriceService = GoldPriceService.getInstance();
 
   constructor(private userId: string) {
     super();
     makeObservable(this, {
       accounts: observable,
       selectedAccount: observable,
+      currentGoldPrice: observable,
       setAccounts: action,
       setSelectedAccount: action,
+      setCurrentGoldPrice: action,
       addAccount: action,
       updateAccount: action,
       removeAccount: action,
       totalBalance: computed,
+      accountsWithRealTimeBalances: computed,
       accountSummary: computed,
     });
     
     this.loadAccounts();
+    this.loadGoldPrice();
   }
 
   setAccounts = (accounts: Account[]) => {
@@ -60,8 +67,21 @@ export class AccountViewModel extends BaseViewModel {
     this.accounts = this.accounts.filter(account => account.id !== accountId);
   };
 
+  // Altın hesapları için real-time balance hesaplama
+  get accountsWithRealTimeBalances(): Account[] {
+    return this.accounts.map(account => {
+      if (account.type === AccountType.GOLD && account.goldGrams) {
+        return {
+          ...account,
+          balance: account.goldGrams * this.currentGoldPrice
+        };
+      }
+      return account;
+    });
+  }
+
   get totalBalance(): number {
-    return this.accounts.reduce((total, account) => total + account.balance, 0);
+    return this.accountsWithRealTimeBalances.reduce((total, account) => total + account.balance, 0);
   }
 
   get accountSummary(): AccountSummary {
@@ -72,9 +92,11 @@ export class AccountViewModel extends BaseViewModel {
       creditCardBalance: 0,
       savingsBalance: 0,
       investmentBalance: 0,
+      goldBalance: 0,
+      goldGrams: 0,
     };
 
-    this.accounts.forEach(account => {
+    this.accountsWithRealTimeBalances.forEach(account => {
       summary.totalBalance += account.balance;
       
       switch (account.type) {
@@ -92,6 +114,10 @@ export class AccountViewModel extends BaseViewModel {
           break;
         case AccountType.INVESTMENT:
           summary.investmentBalance += account.balance;
+          break;
+        case AccountType.GOLD:
+          summary.goldBalance += account.balance;
+          summary.goldGrams += account.goldGrams || 0;
           break;
       }
     });
@@ -137,8 +163,6 @@ export class AccountViewModel extends BaseViewModel {
     try {
       this.setLoading(true);
       
-      console.log('Creating account with initial balance:', accountData.initialBalance);
-      
       const newAccount = {
         userId: this.userId,
         name: accountData.name,
@@ -149,13 +173,12 @@ export class AccountViewModel extends BaseViewModel {
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         isActive: true,
+        // Altın hesapları için özel alanlar
+        ...(accountData.goldGrams && { goldGrams: accountData.goldGrams }),
+        ...(accountData.initialGoldPrice && { initialGoldPrice: accountData.initialGoldPrice }),
       };
 
-      console.log('Account data to save:', newAccount);
-
       const docRef = await addDoc(collection(db, 'accounts'), newAccount);
-      
-      console.log('Account created with ID:', docRef.id);
       
       const createdAccount: Account = {
         id: docRef.id,
@@ -315,6 +338,20 @@ export class AccountViewModel extends BaseViewModel {
       console.error('Error recalculating balances:', error);
       this.setError('Bakiyeler hesaplanırken hata oluştu');
       return false;
+    }
+  };
+
+  setCurrentGoldPrice = (price: number) => {
+    this.currentGoldPrice = price;
+  };
+
+  loadGoldPrice = async () => {
+    try {
+      const priceData = await this.goldPriceService.getCurrentGoldPrices();
+      this.setCurrentGoldPrice(priceData.gramPrice || priceData.buyPrice);
+    } catch (error) {
+      console.error('Altın fiyatı yüklenirken hata:', error);
+      // Default fiyat zaten set edilmiş
     }
   };
 } 

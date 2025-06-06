@@ -23,7 +23,7 @@ import { BudgetSummary } from '../components/budget/BudgetSummary';
 import { CreateBudgetModal } from '../components/budget/CreateBudgetModal';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { TransactionType } from '../models/Transaction';
-import { Account } from '../models/Account';
+import { Account, AccountType } from '../models/Account';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { useAuth } from '../contexts/AuthContext';
 import { ReportsViewModel } from '../viewmodels/ReportsViewModel';
@@ -149,8 +149,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
       credit_card: 'Kredi Kartı',
       savings: 'Tasarruf Hesabı',
       investment: 'Yatırım Hesabı',
+      gold: 'Altın Hesabı',
     };
     return typeMap[type] || type;
+  };
+
+  const handleGoldAccountDetail = (account: Account) => {
+    navigation.navigate('GoldAccountDetail', { account });
   };
 
   // Loading state
@@ -537,6 +542,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   const AccountsTab = () => {
     if (!accountViewModel) return null;
 
+    const goldAccounts = accountViewModel.accountsWithRealTimeBalances.filter(acc => acc.type === AccountType.GOLD);
+    const otherAccounts = accountViewModel.accountsWithRealTimeBalances.filter(acc => acc.type !== AccountType.GOLD);
+
     return (
       <View>
         {/* Account Summary */}
@@ -560,15 +568,78 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
           </View>
         </Card>
 
-        {/* Accounts List */}
-        <Card style={styles.accountsListCard}>
-          <Text style={styles.accountsListTitle}>Tüm Hesaplar</Text>
-          {accountViewModel.accounts.length > 0 ? (
+        {/* Gold Accounts Section */}
+        {goldAccounts.length > 0 && (
+          <Card style={styles.goldAccountsCard}>
+            <Text style={styles.goldAccountsTitle}>🏆 Altın Hesapları</Text>
             <View style={styles.accountsList}>
-              {accountViewModel.accounts.map((account, index) => (
+              {goldAccounts.map((account, index) => (
                 <View key={account.id} style={[
                   styles.accountItem,
-                  index === accountViewModel.accounts.length - 1 && styles.lastAccountItem
+                  index === goldAccounts.length - 1 && styles.lastAccountItem
+                ]}>
+                  <View style={styles.accountLeft}>
+                    <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                      <Ionicons 
+                        name={account.icon as any} 
+                        size={20} 
+                        color={COLORS.WHITE} 
+                      />
+                    </View>
+                    <View style={styles.accountInfo}>
+                      <Text style={styles.accountName}>{account.name}</Text>
+                      <Text style={styles.accountType}>{getAccountTypeLabel(account.type)}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.accountRight}>
+                    <View>
+                      <Text style={[
+                        styles.accountBalance,
+                        { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                      ]}>
+                        {formatCurrency(account.balance)}
+                      </Text>
+                      <Text style={styles.goldGrams}>
+                        {(account.goldGrams || 0).toLocaleString('tr-TR')} gram
+                      </Text>
+                    </View>
+                    <View style={styles.accountActions}>
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.goldDetailButton]}
+                        onPress={() => handleGoldAccountDetail(account)}
+                      >
+                        <Ionicons name="analytics-outline" size={16} color={COLORS.BLACK} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.editButton]}
+                        onPress={() => handleEditAccount(account)}
+                      >
+                        <Ionicons name="create-outline" size={16} color={COLORS.WHITE} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.accountActionButton, styles.deleteButton]}
+                        onPress={() => handleDeleteAccount(account)}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={COLORS.WHITE} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </Card>
+        )}
+
+        {/* Other Accounts List */}
+        {otherAccounts.length > 0 && (
+          <Card style={styles.accountsListCard}>
+            <Text style={styles.accountsListTitle}>Diğer Hesaplar</Text>
+            <View style={styles.accountsList}>
+              {otherAccounts.map((account, index) => (
+                <View key={account.id} style={[
+                  styles.accountItem,
+                  index === otherAccounts.length - 1 && styles.lastAccountItem
                 ]}>
                   <View style={styles.accountLeft}>
                     <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
@@ -609,7 +680,12 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
                 </View>
               ))}
             </View>
-          ) : (
+          </Card>
+        )}
+
+        {/* Empty State */}
+        {accountViewModel.accountsWithRealTimeBalances.length === 0 && (
+          <Card style={styles.accountsListCard}>
             <View style={styles.emptyAccounts}>
               <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
               <Text style={styles.emptyAccountsText}>Henüz hesap eklenmedi</Text>
@@ -620,8 +696,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
                 <Text style={styles.addFirstAccountText}>İlk Hesabını Ekle</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </Card>
+          </Card>
+        )}
       </View>
     );
   };
@@ -1348,6 +1424,9 @@ const styles = StyleSheet.create({
   editButton: {
     backgroundColor: COLORS.PRIMARY,
   },
+  goldDetailButton: {
+    backgroundColor: '#FFD700',
+  },
   deleteButton: {
     backgroundColor: COLORS.ERROR,
   },
@@ -1429,6 +1508,21 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: TYPOGRAPHY.weights.semibold as any,
     marginLeft: SPACING.xs,
+  },
+  goldGrams: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: SPACING.xs,
+  },
+  goldAccountsCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  goldAccountsTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
   },
 });
 

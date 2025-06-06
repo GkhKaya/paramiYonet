@@ -1,3 +1,6 @@
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Account } from '../models/Account';
+
 // Genel tip tanımlamaları
 export type Currency = 'TRY' | 'USD' | 'EUR' | 'GBP';
 
@@ -65,7 +68,8 @@ export type RootStackParamList = {
 export type MainStackParamList = {
   MainTabs: undefined;
   AddTransaction: { defaultType?: 'income' | 'expense' } | undefined;
-  AddAccount: { editAccount?: any } | undefined;
+  AddAccount: { editAccount?: Account } | undefined;
+  GoldAccountDetail: { account: Account };
   Accounts: undefined;
   EditAccount: { accountId: string };
   Profile: undefined;
@@ -121,4 +125,36 @@ export interface Theme {
       bold: string;
     };
   };
+}
+
+// Gold Price Types
+export interface GoldPriceData {
+  buyPrice: number;        // Alış fiyatı
+  sellPrice: number;       // Satış fiyatı
+  lastUpdate: Date;        // Son güncelleme zamanı
+  change: number;          // Değişim yüzdesi
+  changeAmount: number;    // Değişim miktarı (TL)
+  gramPrice?: number;      // Gram altın fiyatı
+  source?: string;         // Veri kaynağı
+}
+
+export interface CanliDovizGoldResponse {
+  success: boolean;
+  data?: {
+    buyPrice: number;
+    sellPrice: number;
+    lastPrice: number;
+    change: number;
+    changePercent: number;
+    high: number;
+    low: number;
+    time: string;
+  };
+  error?: string;
+}
+
+export interface GoldPriceHistory {
+  date: Date;
+  price: number;
+  change: number;
 } 

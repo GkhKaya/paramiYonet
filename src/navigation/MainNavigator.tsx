@@ -16,6 +16,7 @@ import ReportsScreen from '../views/ReportsScreen';
 import SettingsScreen from '../views/SettingsScreen';
 import AccountsScreen from '../views/AccountsScreen';
 import AddAccountScreen from '../views/AddAccountScreen';
+import GoldAccountDetailScreen from '../views/GoldAccountDetailScreen';
 import HelpAndSupportScreen from '../views/HelpAndSupportScreen';
 import SecurityScreen from '../views/SecurityScreen';
 import ProfileScreen from '../views/ProfileScreen';
@@ -124,6 +125,7 @@ const MainNavigator: React.FC = () => {
       >
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+        <Stack.Screen name="GoldAccountDetail" component={GoldAccountDetailScreen} />
         <Stack.Screen 
           name="Profile" 
           component={ProfileScreen}
