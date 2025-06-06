@@ -121,7 +121,8 @@ export const createCommonQuickActions = (
   onAddAccount: () => void,
   onViewReports: () => void,
   onViewTransactions: () => void,
-  onRecalculateBalances?: () => void
+  onRecalculateBalances?: () => void,
+  onViewAnalytics?: () => void
 ): QuickAction[] => {
   const commonActions: QuickAction[] = [
     {
@@ -155,6 +156,16 @@ export const createCommonQuickActions = (
       onPress: onViewTransactions,
     },
   ];
+
+  // Analytics butonu
+  if (onViewAnalytics) {
+    commonActions.push({
+      icon: 'analytics',
+      title: 'Analizler',
+      color: 'WARNING',
+      onPress: onViewAnalytics,
+    });
+  }
 
   // Debug/geliştirme amaçlı bakiye hesaplama butonu (isteğe bağlı)
   if (onRecalculateBalances) {

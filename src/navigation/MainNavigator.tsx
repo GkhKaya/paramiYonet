@@ -21,6 +21,7 @@ import HelpAndSupportScreen from '../views/HelpAndSupportScreen';
 import SecurityScreen from '../views/SecurityScreen';
 import ProfileScreen from '../views/ProfileScreen';
 import RecurringPaymentsScreen from '../views/RecurringPaymentsScreen';
+import AnalyticsScreen from '../views/AnalyticsScreen';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -54,7 +55,7 @@ const TabNavigator: React.FC = () => {
               break;
             case 'Settings':
               iconName = focused ? 'settings' : 'settings-outline';
-              break;
+              break; 
             default:
               iconName = 'circle';
           }
@@ -123,11 +124,6 @@ const PlaceholderScreen: React.FC<{ title: string; subtitle?: string }> = ({ tit
       <Text style={{ fontSize: 14, color: COLORS.TEXT_SECONDARY, marginTop: 8 }}>{subtitle}</Text>
     )}
   </SafeAreaView>
-);
-
-// Analytics Screen Component
-const AnalyticsScreen: React.FC = () => (
-  <PlaceholderScreen title="Analizler" subtitle="Yakında gelecek..." />
 );
 
 const MainNavigator: React.FC = () => {
@@ -222,46 +218,6 @@ const MainNavigator: React.FC = () => {
           }}
         />
         <Stack.Screen 
-          name="Analytics" 
-          component={AnalyticsScreen}
-          options={{
-            cardStyleInterpolator: ({ current, layouts }) => {
-              return {
-                cardStyle: {
-                  transform: [
-                    {
-                      translateX: current.progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [layouts.screen.width, 0],
-                      }),
-                    },
-                  ],
-                },
-                overlayStyle: {
-                  opacity: current.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.5],
-                  }),
-                },
-              };
-            },
-            transitionSpec: {
-              open: {
-                animation: 'timing',
-                config: {
-                  duration: 300,
-                },
-              },
-              close: {
-                animation: 'timing',
-                config: {
-                  duration: 250,
-                },
-              },
-            },
-          }}
-        />
-        <Stack.Screen 
           name="HelpAndSupport" 
           component={HelpAndSupportScreen}
           options={{
@@ -304,6 +260,46 @@ const MainNavigator: React.FC = () => {
         <Stack.Screen 
           name="Security" 
           component={SecurityScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 250,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="Analytics" 
+          component={AnalyticsScreen}
           options={{
             cardStyleInterpolator: ({ current, layouts }) => {
               return {

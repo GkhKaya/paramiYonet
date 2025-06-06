@@ -159,6 +159,13 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
   }, [navigation]);
 
   /**
+   * Analizler sayfasına yönlendirir
+   */
+  const navigateToAnalytics = useCallback(() => {
+    navigation.navigate('Analytics');
+  }, [navigation]);
+
+  /**
    * Hesap düzenleme sayfasına yönlendirir
    */
   const handleEditAccount = useCallback((account: AccountItem) => {
@@ -208,7 +215,9 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
     () => navigateToAddTransaction(TransactionType.EXPENSE),
     navigateToAddAccount,
     navigateToReports,
-    navigateToTransactions
+    navigateToTransactions,
+    undefined,
+    navigateToAnalytics
   );
 
   // Content component for both web and mobile

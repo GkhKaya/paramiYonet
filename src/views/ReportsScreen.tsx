@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import { TransactionType } from '../models/Transaction';
 import { Account, AccountType } from '../models/Account';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { useAuth } from '../contexts/AuthContext';
+import { useViewModels } from '../contexts/ViewModelContext';
 import { ReportsViewModel } from '../viewmodels/ReportsViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { isWeb } from '../utils/platform';
@@ -40,14 +42,185 @@ interface ReportsScreenProps {
 
 const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
+  const { transactionViewModel, accountViewModel: globalAccountViewModel } = useViewModels();
   const [reportsViewModel, setReportsViewModel] = useState<ReportsViewModel | null>(null);
   const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month'>('month');
-  const [selectedTab, setSelectedTab] = useState<'overview' | 'categories' | 'trends' | 'accounts' | 'budgets'>('overview');
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'analytics' | 'trends' | 'accounts' | 'budgets'>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateBudgetModal, setShowCreateBudgetModal] = useState(false);
+  
+  // Analytics states
+  const [goalAmount, setGoalAmount] = useState<string>('');
+  const [analytics, setAnalytics] = useState({
+    savingsScore: 0,
+    currentBalance: 0,
+    monthlyIncome: 0,
+    monthlyExpense: 0,
+    previousMonthExpense: 0,
+    futureBalance: 0,
+    categoryTrends: [] as Array<{
+      name: string;
+      current: number;
+      previous: number;
+      trend: { percentage: number; isIncrease: boolean; severity: 'normal' | 'warning' | 'danger' };
+    }>,
+    alerts: [] as Array<{ type: 'warning' | 'danger'; message: string; category?: string }>,
+  });
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
+
+  // Analytics calculation functions
+  const calculateSavingsScore = (income: number, expense: number): number => {
+    if (income === 0) return 0;
+    const savingsRate = ((income - expense) / income) * 100;
+    return Math.max(0, Math.min(100, savingsRate));
+  };
+
+  const calculateCategoryTrend = (currentAmount: number, previousAmount: number): { 
+    percentage: number, 
+    isIncrease: boolean, 
+    severity: 'normal' | 'warning' | 'danger' 
+  } => {
+    if (previousAmount === 0) {
+      return { percentage: currentAmount > 0 ? 100 : 0, isIncrease: currentAmount > 0, severity: 'normal' };
+    }
+    
+    const percentage = ((currentAmount - previousAmount) / previousAmount) * 100;
+    const isIncrease = percentage > 0;
+    
+    let severity: 'normal' | 'warning' | 'danger' = 'normal';
+    if (isIncrease && percentage > 50) severity = 'danger';
+    else if (isIncrease && percentage > 20) severity = 'warning';
+    
+    return { percentage: Math.abs(percentage), isIncrease, severity };
+  };
+
+  const calculateFutureBalance = (currentBalance: number, monthlyIncome: number, monthlyExpense: number): number => {
+    const monthlyNet = monthlyIncome - monthlyExpense;
+    return currentBalance + monthlyNet;
+  };
+
+  const calculateTimeToGoal = (currentBalance: number, goalAmount: number, monthlyIncome: number, monthlyExpense: number): { 
+    months: number, 
+    years: number, 
+    isPossible: boolean 
+  } => {
+    const monthlyNet = monthlyIncome - monthlyExpense;
+    
+    if (monthlyNet <= 0) {
+      return { months: 0, years: 0, isPossible: false };
+    }
+    
+    const remainingAmount = goalAmount - currentBalance;
+    if (remainingAmount <= 0) {
+      return { months: 0, years: 0, isPossible: true };
+    }
+    
+    const months = Math.ceil(remainingAmount / monthlyNet);
+    const years = Math.floor(months / 12);
+    
+    return { months: months % 12, years, isPossible: true };
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const formatGoalAmount = (text: string) => {
+    const cleaned = text.replace(/[^0-9.,]/g, '');
+    setGoalAmount(cleaned);
+  };
+
+  // Analytics calculation function
+  const calculateAnalytics = () => {
+    if (!transactionViewModel || !globalAccountViewModel) return;
+
+    const currentBalance = globalAccountViewModel.totalBalance;
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    
+    // Bu ayın işlemleri
+    const currentMonthTransactions = transactionViewModel.transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear;
+    });
+    
+    // Geçen ayın işlemleri
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const lastMonthTransactions = transactionViewModel.transactions.filter(t => {
+      const transactionDate = new Date(t.date);
+      return transactionDate.getMonth() === lastMonth && transactionDate.getFullYear() === lastMonthYear;
+    });
+
+    const monthlyIncome = currentMonthTransactions
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const monthlyExpense = currentMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const previousMonthExpense = lastMonthTransactions
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // Kategori trendleri hesapla
+    const categoryTrends = DEFAULT_EXPENSE_CATEGORIES.map(category => {
+      const currentCategoryAmount = currentMonthTransactions
+        .filter(t => t.type === 'expense' && t.category === category.name)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const previousCategoryAmount = lastMonthTransactions
+        .filter(t => t.type === 'expense' && t.category === category.name)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      return {
+        name: category.name,
+        current: currentCategoryAmount,
+        previous: previousCategoryAmount,
+        trend: calculateCategoryTrend(currentCategoryAmount, previousCategoryAmount),
+      };
+    }).filter(category => category.current > 0 || category.previous > 0);
+
+    // Uyarılar oluştur
+    const alerts: Array<{ type: 'warning' | 'danger'; message: string; category?: string }> = [];
+    
+    categoryTrends.forEach(category => {
+      if (category.trend.severity === 'danger') {
+        alerts.push({
+          type: 'danger',
+          message: `Dikkat! ${category.name} kategorisinde %${category.trend.percentage.toFixed(0)} artış var`,
+          category: category.name,
+        });
+      } else if (category.trend.severity === 'warning') {
+        alerts.push({
+          type: 'warning',
+          message: `${category.name} kategorisinde %${category.trend.percentage.toFixed(0)} artış`,
+          category: category.name,
+        });
+      }
+    });
+
+    const savingsScore = calculateSavingsScore(monthlyIncome, monthlyExpense);
+    const futureBalance = calculateFutureBalance(currentBalance, monthlyIncome, monthlyExpense);
+
+    setAnalytics({
+      savingsScore,
+      currentBalance,
+      monthlyIncome,
+      monthlyExpense,
+      previousMonthExpense,
+      futureBalance,
+      categoryTrends,
+      alerts,
+    });
+  };
 
   // Initialize ReportsViewModel when user is available
   useEffect(() => {
@@ -64,12 +237,12 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     }
   }, [user?.id]);
 
-  const formatCurrency = (amount: number) => {
-    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  // Calculate analytics when data is available
+  useEffect(() => {
+    if (transactionViewModel && globalAccountViewModel && selectedTab === 'analytics') {
+      calculateAnalytics();
+    }
+  }, [transactionViewModel, globalAccountViewModel, selectedTab]);
 
   const handleRefresh = async () => {
     if (reportsViewModel && accountViewModel) {
@@ -235,14 +408,16 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               Özet
             </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
-            style={[styles.tab, selectedTab === 'categories' && styles.tabActive]}
-            onPress={() => setSelectedTab('categories')}
+            style={[styles.tab, selectedTab === 'analytics' && styles.tabActive]}
+            onPress={() => setSelectedTab('analytics')}
           >
-            <Text style={[styles.tabText, selectedTab === 'categories' && styles.tabTextActive]}>
-              Kategoriler
+            <Text style={[styles.tabText, selectedTab === 'analytics' && styles.tabTextActive]}>
+              Analizler
             </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity
             style={[styles.tab, selectedTab === 'trends' && styles.tabActive]}
             onPress={() => setSelectedTab('trends')}
@@ -449,55 +624,297 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     );
   };
 
-  const CategoriesTab = () => (
-    <View>
-      {/* Expense Categories Chart */}
-      {currentCategories.expense.length > 0 ? (
-        <Card style={styles.chartCard}>
-          <CategoryChart
-            data={currentCategories.expense.map(cat => ({
-              name: cat.name,
-              value: cat.amount,
-              color: cat.color,
-              percentage: cat.percentage
-            }))}
-            title="Gider Kategorileri Dağılımı"
-            showValues={true}
-          />
-        </Card>
-      ) : (
-        <Card style={styles.emptyChartCard}>
-          <View style={styles.emptyCategory}>
-            <Ionicons name="pie-chart-outline" size={48} color={COLORS.TEXT_TERTIARY} />
-            <Text style={styles.emptyCategoryText}>Bu dönemde gider bulunamadı</Text>
-          </View>
-        </Card>
-      )}
+  const AnalyticsTab = () => {
+    // Goal calculation helpers
+    const calculateGoalTime = () => {
+      const goal = parseFloat(goalAmount.replace(',', '.'));
+      if (!goal || goal <= 0) return null;
 
-      {/* Income Categories Chart */}
-      {currentCategories.income.length > 0 ? (
-        <Card style={styles.chartCard}>
-          <CategoryChart
-            data={currentCategories.income.map(cat => ({
-              name: cat.name,
-              value: cat.amount,
-              color: cat.color,
-              percentage: cat.percentage
-            }))}
-            title="Gelir Kategorileri Dağılımı"
-            showValues={true}
-          />
-        </Card>
-      ) : (
-        <Card style={styles.emptyChartCard}>
-          <View style={styles.emptyCategory}>
-            <Ionicons name="pie-chart-outline" size={48} color={COLORS.TEXT_TERTIARY} />
-            <Text style={styles.emptyCategoryText}>Bu dönemde gelir bulunamadı</Text>
+      return calculateTimeToGoal(
+        analytics.currentBalance,
+        goal,
+        analytics.monthlyIncome,
+        analytics.monthlyExpense
+      );
+    };
+
+    const goalTime = calculateGoalTime();
+
+    // Tasarruf skoru rengi
+    const getSavingsScoreColor = (score: number) => {
+      if (score >= 70) return COLORS.SUCCESS;
+      if (score >= 40) return COLORS.WARNING;
+      return COLORS.ERROR;
+    };
+
+    // Kategori verilerini al
+    const getAnalyticsCategories = () => {
+      if (!reportsViewModel) return { expense: [], income: [] };
+      
+      return { 
+        expense: reportsViewModel.monthlyExpenseCategories,
+        income: reportsViewModel.monthlyIncomeCategories
+      };
+    };
+
+    const analyticsCategories = getAnalyticsCategories();
+
+    return (
+      <View>
+        {/* Tasarruf Skoru */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="trophy" size={24} color={COLORS.WARNING} />
+            <Text style={styles.sectionTitle}>Aylık Tasarruf Skoru</Text>
+          </View>
+          
+          <View style={styles.scoreContainer}>
+            <View style={styles.scoreCircle}>
+              <Text style={[styles.scoreText, { color: getSavingsScoreColor(analytics.savingsScore) }]}>
+                {analytics.savingsScore.toFixed(0)}
+              </Text>
+              <Text style={styles.scoreSubtext}>/ 100</Text>
+            </View>
+            
+            <View style={styles.scoreDetails}>
+              <Text style={styles.scoreDescription}>
+                {analytics.savingsScore >= 70 ? 'Mükemmel! Harika tasarruf yapıyorsunuz.' :
+                 analytics.savingsScore >= 40 ? 'İyi gidiyorsunuz, biraz daha tasarruf edebilirsiniz.' :
+                 'Tasarruf oranınızı artırmaya odaklanın.'}
+              </Text>
+              
+              <View style={styles.scoreBreakdown}>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Gelir:</Text>
+                  <Text style={[styles.breakdownValue, { color: COLORS.SUCCESS }]}>
+                    {formatCurrency(analytics.monthlyIncome)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Gider:</Text>
+                  <Text style={[styles.breakdownValue, { color: COLORS.ERROR }]}>
+                    {formatCurrency(analytics.monthlyExpense)}
+                  </Text>
+                </View>
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>Net:</Text>
+                  <Text style={[styles.breakdownValue, { 
+                    color: analytics.monthlyIncome - analytics.monthlyExpense >= 0 ? COLORS.SUCCESS : COLORS.ERROR 
+                  }]}>
+                    {formatCurrency(analytics.monthlyIncome - analytics.monthlyExpense)}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
         </Card>
-      )}
-    </View>
-  );
+
+        {/* Uyarılar */}
+        {analytics.alerts.length > 0 && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="warning" size={24} color={COLORS.ERROR} />
+              <Text style={styles.sectionTitle}>Akıllı Uyarılar</Text>
+            </View>
+            
+            {analytics.alerts.map((alert, index) => (
+              <View key={index} style={[styles.alertItem, { 
+                backgroundColor: alert.type === 'danger' ? COLORS.ERROR + '10' : COLORS.WARNING + '10' 
+              }]}>
+                <Ionicons 
+                  name={alert.type === 'danger' ? 'alert-circle' : 'warning'} 
+                  size={20} 
+                  color={alert.type === 'danger' ? COLORS.ERROR : COLORS.WARNING} 
+                />
+                <Text style={[styles.alertText, {
+                  color: alert.type === 'danger' ? COLORS.ERROR : COLORS.WARNING
+                }]}>
+                  {alert.message}
+                </Text>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {/* Kategori Trendleri */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="trending-up" size={24} color={COLORS.PRIMARY} />
+            <Text style={styles.sectionTitle}>Kategorilerdeki Harcama Trendi</Text>
+          </View>
+          
+          {analytics.categoryTrends.length > 0 ? (
+            analytics.categoryTrends.map((category, index) => (
+              <View key={index} style={styles.categoryTrendItem}>
+                <View style={styles.trendLeft}>
+                  <Text style={styles.trendCategoryName}>{category.name}</Text>
+                  <Text style={styles.trendAmountText}>
+                    {formatCurrency(category.current)}
+                  </Text>
+                </View>
+                
+                <View style={styles.trendRight}>
+                  <View style={[styles.trendIndicator, {
+                    backgroundColor: category.trend.isIncrease 
+                      ? (category.trend.severity === 'danger' ? COLORS.ERROR : 
+                         category.trend.severity === 'warning' ? COLORS.WARNING : COLORS.ERROR)
+                      : COLORS.SUCCESS
+                  }]}>
+                    <Ionicons 
+                      name={category.trend.isIncrease ? 'arrow-up' : 'arrow-down'} 
+                      size={10} 
+                      color={COLORS.WHITE} 
+                    />
+                    <Text style={styles.trendPercentage}>
+                      {category.trend.percentage > 99 ? '99+' : category.trend.percentage.toFixed(0)}%
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noDataText}>Bu ay henüz yeterli veri yok</Text>
+          )}
+        </Card>
+
+        {/* Gelecek Ay Tahmini */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar" size={24} color={COLORS.PRIMARY} />
+            <Text style={styles.sectionTitle}>Gelecek Ay Tahmini Bakiye</Text>
+          </View>
+          
+          <View style={styles.predictionContainer}>
+            <Text style={styles.currentBalanceLabel}>Mevcut Bakiye</Text>
+            <Text style={styles.currentBalanceAmount}>
+              {formatCurrency(analytics.currentBalance)}
+            </Text>
+            
+            <Ionicons name="arrow-down" size={24} color={COLORS.TEXT_SECONDARY} style={styles.arrowIcon} />
+            
+            <Text style={styles.futureBalanceLabel}>Tahmini Gelecek Ay Bakiyesi</Text>
+            <Text style={[styles.futureBalanceAmount, {
+              color: analytics.futureBalance >= analytics.currentBalance ? COLORS.SUCCESS : COLORS.ERROR
+            }]}>
+              {formatCurrency(analytics.futureBalance)}
+            </Text>
+            
+            <Text style={styles.predictionNote}>
+              *Mevcut aylık gelir-gider ortalamasına göre hesaplanmıştır
+            </Text>
+          </View>
+        </Card>
+
+        {/* Hedef Hesaplayıcısı */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="flag" size={24} color={COLORS.SUCCESS} />
+            <Text style={styles.sectionTitle}>Hedef Hesaplayıcısı</Text>
+          </View>
+          
+          <Text style={styles.goalDescription}>
+            Ulaşmak istediğiniz tutarı girin, ne kadar süreceğini hesaplayalım:
+          </Text>
+          
+          <View style={styles.goalInputContainer}>
+            <Text style={styles.currencySymbol}>₺</Text>
+            <TextInput
+              style={styles.goalInput}
+              value={goalAmount}
+              onChangeText={formatGoalAmount}
+              placeholder="Hedef tutarınız"
+              placeholderTextColor={COLORS.TEXT_SECONDARY}
+              keyboardType="numeric"
+            />
+          </View>
+          
+          {goalTime && (
+            <View style={styles.goalResult}>
+              {goalTime.isPossible ? (
+                <>
+                  <Text style={styles.goalResultText}>
+                    Bu hedefe ulaşmanız için:
+                  </Text>
+                  <Text style={styles.goalTimeText}>
+                    {goalTime.years > 0 && `${goalTime.years} yıl `}
+                    {goalTime.months > 0 && `${goalTime.months} ay`}
+                    {goalTime.years === 0 && goalTime.months === 0 && 'Hedefinize zaten ulaşmışsınız! 🎉'}
+                  </Text>
+                  <Text style={styles.goalMonthlyText}>
+                    Aylık net artış: {formatCurrency(analytics.monthlyIncome - analytics.monthlyExpense)}
+                  </Text>
+                </>
+              ) : (
+                <View style={styles.goalImpossible}>
+                  <Ionicons name="warning" size={20} color={COLORS.ERROR} />
+                  <Text style={styles.goalImpossibleText}>
+                    Mevcut harcama alışkanlıklarınızla bu hedefe ulaşmanız mümkün değil. 
+                    Önce tasarruf oranınızı artırmanız gerekiyor.
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </Card>
+
+        {/* Kategori Grafikleri */}
+        {analyticsCategories.expense.length > 0 && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pie-chart" size={24} color={COLORS.ERROR} />
+              <Text style={styles.sectionTitle}>Gider Kategorileri Dağılımı</Text>
+            </View>
+            <CategoryChart
+              data={analyticsCategories.expense.map(cat => ({
+                name: cat.name,
+                value: cat.amount,
+                color: cat.color,
+                percentage: cat.percentage
+              }))}
+              title=""
+              showValues={true}
+            />
+          </Card>
+        )}
+
+        {analyticsCategories.income.length > 0 && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pie-chart" size={24} color={COLORS.SUCCESS} />
+              <Text style={styles.sectionTitle}>Gelir Kategorileri Dağılımı</Text>
+            </View>
+            <CategoryChart
+              data={analyticsCategories.income.map(cat => ({
+                name: cat.name,
+                value: cat.amount,
+                color: cat.color,
+                percentage: cat.percentage
+              }))}
+              title=""
+              showValues={true}
+            />
+          </Card>
+        )}
+
+        {/* Kategori verisi yoksa */}
+        {analyticsCategories.expense.length === 0 && analyticsCategories.income.length === 0 && (
+          <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="pie-chart-outline" size={24} color={COLORS.TEXT_SECONDARY} />
+              <Text style={styles.sectionTitle}>Kategori Analizi</Text>
+            </View>
+            <View style={styles.emptyChartContainer}>
+              <Ionicons name="pie-chart-outline" size={48} color={COLORS.TEXT_SECONDARY} />
+              <Text style={styles.emptyChartText}>Bu ay henüz kategori verisi yok</Text>
+              <Text style={styles.emptyChartSubtext}>
+                İşlem eklediğinizde kategori dağılımları burada görünecek
+              </Text>
+            </View>
+          </Card>
+        )}
+      </View>
+    );
+  };
 
   const TrendsTab = () => (
     <View>
@@ -902,8 +1319,8 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
           switch (selectedTab) {
             case 'overview':
               return <OverviewTab />;
-            case 'categories':
-              return <CategoriesTab />;
+            case 'analytics':
+              return <AnalyticsTab />;
             case 'trends':
               return <TrendsTab />;
             case 'accounts':
@@ -1645,6 +2062,270 @@ const styles = StyleSheet.create({
   budgetSummaryContainer: {
     marginHorizontal: SPACING.md,
     marginBottom: SPACING.lg,
+  },
+  analyticsCard: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  analyticsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderRadius: 8,
+    backgroundColor: COLORS.SURFACE,
+    borderWidth: 2,
+    borderColor: COLORS.PRIMARY,
+    borderStyle: 'dashed',
+  },
+  analyticsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  analyticsIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  analyticsInfo: {
+    marginLeft: SPACING.sm,
+  },
+  analyticsTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  analyticsSubtitle: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  analyticsRight: {
+    alignItems: 'flex-end',
+  },
+  section: {
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginLeft: SPACING.sm,
+  },
+  scoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  scoreCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.SURFACE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: COLORS.PRIMARY,
+  },
+  scoreText: {
+    fontSize: TYPOGRAPHY.sizes.xxl,
+    fontWeight: '700',
+  },
+  scoreSubtext: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: -4,
+  },
+  scoreDetails: {
+    flex: 1,
+    marginLeft: SPACING.lg,
+  },
+  scoreDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+    lineHeight: 20,
+  },
+  scoreBreakdown: {
+    gap: SPACING.sm,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  breakdownLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    fontWeight: '500',
+  },
+  breakdownValue: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+  },
+  alertItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: 8,
+    marginBottom: SPACING.sm,
+  },
+  alertText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    marginLeft: SPACING.sm,
+    flex: 1,
+    lineHeight: 18,
+  },
+  predictionContainer: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+  },
+  currentBalanceLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  currentBalanceAmount: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '700',
+    marginBottom: SPACING.md,
+  },
+  arrowIcon: {
+    marginVertical: SPACING.sm,
+  },
+  futureBalanceLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.xs,
+  },
+  futureBalanceAmount: {
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: '700',
+    marginBottom: SPACING.sm,
+  },
+  predictionNote: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  goalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  currencySymbol: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+    marginRight: SPACING.xs,
+  },
+  goalInput: {
+    flex: 1,
+    fontSize: TYPOGRAPHY.sizes.lg,
+    color: COLORS.TEXT_PRIMARY,
+    paddingVertical: SPACING.md,
+  },
+  goalResult: {
+    marginTop: SPACING.md,
+    alignItems: 'center',
+  },
+  goalResultText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  goalTimeText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  goalMonthlyText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+  },
+  goalImpossible: {
+    marginTop: SPACING.md,
+    alignItems: 'center',
+  },
+  goalImpossibleText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.ERROR,
+    textAlign: 'center',
+  },
+  emptyChartContainer: {
+    padding: SPACING.lg,
+    alignItems: 'center',
+  },
+  emptyChartText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+  emptyChartSubtext: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+  },
+  goalDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  trendCategoryName: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  trendIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+    minWidth: 50,
+    justifyContent: 'center',
+  },
+  trendPercentage: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.WHITE,
+    fontWeight: '600',
+  },
+  noDataText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    padding: SPACING.lg,
+  },
+  categoryTrendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+  },
+  trendAmountText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.PRIMARY,
+    fontWeight: '600',
   },
 });
 
