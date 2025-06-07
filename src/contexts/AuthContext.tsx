@@ -12,6 +12,7 @@ import {
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { User } from '../models/User';
+import { validateEmail, validatePassword, validateDisplayName } from '../utils/validation';
 
 interface AuthContextType {
   user: User | null;
@@ -103,6 +104,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signIn = async (email: string, password: string, rememberMe?: boolean): Promise<boolean> => {
     try {
+      // Email validation
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.isValid) {
+        Alert.alert('Giriş Hatası', emailValidation.message);
+        return false;
+      }
+
+      // Password boş olup olmadığını kontrol et
+      if (!password || password.trim().length === 0) {
+        Alert.alert('Giriş Hatası', 'Şifre gereklidir.');
+        return false;
+      }
+
       setLoading(true);
       await signInWithEmailAndPassword(auth, email, password);
       
@@ -141,6 +155,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signUp = async (email: string, password: string, displayName: string): Promise<boolean> => {
     try {
+      // Email validation
+      const emailValidation = validateEmail(email);
+      if (!emailValidation.isValid) {
+        Alert.alert('Kayıt Hatası', emailValidation.message);
+        return false;
+      }
+
+      // Password validation
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        Alert.alert('Kayıt Hatası', `Şifre kuralları:\n${passwordValidation.errors.join('\n')}`);
+        return false;
+      }
+
+      // Display name validation
+      const displayNameValidation = validateDisplayName(displayName);
+      if (!displayNameValidation.isValid) {
+        Alert.alert('Kayıt Hatası', displayNameValidation.message);
+        return false;
+      }
+
       setLoading(true);
       
       // Firebase'de kullanıcı oluştur

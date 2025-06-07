@@ -11,7 +11,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.0.4",
-    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/datetimepicker": "8.3.0",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
@@ -26,17 +26,18 @@
     "mobx": "^6.13.7",
     "mobx-react-lite": "^4.1.0",
     "react": "19.0.0",
-    "react-dom": "^19.0.0",
-    "react-native": "0.79.2",
+    "react-dom": "19.0.0",
+    "react-native": "0.79.3",
     "react-native-chart-kit": "^6.12.0",
     "react-native-elements": "^3.4.3",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-modal-datetime-picker": "^17.1.0",
     "react-native-picker-select": "^9.1.3",
     "react-native-safe-area-context": "5.4.0",
-    "react-native-screens": "~4.10.0",
+    "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
-    "react-native-web": "^0.20.0"
+    "react-native-web": "^0.20.0",
+    "expo-system-ui": "~5.0.8"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
