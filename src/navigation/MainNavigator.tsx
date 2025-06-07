@@ -137,7 +137,17 @@ const MainNavigator: React.FC = () => {
           headerShown: false,
         }}
       >
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
+        <Stack.Screen 
+          name="MainTabs" 
+          component={TabNavigator} 
+        />
+        <Stack.Screen 
+          name="AddTransaction" 
+          component={AddTransactionScreen}
+          options={{
+            presentation: 'modal', // Modal olarak aç
+          }}
+        />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
         <Stack.Screen name="GoldAccountDetail" component={GoldAccountDetailScreen} />
         <Stack.Screen 
