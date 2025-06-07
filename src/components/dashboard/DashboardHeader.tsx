@@ -3,14 +3,13 @@
  * 
  * Bu bileşen ana sayfanın üst kısmında yer alan kullanıcı karşılama mesajı,
  * toplam bakiye ve bakiye gizleme/gösterme özelliğini içerir.
+ * Minimal dark theme tasarımla güncellenmiştir.
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BaseText } from '../ui/BaseComponents';
 import { formatCurrency } from '../../utils/formatters';
-import { COLORS, SPACING, TYPOGRAPHY } from '../../constants/ui';
 
 interface DashboardHeaderProps {
   /** Kullanıcının görünen adı */
@@ -64,35 +63,35 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   /**
    * Bakiye rengini belirler (pozitif/negatif duruma göre)
    */
-  const getBalanceColor = (): keyof typeof COLORS => {
+  const getBalanceColor = (): string => {
     if (!balanceVisible) {
-      return 'TEXT_PRIMARY';
+      return '#FFFFFF';
     }
     
-    return totalBalance >= 0 ? 'SUCCESS' : 'ERROR';
+    return totalBalance >= 0 ? '#4CAF50' : '#F44336';
   };
 
   return (
     <View style={styles.container}>
       {/* Kullanıcı Karşılama */}
       <View style={styles.greetingSection}>
-        <BaseText variant="subtitle" color="TEXT_SECONDARY">
+        <Text style={styles.greetingText}>
           {getGreetingMessage()}
-        </BaseText>
+        </Text>
         
         {userName && (
-          <BaseText variant="title" weight="semiBold" style={styles.userName}>
+          <Text style={styles.userName}>
             {userName}
-          </BaseText>
+          </Text>
         )}
       </View>
 
       {/* Toplam Bakiye Kartı */}
       <View style={styles.balanceCard}>
         <View style={styles.balanceHeader}>
-          <BaseText variant="caption" color="TEXT_SECONDARY">
+          <Text style={styles.balanceLabel}>
             Toplam Bakiye
-          </BaseText>
+          </Text>
           
           <View style={styles.actionButtons}>
             {/* Yenile Butonu */}
@@ -104,12 +103,8 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               >
                 <Ionicons
                   name="refresh"
-                  size={18}
-                  color={COLORS.TEXT_SECONDARY}
-                  style={[
-                    styles.actionIcon,
-                    isRefreshing && styles.rotatingIcon
-                  ]}
+                  size={20}
+                  color="#666666"
                 />
               </TouchableOpacity>
             )}
@@ -121,33 +116,28 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             >
               <Ionicons
                 name={balanceVisible ? 'eye' : 'eye-off'}
-                size={18}
-                color={COLORS.TEXT_SECONDARY}
+                size={20}
+                color="#666666"
               />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Bakiye Tutarı */}
-        <BaseText
-          variant="headline"
-          weight="bold"
-          color={getBalanceColor()}
-          style={styles.balanceAmount}
-        >
+        <Text style={[styles.balanceAmount, { color: getBalanceColor() }]}>
           {getBalanceDisplay()}
-        </BaseText>
+        </Text>
 
         {/* Bakiye Durumu İndikatörü */}
         {balanceVisible && (
           <View style={styles.balanceIndicator}>
             <View style={[
               styles.indicatorDot,
-              { backgroundColor: COLORS[getBalanceColor()] }
+              { backgroundColor: getBalanceColor() }
             ]} />
-            <BaseText variant="caption" color="TEXT_SECONDARY">
+            <Text style={styles.indicatorText}>
               {totalBalance >= 0 ? 'Pozitif Bakiye' : 'Negatif Bakiye'}
-            </BaseText>
+            </Text>
           </View>
         )}
       </View>
@@ -156,68 +146,79 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 };
 
 /**
- * Stil Tanımları
+ * Stil Tanımları - Minimal Dark Theme
  */
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.SURFACE,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    backgroundColor: '#000000',
   },
 
   // Karşılama Bölümü
   greetingSection: {
-    marginBottom: SPACING.lg,
+    marginBottom: 32,
+  },
+  greetingText: {
+    fontSize: 16,
+    color: '#666666',
+    fontWeight: '500',
   },
   userName: {
-    marginTop: SPACING.xs,
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginTop: 4,
   },
 
   // Bakiye Kartı
   balanceCard: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111',
     borderRadius: 16,
-    padding: SPACING.lg,
+    padding: 24,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#333333',
   },
   balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 16,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: '#666666',
+    fontWeight: '500',
   },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   actionButton: {
-    padding: SPACING.xs,
-    marginLeft: SPACING.xs,
+    padding: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.SURFACE,
   },
-  actionIcon: {
-    // Yenile animasyonu için gerekli olabilir
-  },
-  rotatingIcon: {
-    // Döngü animasyonu burada tanımlanabilir
-    opacity: 0.6,
-  },
-
-  // Bakiye Gösterimi
   balanceAmount: {
-    marginBottom: SPACING.sm,
-    textAlign: 'left',
+    fontSize: 32,
+    fontWeight: '700',
+    marginBottom: 12,
   },
   balanceIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   indicatorDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: SPACING.xs,
   },
-}); 
+  indicatorText: {
+    fontSize: 14,
+    color: '#666666',
+    fontWeight: '500',
+  },
+});
+
+export default DashboardHeader; 

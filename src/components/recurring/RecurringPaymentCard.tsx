@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryIcon } from '../common/CategoryIcon';
-import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import { RecurringPayment } from '../../models/RecurringPayment';
 
 interface RecurringPaymentCardProps {
@@ -54,11 +53,11 @@ export const RecurringPaymentCard: React.FC<RecurringPaymentCardProps> = ({
   };
 
   const getStatusColor = (): string => {
-    if (!payment.isActive) return COLORS.TEXT_SECONDARY;
-    if (isOverdue()) return COLORS.ERROR;
+    if (!payment.isActive) return '#666666';
+    if (isOverdue()) return '#F44336';
     const daysUntil = getDaysUntilPayment();
-    if (daysUntil <= 3) return COLORS.WARNING;
-    return COLORS.SUCCESS;
+    if (daysUntil <= 3) return '#FF9800';
+    return '#4CAF50';
   };
 
   const getStatusText = (): string => {
@@ -117,7 +116,7 @@ export const RecurringPaymentCard: React.FC<RecurringPaymentCardProps> = ({
         <View style={styles.paymentInfo}>
           <CategoryIcon 
             iconName={payment.categoryIcon || 'card'} 
-            color={payment.isActive ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY} 
+            color={payment.isActive ? '#2196F3' : '#666666'} 
             size="medium"
           />
           <View style={styles.paymentText}>
@@ -143,7 +142,7 @@ export const RecurringPaymentCard: React.FC<RecurringPaymentCardProps> = ({
               <Ionicons 
                 name={payment.isActive ? "pause" : "play"} 
                 size={16} 
-                color={payment.isActive ? COLORS.WARNING : COLORS.SUCCESS} 
+                color={payment.isActive ? '#FF9800' : '#4CAF50'} 
               />
             </TouchableOpacity>
             {onEdit && (
@@ -152,7 +151,7 @@ export const RecurringPaymentCard: React.FC<RecurringPaymentCardProps> = ({
                 onPress={onEdit}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="pencil" size={16} color={COLORS.TEXT_SECONDARY} />
+                <Ionicons name="pencil" size={16} color="#666666" />
               </TouchableOpacity>
             )}
             {onDelete && (
@@ -161,7 +160,7 @@ export const RecurringPaymentCard: React.FC<RecurringPaymentCardProps> = ({
                 onPress={onDelete}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="trash" size={16} color={COLORS.ERROR} />
+                <Ionicons name="trash" size={16} color="#F44336" />
               </TouchableOpacity>
             )}
           </View>
@@ -198,63 +197,56 @@ export const RecurringPaymentCard: React.FC<RecurringPaymentCardProps> = ({
 
       {/* Description */}
       {payment.description && (
-        <Text style={styles.description}>{payment.description}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {payment.description}
+        </Text>
       )}
 
-      {/* Payment Actions */}
-      {payment.isActive && isOverdue() && (
-        <View style={styles.paymentActions}>
+      {/* Action Buttons */}
+      {showActions && payment.isActive && (
+        <View style={styles.actionButtons}>
           <TouchableOpacity 
-            style={[styles.paymentActionButton, styles.payButton]}
+            style={[styles.actionButton, styles.processButton]} 
             onPress={handleProcessPayment}
           >
-            <Text style={styles.payButtonText}>Öde</Text>
+            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+            <Text style={[styles.actionButtonText, { color: '#4CAF50' }]}>
+              Ödeme Yap
+            </Text>
           </TouchableOpacity>
+          
           <TouchableOpacity 
-            style={[styles.paymentActionButton, styles.skipButton]}
+            style={[styles.actionButton, styles.skipButton]} 
             onPress={handleSkipPayment}
           >
-            <Text style={styles.skipButtonText}>Atla</Text>
+            <Ionicons name="arrow-forward-circle" size={16} color="#FF9800" />
+            <Text style={[styles.actionButtonText, { color: '#FF9800' }]}>
+              Atla
+            </Text>
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Stats */}
-      <View style={styles.stats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Toplam Ödenen</Text>
-          <Text style={styles.statValue}>
-            {formatCurrency(payment.totalPaid)}
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Ödeme Sayısı</Text>
-          <Text style={styles.statValue}>
-            {payment.paymentCount}
-          </Text>
-        </View>
-      </View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111',
     borderRadius: 12,
-    padding: SPACING.md,
-    marginVertical: SPACING.xs,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#333333',
   },
   inactiveContainer: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   paymentInfo: {
     flexDirection: 'row',
@@ -262,128 +254,106 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   paymentText: {
-    marginLeft: SPACING.sm,
+    marginLeft: 12,
     flex: 1,
   },
   paymentName: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
-  },
-  inactiveText: {
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
   frequencyText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: 2,
+    fontSize: 14,
+    color: '#666666',
+  },
+  inactiveText: {
+    color: '#666666',
   },
   actions: {
     flexDirection: 'row',
-    gap: SPACING.xs,
-  },
-  actionButton: {
-    padding: SPACING.xs,
+    alignItems: 'center',
+    gap: 8,
   },
   statusButton: {
-    padding: SPACING.xs,
+    padding: 4,
+  },
+  actionButton: {
+    padding: 4,
   },
   amountSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   amount: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    gap: SPACING.xs,
+    gap: 4,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   statusText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
+    fontSize: 12,
+    fontWeight: '500',
   },
   dateSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   dateLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666',
+    marginRight: 8,
   },
   dateValue: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
+    color: '#FFFFFF',
   },
   description: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.sm,
-    fontStyle: 'italic',
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 16,
   },
-  paymentActions: {
+  actionButtons: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
+    gap: 12,
   },
-  paymentActionButton: {
+  processButton: {
     flex: 1,
-    paddingVertical: SPACING.sm,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  payButton: {
-    backgroundColor: COLORS.SUCCESS,
+    justifyContent: 'center',
+    backgroundColor: '#4CAF5010',
+    padding: 8,
+    borderRadius: 8,
+    gap: 4,
   },
   skipButton: {
-    backgroundColor: COLORS.SURFACE,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-  },
-  payButtonText: {
-    color: COLORS.WHITE,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-  },
-  skipButtonText: {
-    color: COLORS.TEXT_SECONDARY,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-  },
-  stats: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.BORDER,
-  },
-  statItem: {
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF980010',
+    padding: 8,
+    borderRadius: 8,
+    gap: 4,
   },
-  statLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.xs,
-  },
-  statValue: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 

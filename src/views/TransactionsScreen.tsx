@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Modal,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -182,7 +183,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
 
     return (
       <TouchableOpacity style={styles.transactionItem} onPress={() => handleTransactionPress(item)}>
-        <Card style={styles.transactionCard}>
+        <View style={styles.transactionCard}>
           <View style={styles.transactionContent}>
             <View style={styles.transactionLeft}>
               <CategoryIcon
@@ -199,13 +200,13 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
             <View style={styles.transactionRight}>
               <Text style={[
                 styles.transactionAmount,
-                { color: isIncome ? COLORS.SUCCESS : COLORS.ERROR }
+                { color: isIncome ? '#4CAF50' : '#F44336' }
               ]}>
                 {isIncome ? '+' : '-'}{formatCurrency(item.amount)}
               </Text>
             </View>
           </View>
-        </Card>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -216,7 +217,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
         style={styles.monthButton}
         onPress={() => viewModel?.goToPreviousMonth()}
       >
-        <Ionicons name="chevron-back" size={20} color={COLORS.PRIMARY} />
+        <Ionicons name="chevron-back" size={20} color="#2196F3" />
       </TouchableOpacity>
       
       <Text style={styles.monthText}>{formatMonth(viewModel?.currentMonth || new Date())}</Text>
@@ -228,7 +229,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
         <Ionicons 
           name="chevron-forward" 
           size={20} 
-          color={COLORS.PRIMARY}
+          color="#2196F3"
         />
       </TouchableOpacity>
     </View>
@@ -239,7 +240,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
       <Text style={styles.sectionTitle}>{dayGroup.displayDate}</Text>
       <Text style={[
         styles.sectionAmount,
-        { color: dayGroup.netAmount >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
+        { color: dayGroup.netAmount >= 0 ? '#4CAF50' : '#F44336' }
       ]}>
         {dayGroup.netAmount >= 0 ? '+' : ''}{formatCurrency(Math.abs(dayGroup.netAmount))}
       </Text>
@@ -261,9 +262,10 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
         onRequestClose={closeModal}
       >
         <SafeAreaView style={styles.modalContainer}>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={closeModal}>
-              <Ionicons name="close" size={24} color={COLORS.TEXT_PRIMARY} />
+              <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
               {editMode ? 'İşlemi Düzenle' : 'İşlem Detayı'}
@@ -272,7 +274,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
               <Ionicons 
                 name={editMode ? "save" : "create"} 
                 size={24} 
-                color={COLORS.PRIMARY} 
+                color="#2196F3" 
               />
             </TouchableOpacity>
           </View>
@@ -282,12 +284,12 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
             <View style={styles.typeBadgeContainer}>
               <View style={[
                 styles.typeBadge,
-                { backgroundColor: isIncome ? COLORS.SUCCESS : COLORS.ERROR }
+                { backgroundColor: isIncome ? '#4CAF50' : '#F44336' }
               ]}>
                 <Ionicons 
                   name={isIncome ? "add-circle" : "remove-circle"} 
                   size={20} 
-                  color={COLORS.WHITE} 
+                  color="#FFFFFF" 
                 />
                 <Text style={styles.typeBadgeText}>
                   {isIncome ? 'Gelir' : 'Gider'}
@@ -307,7 +309,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                   variant="outlined"
                 />
               ) : (
-                <Text style={[styles.amountDisplay, { color: isIncome ? COLORS.SUCCESS : COLORS.ERROR }]}>
+                <Text style={[styles.amountDisplay, { color: isIncome ? '#4CAF50' : '#F44336' }]}>
                   {isIncome ? '+' : '-'}{formatCurrency(selectedTransaction.amount)}
                 </Text>
               )}
@@ -335,7 +337,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                 <View style={styles.categoryScrollContainer}>
                   {/* Sol Scroll Indicator */}
                   <View style={styles.scrollIndicatorLeft}>
-                    <Ionicons name="chevron-back" size={16} color={COLORS.TEXT_TERTIARY} />
+                    <Ionicons name="chevron-back" size={16} color="#666666" />
                   </View>
                   
                   <ScrollView 
@@ -355,7 +357,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                         >
                           <CategoryIcon
                             iconName={cat.icon}
-                            color={editForm.category === cat.name ? COLORS.PRIMARY : cat.color}
+                            color={editForm.category === cat.name ? '#2196F3' : cat.color}
                             size="small"
                           />
                           <Text style={[
@@ -371,7 +373,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                   
                   {/* Sağ Scroll Indicator */}
                   <View style={styles.scrollIndicatorRight}>
-                    <Ionicons name="chevron-forward" size={16} color={COLORS.TEXT_TERTIARY} />
+                    <Ionicons name="chevron-forward" size={16} color="#666666" />
                   </View>
                 </View>
               ) : (
@@ -420,7 +422,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                   variant="outline"
                   size="medium"
                   style={styles.actionButton}
-                  textStyle={{ color: COLORS.ERROR }}
+                  textStyle={{ color: '#F44336' }}
                 />
                 <Button
                   title="Düzenle"
@@ -440,42 +442,51 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   // Show loading if ViewModel not ready
   if (!viewModel) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
-          <Text style={styles.loadingText}>Yükleniyor...</Text>
-        </View>
-      </SafeAreaView>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Yükleniyor...</Text>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
   // Show loading indicator for data loading
   if (viewModel.isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
-          <Text style={styles.loadingText}>İşlemler yükleniyor...</Text>
-        </View>
-      </SafeAreaView>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>İşlemler yükleniyor...</Text>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
   // Show error message
   if (viewModel?.error) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle" size={48} color={COLORS.ERROR} />
-          <Text style={styles.errorText}>{viewModel.error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={() => viewModel?.loadTransactions()}
-          >
-            <Text style={styles.retryButtonText}>Tekrar Dene</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={48} color="#F44336" />
+            <Text style={styles.errorText}>{viewModel.error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => viewModel?.loadTransactions()}
+            >
+              <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
@@ -499,7 +510,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
             <View style={styles.filterScrollContainer}>
               {/* Sol Scroll Indicator */}
               <View style={styles.filterScrollIndicatorLeft}>
-                <Ionicons name="chevron-back" size={14} color={COLORS.TEXT_TERTIARY} />
+                <Ionicons name="chevron-back" size={14} color="#666666" />
               </View>
               
               <ScrollView 
@@ -527,23 +538,23 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
               
               {/* Sağ Scroll Indicator */}
               <View style={styles.filterScrollIndicatorRight}>
-                <Ionicons name="chevron-forward" size={14} color={COLORS.TEXT_TERTIARY} />
+                <Ionicons name="chevron-forward" size={14} color="#666666" />
               </View>
             </View>
           </View>
 
           {/* Monthly Stats */}
-          <Card style={styles.statsCard}>
+          <View style={styles.statsCard}>
             <View style={styles.statsContent}>
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Toplam Gelir</Text>
-                <Text style={[styles.statValue, { color: COLORS.SUCCESS }]}>
+                <Text style={[styles.statValue, { color: '#4CAF50' }]}>
                   {formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
                 </Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Toplam Gider</Text>
-                <Text style={[styles.statValue, { color: COLORS.ERROR }]}>
+                <Text style={[styles.statValue, { color: '#F44336' }]}>
                   {formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
                 </Text>
               </View>
@@ -551,19 +562,19 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                 <Text style={styles.statLabel}>Net Tutar</Text>
                 <Text style={[
                   styles.statValue,
-                  { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
+                  { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#4CAF50' : '#F44336' }
                 ]}>
                   {formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
                 </Text>
               </View>
             </View>
-          </Card>
+          </View>
 
           {/* Transactions List */}
           <View style={styles.listContainer}>
             {(viewModel?.dayGroups.length || 0) === 0 ? (
               <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={64} color={COLORS.TEXT_TERTIARY} />
+                <Ionicons name="receipt-outline" size={64} color="#666666" />
                 <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
                 <Text style={styles.emptyStateText}>
                   Bu ay için henüz bir işlem kaydı bulunmuyor.
@@ -591,199 +602,209 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
 
   // Mobile layout
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>İşlemler</Text>
-      </View>
-
-      {/* Month Selector */}
-      <MonthSelector />
-
-      {/* Search and Filters */}
-      <View style={styles.searchSection}>
-        <Input
-          placeholder="İşlem ara..."
-          value={viewModel?.searchTerm || ''}
-          onChangeText={(term) => viewModel?.setSearchTerm(term)}
-          leftIcon="search"
-        />
-        
-        <View style={styles.filterScrollContainer}>
-          {/* Sol Scroll Indicator */}
-          <View style={styles.filterScrollIndicatorLeft}>
-            <Ionicons name="chevron-back" size={14} color={COLORS.TEXT_TERTIARY} />
-          </View>
-          
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScrollView}
-            contentContainerStyle={styles.filterContainer}
-          >
-            <FilterButton
-              title="Tümü"
-              isActive={!viewModel?.filters.type}
-              onPress={() => viewModel?.setFilters({ type: undefined })}
-            />
-            <FilterButton
-              title="Gelir"
-              isActive={viewModel?.filters.type === TransactionType.INCOME}
-              onPress={() => viewModel?.setFilters({ type: TransactionType.INCOME })}
-            />
-            <FilterButton
-              title="Gider"
-              isActive={viewModel?.filters.type === TransactionType.EXPENSE}
-              onPress={() => viewModel?.setFilters({ type: TransactionType.EXPENSE })}
-            />
-          </ScrollView>
-          
-          {/* Sağ Scroll Indicator */}
-          <View style={styles.filterScrollIndicatorRight}>
-            <Ionicons name="chevron-forward" size={14} color={COLORS.TEXT_TERTIARY} />
-          </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>İşlemler</Text>
         </View>
-      </View>
 
-      {/* Monthly Stats */}
-      <Card style={styles.statsCard}>
-        <View style={styles.statsContent}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Toplam Gelir</Text>
-            <Text style={[styles.statValue, { color: COLORS.SUCCESS }]}>
-              +{formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Toplam Gider</Text>
-            <Text style={[styles.statValue, { color: COLORS.ERROR }]}>
-              -{formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Net Miktar</Text>
-            <Text style={[
-              styles.statValue,
-              { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
-            ]}>
-              {(viewModel?.monthlyStats.netAmount || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
-            </Text>
-          </View>
-        </View>
-      </Card>
+        {/* Month Selector */}
+        <MonthSelector />
 
-      {/* Transactions List */}
-      <View style={styles.listContainer}>
-        {(viewModel?.dayGroups.length || 0) === 0 ? (
-          <ScrollView
-            style={styles.scrollView}
-            refreshControl={
-              <RefreshControl
-                refreshing={viewModel?.isLoading || false}
-                onRefresh={() => viewModel?.loadTransactions()}
-                colors={[COLORS.PRIMARY]}
-                tintColor={COLORS.PRIMARY}
+        {/* Search and Filters */}
+        <View style={styles.searchSection}>
+          <Input
+            placeholder="İşlem ara..."
+            value={viewModel?.searchTerm || ''}
+            onChangeText={(term) => viewModel?.setSearchTerm(term)}
+            leftIcon="search"
+          />
+          
+          <View style={styles.filterScrollContainer}>
+            {/* Sol Scroll Indicator */}
+            <View style={styles.filterScrollIndicatorLeft}>
+              <Ionicons name="chevron-back" size={14} color="#666666" />
+            </View>
+            
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScrollView}
+              contentContainerStyle={styles.filterContainer}
+            >
+              <FilterButton
+                title="Tümü"
+                isActive={!viewModel?.filters.type}
+                onPress={() => viewModel?.setFilters({ type: undefined })}
               />
-            }
-          >
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={64} color={COLORS.TEXT_TERTIARY} />
-              <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
-              <Text style={styles.emptyStateText}>
-                Bu ay için henüz bir işlem kaydı bulunmuyor.
+              <FilterButton
+                title="Gelir"
+                isActive={viewModel?.filters.type === TransactionType.INCOME}
+                onPress={() => viewModel?.setFilters({ type: TransactionType.INCOME })}
+              />
+              <FilterButton
+                title="Gider"
+                isActive={viewModel?.filters.type === TransactionType.EXPENSE}
+                onPress={() => viewModel?.setFilters({ type: TransactionType.EXPENSE })}
+              />
+            </ScrollView>
+            
+            {/* Sağ Scroll Indicator */}
+            <View style={styles.filterScrollIndicatorRight}>
+              <Ionicons name="chevron-forward" size={14} color="#666666" />
+            </View>
+          </View>
+        </View>
+
+        {/* Monthly Stats */}
+        <View style={styles.statsCard}>
+          <View style={styles.statsContent}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Toplam Gelir</Text>
+              <Text style={[styles.statValue, { color: '#4CAF50' }]}>
+                +{formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
               </Text>
             </View>
-          </ScrollView>
-        ) : (
-          <ScrollView 
-            style={styles.scrollView}
-            refreshControl={
-              <RefreshControl
-                refreshing={viewModel?.isLoading || false}
-                onRefresh={() => viewModel?.loadTransactions()}
-                colors={[COLORS.PRIMARY]}
-                tintColor={COLORS.PRIMARY}
-              />
-            }
-          >
-            {viewModel?.dayGroups.map((dayGroup) => (
-              <View key={dayGroup.date}>
-                <DayGroupHeader dayGroup={dayGroup} />
-                {dayGroup.transactions.map((transaction) => (
-                  <TransactionItem key={transaction.id} item={transaction} />
-                ))}
-              </View>
-            ))}
-          </ScrollView>
-        )}
-      </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Toplam Gider</Text>
+              <Text style={[styles.statValue, { color: '#F44336' }]}>
+                -{formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Net Miktar</Text>
+              <Text style={[
+                styles.statValue,
+                { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#4CAF50' : '#F44336' }
+              ]}>
+                {(viewModel?.monthlyStats.netAmount || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-      <TransactionModal />
-    </SafeAreaView>
+        {/* Transactions List */}
+        <View style={styles.listContainer}>
+          {(viewModel?.dayGroups.length || 0) === 0 ? (
+            <ScrollView
+              style={styles.scrollView}
+              refreshControl={
+                <RefreshControl
+                  refreshing={viewModel?.isLoading || false}
+                  onRefresh={() => viewModel?.loadTransactions()}
+                  colors={['#FFFFFF']}
+                  tintColor="#FFFFFF"
+                />
+              }
+            >
+              <View style={styles.emptyState}>
+                <Ionicons name="receipt-outline" size={64} color="#666666" />
+                <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
+                <Text style={styles.emptyStateText}>
+                  Bu ay için henüz bir işlem kaydı bulunmuyor.
+                </Text>
+              </View>
+            </ScrollView>
+          ) : (
+            <ScrollView 
+              style={styles.scrollView}
+              refreshControl={
+                <RefreshControl
+                  refreshing={viewModel?.isLoading || false}
+                  onRefresh={() => viewModel?.loadTransactions()}
+                  colors={['#FFFFFF']}
+                  tintColor="#FFFFFF"
+                />
+              }
+            >
+              {viewModel?.dayGroups.map((dayGroup) => (
+                <View key={dayGroup.date}>
+                  <DayGroupHeader dayGroup={dayGroup} />
+                  {dayGroup.transactions.map((transaction) => (
+                    <TransactionItem key={transaction.id} item={transaction} />
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <TransactionModal />
+      </SafeAreaView>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   header: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   headerTitle: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.lg : TYPOGRAPHY.sizes.xl,
+    fontSize: isSmallDevice ? 18 : 20,
     fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
   },
   searchSection: {
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
   searchInput: {
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   filterScrollView: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   filterContainer: {
-    paddingRight: SPACING.md,
+    paddingRight: 16,
   },
   filterButton: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginRight: SPACING.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
     borderRadius: 20,
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111', // Dark button background
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   filterButtonActive: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: '#2196F3', // Blue active state
+    borderColor: '#2196F3',
   },
   filterButtonText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray inactive text
     fontWeight: '500',
   },
   filterButtonTextActive: {
-    color: COLORS.WHITE,
+    color: '#FFFFFF', // White active text
   },
   transactionsList: {
     flex: 1,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 24,
   },
   transactionItem: {
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   transactionCard: {
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
     padding: 0,
   },
   transactionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
   },
   transactionLeft: {
     flexDirection: 'row',
@@ -791,69 +812,71 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionInfo: {
-    marginLeft: SPACING.sm,
+    marginLeft: 12,
     flex: 1,
   },
   transactionDescription: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.sm : TYPOGRAPHY.sizes.md,
+    fontSize: isSmallDevice ? 14 : 16,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
     marginBottom: 2,
   },
   transactionCategory: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray secondary text
     marginBottom: 2,
   },
   transactionDate: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_TERTIARY,
+    fontSize: 12,
+    color: '#666666', // Gray tertiary text
   },
   transactionRight: {
     alignItems: 'flex-end',
   },
   transactionAmount: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.md : TYPOGRAPHY.sizes.lg,
+    fontSize: isSmallDevice ? 16 : 18,
     fontWeight: '700',
   },
   emptyStateCard: {
-    marginTop: SPACING.xl,
+    marginTop: 32,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: SPACING.xl,
+    paddingVertical: 32,
   },
   emptyStateText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
-    marginTop: SPACING.sm,
+    marginTop: 12,
   },
   emptyStateSubtext: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: SPACING.xs,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginTop: 4,
   },
   monthSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.SURFACE,
-    marginHorizontal: SPACING.md,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#111111', // Dark background
+    marginHorizontal: 24,
     borderRadius: 12,
-    marginBottom: SPACING.md,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   monthButton: {
-    padding: SPACING.sm,
+    padding: 8,
     borderRadius: 8,
   },
   monthText: {
-    fontSize: TYPOGRAPHY.sizes.lg,
+    fontSize: 18,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginHorizontal: SPACING.lg,
+    color: '#FFFFFF', // White text
+    marginHorizontal: 24,
     flex: 1,
     textAlign: 'center',
   },
@@ -861,17 +884,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
+    backgroundColor: '#000000', // Black background
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
   },
   sectionAmount: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '500',
-    color: COLORS.TEXT_PRIMARY,
   },
   loadingContainer: {
     flex: 1,
@@ -879,9 +902,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
-    marginTop: SPACING.sm,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
+    marginTop: 12,
   },
   errorContainer: {
     flex: 1,
@@ -889,41 +912,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.ERROR,
-    marginTop: SPACING.sm,
+    fontSize: 16,
+    color: '#F44336', // Red error text
+    marginTop: 12,
   },
   retryButton: {
-    padding: SPACING.md,
+    padding: 16,
     borderRadius: 8,
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: '#2196F3', // Blue button
+    marginTop: 16,
   },
   retryButtonText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.WHITE,
+    fontSize: 14,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
   },
   statsCard: {
-    marginBottom: SPACING.md,
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+    marginBottom: 16,
+    marginHorizontal: 24,
   },
   statsContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: SPACING.md,
+    padding: 16,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
   },
   statLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray text
     fontWeight: '500',
-    marginBottom: SPACING.xs,
+    marginBottom: 4,
     textAlign: 'center',
   },
   statValue: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.sm : TYPOGRAPHY.sizes.md,
+    fontSize: isSmallDevice ? 14 : 16,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -934,66 +963,66 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   emptyStateTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 18,
+    color: '#FFFFFF', // White text
     fontWeight: '700',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.md,
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333', // Dark border
   },
   modalTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
+    fontSize: 18,
     fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
     textAlign: 'center',
   },
   modalContent: {
     flex: 1,
-    padding: SPACING.md,
+    padding: 16,
   },
   typeBadgeContainer: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   typeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
   },
   typeBadgeText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.sm,
+    color: '#FFFFFF', // White text
+    marginLeft: 8,
   },
   modalSection: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   modalSectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
+    color: '#FFFFFF', // White text
+    marginBottom: 8,
   },
   amountDisplay: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.md : TYPOGRAPHY.sizes.lg,
+    fontSize: isSmallDevice ? 16 : 18,
     fontWeight: '700',
   },
   descriptionDisplay: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
   },
   categorySelector: {
@@ -1001,65 +1030,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryOption: {
-    padding: SPACING.sm,
+    padding: 8,
     borderRadius: 8,
-    marginRight: SPACING.sm,
+    marginRight: 8,
+    backgroundColor: '#111111', // Dark background
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   categoryOptionActive: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: '#2196F3', // Blue active state
+    borderColor: '#2196F3',
   },
   categoryOptionText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
   },
   categoryOptionTextActive: {
-    color: COLORS.WHITE,
+    color: '#FFFFFF', // White active text
   },
   categoryDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   categoryDisplayText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
-    marginLeft: SPACING.sm,
+    marginLeft: 12,
   },
   dateDisplay: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
   },
   modalActions: {
-    padding: SPACING.md,
+    padding: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.BORDER,
+    borderTopColor: '#333333', // Dark border
   },
   editActions: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    gap: 16,
   },
   viewActions: {
     flexDirection: 'row',
-    gap: SPACING.md,
+    gap: 16,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: SPACING.xs,
+    marginHorizontal: 4,
   },
   deleteButton: {
-    borderColor: COLORS.ERROR,
+    borderColor: '#F44336', // Red border
   },
   categoryScrollContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   scrollIndicatorLeft: {
-    padding: SPACING.sm,
+    padding: 8,
   },
   scrollIndicatorRight: {
-    padding: SPACING.sm,
+    padding: 8,
   },
   categoryScrollView: {
     flex: 1,
@@ -1069,14 +1102,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterScrollIndicatorLeft: {
-    padding: SPACING.sm,
+    padding: 8,
   },
   filterScrollIndicatorRight: {
-    padding: SPACING.sm,
+    padding: 8,
   },
   webContent: {
     flex: 1,
-    padding: SPACING.md,
+    padding: 16,
+    backgroundColor: '#000000', // Black background for web
   },
 });
 

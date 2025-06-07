@@ -3,13 +3,12 @@
  * 
  * Bu bileşen ana sayfada kullanıcının sık kullandığı eylemlere
  * hızlı erişim sağlayan butonları içerir.
+ * Minimal dark theme tasarımla güncellenmiştir.
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BaseText } from '../ui/BaseComponents';
-import { COLORS, SPACING, LAYOUT, BORDER_RADIUS } from '../../constants/ui';
 
 /**
  * Tek bir hızlı eylem butonu için tip tanımı
@@ -20,7 +19,7 @@ interface QuickAction {
   /** Buton başlığı */
   title: string;
   /** Buton rengi (isteğe bağlı) */
-  color?: keyof typeof COLORS;
+  color?: string;
   /** Tıklama fonksiyonu */
   onPress: () => void;
   /** Buton devre dışı mı? */
@@ -42,7 +41,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
    * Tek bir hızlı eylem butonu render eder
    */
   const renderActionButton = (action: QuickAction, index: number) => {
-    const buttonColor = action.color ? COLORS[action.color] : COLORS.PRIMARY;
+    const buttonColor = action.color || '#2196F3';
     
     return (
       <TouchableOpacity
@@ -63,22 +62,18 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
         ]}>
           <Ionicons
             name={action.icon as any}
-            size={LAYOUT.iconSize.lg}
-            color={COLORS.WHITE}
+            size={24}
+            color="#FFFFFF"
           />
         </View>
         
         {/* Buton Başlığı */}
-        <BaseText
-          variant="caption"
-          weight="medium"
-          color={action.disabled ? 'TEXT_DISABLED' : 'TEXT_PRIMARY'}
-          align="center"
-          numberOfLines={2}
-          style={styles.actionTitle}
-        >
+        <Text style={[
+          styles.actionTitle,
+          action.disabled && styles.actionTitleDisabled
+        ]}>
           {action.title}
-        </BaseText>
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -90,13 +85,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
   return (
     <View style={styles.container}>
       {/* Bölüm Başlığı */}
-      <BaseText
-        variant="subtitle"
-        weight="semiBold"
-        style={styles.sectionTitle}
-      >
+      <Text style={styles.sectionTitle}>
         Hızlı İşlemler
-      </BaseText>
+      </Text>
       
       {/* Horizontal ScrollView ile Eylem Butonları */}
       <ScrollView
@@ -126,33 +117,33 @@ export const createCommonQuickActions = (
 ): QuickAction[] => {
   const commonActions: QuickAction[] = [
     {
-      icon: 'add-circle',
-      title: 'Gelir Ekle',
-      color: 'SUCCESS',
-      onPress: onAddIncome,
-    },
-    {
       icon: 'remove-circle',
       title: 'Gider Ekle',
-      color: 'ERROR',
+      color: '#F44336',
       onPress: onAddExpense,
+    },
+    {
+      icon: 'add-circle',
+      title: 'Gelir Ekle',
+      color: '#4CAF50',
+      onPress: onAddIncome,
     },
     {
       icon: 'wallet',
       title: 'Yeni Hesap',
-      color: 'PRIMARY',
+      color: '#2196F3',
       onPress: onAddAccount,
     },
     {
       icon: 'bar-chart',
       title: 'Raporlar',
-      color: 'INFO',
+      color: '#9C27B0',
       onPress: onViewReports,
     },
     {
       icon: 'list',
       title: 'İşlemler',
-      color: 'SECONDARY',
+      color: '#FF9800',
       onPress: onViewTransactions,
     },
   ];
@@ -162,7 +153,7 @@ export const createCommonQuickActions = (
     commonActions.push({
       icon: 'analytics',
       title: 'Analizler',
-      color: 'WARNING',
+      color: '#FFC107',
       onPress: onViewAnalytics,
     });
   }
@@ -172,7 +163,7 @@ export const createCommonQuickActions = (
     commonActions.push({
       icon: 'calculator',
       title: 'Bakiye Hesapla',
-      color: 'WARNING',
+      color: '#607D8B',
       onPress: onRecalculateBalances,
     });
   }
@@ -181,19 +172,21 @@ export const createCommonQuickActions = (
 };
 
 /**
- * Stil Tanımları
+ * Stil Tanımları - Minimal Dark Theme
  */
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.SURFACE,
+    paddingVertical: 24,
+    backgroundColor: '#000000',
   },
 
   // Bölüm Başlığı
   sectionTitle: {
-    marginBottom: SPACING.md,
-    color: COLORS.TEXT_PRIMARY,
-    paddingHorizontal: SPACING.md,
+    marginBottom: 16,
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+    paddingHorizontal: 24,
   },
 
   // Horizontal ScrollView
@@ -201,16 +194,14 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   actionsContainer: {
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.md,
+    paddingHorizontal: 24,
+    gap: 16,
   },
 
-  // Eylem Butonu
+  // Eylem Butonu - Border ve background kaldırıldı
   actionButton: {
     alignItems: 'center',
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.SURFACE,
+    padding: 12,
     minHeight: 100,
     justifyContent: 'center',
     width: 80, // Sabit genişlik horizontal layout için
@@ -219,22 +210,29 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  // İkon Konteyner
+  // İkon Konteyner - Sadece renkli ikon
   actionIconContainer: {
-    width: LAYOUT.iconSize.xl,
-    height: LAYOUT.iconSize.xl,
-    borderRadius: LAYOUT.iconSize.xl / 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   actionIconDisabled: {
-    backgroundColor: COLORS.TEXT_DISABLED,
+    backgroundColor: '#666666',
   },
 
   // Eylem Başlığı
   actionTitle: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    textAlign: 'center',
     lineHeight: 16,
     minHeight: 32, // İki satır için minimum yükseklik
+  },
+  actionTitleDisabled: {
+    color: '#666666',
   },
 }); 

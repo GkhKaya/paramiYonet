@@ -2,13 +2,12 @@
  * RecentTransactions - Son İşlemler Bileşeni
  * 
  * Dashboard'da son 3 işlemi gösteren bileşen.
+ * Minimal dark theme tasarımla güncellenmiştir.
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BaseText } from '../ui/BaseComponents';
-import { COLORS, SPACING, LAYOUT, BORDER_RADIUS, TYPOGRAPHY } from '../../constants/ui';
 import { Transaction, TransactionType } from '../../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../../models/Category';
 
@@ -71,7 +70,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   const renderTransactionItem = (transaction: Transaction, index: number) => {
     const isIncome = transaction.type === TransactionType.INCOME;
     const category = getCategoryDetails(transaction.category, transaction.type);
-    const amountColor = isIncome ? COLORS.SUCCESS : COLORS.ERROR;
+    const amountColor = isIncome ? '#4CAF50' : '#F44336';
 
     return (
       <View key={transaction.id} style={styles.transactionItem}>
@@ -82,37 +81,25 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
         ]}>
           <Ionicons
             name={transaction.categoryIcon as any}
-            size={LAYOUT.iconSize.md}
-            color={COLORS.WHITE}
+            size={24}
+            color="#FFFFFF"
           />
         </View>
 
         {/* İşlem Bilgileri */}
         <View style={styles.transactionInfo}>
-          <BaseText
-            variant="body"
-            weight="medium"
-            color="TEXT_PRIMARY"
-            numberOfLines={1}
-          >
+          <Text style={styles.transactionDescription} numberOfLines={1}>
             {transaction.description}
-          </BaseText>
-          <BaseText
-            variant="caption"
-            color="TEXT_SECONDARY"
-          >
+          </Text>
+          <Text style={styles.transactionCategory}>
             {transaction.category} • {formatDate(transaction.date)}
-          </BaseText>
+          </Text>
         </View>
 
         {/* Tutar */}
-        <BaseText
-          variant="body"
-          weight="semiBold"
-          style={{ color: amountColor, textAlign: 'right' }}
-        >
+        <Text style={[styles.transactionAmount, { color: amountColor }]}>
           {formatAmount(transaction.amount, transaction.type)}
-        </BaseText>
+        </Text>
       </View>
     );
   };
@@ -120,17 +107,13 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   if (loading) {
     return (
       <View style={styles.container}>
-        <BaseText
-          variant="subtitle"
-          weight="semiBold"
-          style={styles.sectionTitle}
-        >
+        <Text style={styles.sectionTitle}>
           Son İşlemler
-        </BaseText>
+        </Text>
         <View style={styles.loadingContainer}>
-          <BaseText variant="body" color="TEXT_SECONDARY">
+          <Text style={styles.loadingText}>
             Yükleniyor...
-          </BaseText>
+          </Text>
         </View>
       </View>
     );
@@ -139,17 +122,13 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   if (transactions.length === 0) {
     return (
       <View style={styles.container}>
-        <BaseText
-          variant="subtitle"
-          weight="semiBold"
-          style={styles.sectionTitle}
-        >
+        <Text style={styles.sectionTitle}>
           Son İşlemler
-        </BaseText>
+        </Text>
         <View style={styles.emptyContainer}>
-          <BaseText variant="body" color="TEXT_SECONDARY" align="center">
+          <Text style={styles.emptyText}>
             Henüz işlem bulunmuyor
-          </BaseText>
+          </Text>
         </View>
       </View>
     );
@@ -159,29 +138,21 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
     <View style={styles.container}>
       {/* Başlık ve Tümünü Gör Butonu */}
       <View style={styles.header}>
-        <BaseText
-          variant="subtitle"
-          weight="semiBold"
-          style={styles.sectionTitle}
-        >
+        <Text style={styles.sectionTitle}>
           Son İşlemler
-        </BaseText>
+        </Text>
         <TouchableOpacity
           style={styles.viewAllButton}
           onPress={onViewAll}
           activeOpacity={0.7}
         >
-          <BaseText
-            variant="caption"
-            weight="medium"
-            color="PRIMARY"
-          >
+          <Text style={styles.viewAllText}>
             Tümünü Gör
-          </BaseText>
+          </Text>
           <Ionicons
             name="chevron-forward"
             size={16}
-            color={COLORS.PRIMARY}
+            color="#2196F3"
             style={styles.viewAllIcon}
           />
         </TouchableOpacity>
@@ -198,12 +169,12 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
 };
 
 /**
- * Stil Tanımları
+ * Stil Tanımları - Minimal Dark Theme
  */
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.SURFACE,
+    paddingVertical: 24,
+    backgroundColor: '#000000',
   },
 
   // Başlık
@@ -211,30 +182,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
   sectionTitle: {
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2196F3',
+  },
   viewAllIcon: {
-    marginLeft: SPACING.xs,
+    marginLeft: 4,
   },
 
   // İşlemler Listesi
   transactionsList: {
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 24,
   },
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER_LIGHT,
+    borderBottomColor: '#333333',
   },
 
   // İşlem İkonu
@@ -244,22 +222,46 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.sm,
+    marginRight: 12,
   },
 
   // İşlem Bilgileri
   transactionInfo: {
     flex: 1,
-    marginRight: SPACING.sm,
+    marginRight: 12,
+  },
+  transactionDescription: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  transactionCategory: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'right',
   },
 
   // Yükleniyor ve Boş Durum
   loadingContainer: {
-    paddingVertical: SPACING.xl,
+    paddingVertical: 32,
     alignItems: 'center',
   },
+  loadingText: {
+    fontSize: 16,
+    color: '#666666',
+  },
   emptyContainer: {
-    paddingVertical: SPACING.xl,
+    paddingVertical: 32,
     alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
   },
 }); 

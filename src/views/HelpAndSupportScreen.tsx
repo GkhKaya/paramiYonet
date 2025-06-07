@@ -9,11 +9,11 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { WebLayout } from '../components/layout/WebLayout';
-import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { isWeb } from '../utils/platform';
 
 interface HelpAndSupportScreenProps {
@@ -92,7 +92,7 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
       <View style={styles.faqItemContainer}>
         <TouchableOpacity onPress={onPress} style={styles.faqQuestionButton} activeOpacity={0.8}>
           <Text style={styles.faqQuestionText}>{item.question}</Text>
-          <Ionicons name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={COLORS.PRIMARY} />
+          <Ionicons name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color="#2196F3" />
         </TouchableOpacity>
         {expanded && (
           <View style={styles.faqAnswerContainer}>
@@ -108,21 +108,21 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
       <Text style={styles.devName}>{devInfo.name}</Text>
       <View style={styles.devLinksContainer}>
         <TouchableOpacity onPress={() => handleLinkPress(devInfo.linkedin)} style={styles.devLink}>
-          <Ionicons name="logo-linkedin" size={20} color={COLORS.PRIMARY} />
+          <Ionicons name="logo-linkedin" size={20} color="#2196F3" />
           <Text style={styles.devLinkText}>LinkedIn</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleLinkPress(devInfo.github)} style={styles.devLink}>
-          <Ionicons name="logo-github" size={20} color={COLORS.TEXT_SECONDARY} />
+          <Ionicons name="logo-github" size={20} color="#666666" />
           <Text style={styles.devLinkText}>GitHub</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.devLinksContainer}>
          <TouchableOpacity onPress={() => handleLinkPress(devInfo.website)} style={styles.devLink}>
-          <Ionicons name="globe-outline" size={20} color={COLORS.SUCCESS} />
+          <Ionicons name="globe-outline" size={20} color="#4CAF50" />
           <Text style={styles.devLinkText}>gkhkaya.info</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => handleLinkPress(devInfo.devosuit)} style={styles.devLink}>
-          <Ionicons name="cube-outline" size={20} color={COLORS.WARNING} />
+          <Ionicons name="cube-outline" size={20} color="#FF9800" />
           <Text style={styles.devLinkText}>Devosuit</Text>
         </TouchableOpacity>
       </View>
@@ -134,7 +134,7 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
       {!isWeb && (
          <View style={styles.mobileHeader}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.PRIMARY} />
+            <Ionicons name="arrow-back" size={24} color="#2196F3" />
           </TouchableOpacity>
           <Text style={styles.mobileHeaderTitle}>Yardım ve Destek</Text>
           <View style={styles.backButton} />{/* Placeholder for balance */}
@@ -164,7 +164,7 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
           style={styles.contactButton}
           onPress={() => handleLinkPress('mailto:' + contactEmail)}
         >
-          <Ionicons name="mail-outline" size={20} color={COLORS.PRIMARY} />
+          <Ionicons name="mail-outline" size={20} color="#2196F3" />
           <Text style={styles.contactEmailText}>{contactEmail}</Text>
         </TouchableOpacity>
       </View>
@@ -182,142 +182,147 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {renderContent()}
-    </SafeAreaView>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {renderContent()}
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   webContainer: {
     flex: 1,
-    padding: SPACING.md,
+    padding: 16,
   },
   scrollView: {
     flex: 1,
   },
   scrollContentContainer: {
-    paddingBottom: SPACING.xl,
+    paddingBottom: 32,
   },
   mobileHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333',
   },
   backButton: {
-    padding: SPACING.xs,
+    padding: 4,
     width: 40, // to balance the title
   },
   mobileHeaderTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
+    fontSize: 18,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
     textAlign: 'center',
   },
   sectionContainer: {
-    marginHorizontal: SPACING.lg,
-    marginTop: SPACING.lg,
-    padding: SPACING.md,
-    backgroundColor: COLORS.SURFACE,
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#111111', // Dark card background
     borderRadius: 12,
-    shadowColor: COLORS.TEXT_PRIMARY,
+    borderWidth: 1,
+    borderColor: '#333333',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.md,
-    paddingBottom: SPACING.sm,
+    color: '#FFFFFF', // White text
+    marginBottom: 16,
+    paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333',
   },
   devInfoContainer: {
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    paddingVertical: 8,
   },
   devName: {
-    fontSize: TYPOGRAPHY.sizes.lg,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.md,
+    color: '#FFFFFF', // White text
+    marginBottom: 16,
   },
   devLinksContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   devLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.sm,
+    padding: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.BACKGROUND, // Subtle background for the link
+    backgroundColor: '#1a1a1a', // Subtle dark background for the link
   },
   devLinkText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginLeft: SPACING.xs,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginLeft: 4,
     fontWeight: '500',
   },
   faqItemContainer: {
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#1a1a1a', // Dark background
     borderRadius: 8,
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
     overflow: 'hidden', // Important for LayoutAnimation
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#333333',
   },
   faqQuestionButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
   },
   faqQuestionText: {
-    fontSize: TYPOGRAPHY.sizes.sm + 1,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 15,
+    color: '#FFFFFF', // White text
     flex: 1,
-    marginRight: SPACING.sm,
+    marginRight: 8,
     fontWeight: '500',
   },
   faqAnswerContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.md,
-    paddingTop: SPACING.xs,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    paddingTop: 4,
   },
   faqAnswerText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     lineHeight: 20,
   },
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    backgroundColor: COLORS.BACKGROUND,
+    padding: 16,
+    backgroundColor: '#1a1a1a', // Dark background
     borderRadius: 8,
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#333333',
   },
   contactEmailText: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '500',
-    color: COLORS.PRIMARY,
-    marginLeft: SPACING.sm,
+    color: '#2196F3', // Blue accent
+    marginLeft: 8,
   },
 });
 

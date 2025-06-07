@@ -13,10 +13,10 @@ export default function App() {
       <SafeAreaProvider>
         <AuthProvider>
           <ViewModelProvider>
-            <NavigationContainer>
-              <AppNavigator />
-              <StatusBar style="auto" />
-            </NavigationContainer>
+          <NavigationContainer>
+            <AppNavigator />
+            <StatusBar style="auto" />
+          </NavigationContainer>
           </ViewModelProvider>
         </AuthProvider>
       </SafeAreaProvider>

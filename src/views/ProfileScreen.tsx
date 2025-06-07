@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -138,7 +139,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
     icon, 
     title, 
     value, 
-    color = COLORS.PRIMARY,
+    color = '#2196F3',
     isLoading = false 
   }: {
     icon: string;
@@ -147,7 +148,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
     color?: string;
     isLoading?: boolean;
   }) => (
-    <Card style={styles.statCard}>
+    <View style={styles.statCard}>
       <View style={[styles.statIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon as any} size={24} color={color} />
       </View>
@@ -157,13 +158,13 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
       ) : (
         <Text style={[styles.statValue, { color }]}>{value}</Text>
       )}
-    </Card>
+    </View>
   );
 
   const renderContent = () => (
     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
       {/* Profile Header */}
-      <Card style={styles.profileCard}>
+      <View style={styles.profileCard}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -185,10 +186,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.editButton}
             onPress={handleEditProfile}
           >
-            <Ionicons name="pencil" size={20} color={COLORS.PRIMARY} />
+            <Ionicons name="pencil" size={20} color="#2196F3" />
           </TouchableOpacity>
         </View>
-      </Card>
+      </View>
 
       {/* Statistics */}
       <View style={styles.section}>
@@ -205,46 +206,46 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             icon="trending-up"
             title="Toplam Gelir"
             value={formatCurrency(totalIncome)}
-            color={COLORS.SUCCESS}
+            color="#4CAF50"
             isLoading={loading}
           />
           <StatCard
             icon="trending-down"
             title="Toplam Gider"
             value={formatCurrency(totalExpense)}
-            color={COLORS.ERROR}
+            color="#F44336"
             isLoading={loading}
           />
           <StatCard
             icon="wallet"
             title="Hesap Sayısı"
             value={accountCount.toString()}
-            color={COLORS.WARNING}
+            color="#FF9800"
             isLoading={loading}
           />
         </View>
       </View>
 
       {/* Net Balance */}
-      <Card style={styles.balanceCard}>
+      <View style={styles.balanceCard}>
         <View style={styles.balanceHeader}>
           <Text style={styles.balanceTitle}>Net Bakiye</Text>
           <Ionicons 
             name="stats-chart" 
             size={24} 
-            color={totalIncome - totalExpense >= 0 ? COLORS.SUCCESS : COLORS.ERROR} 
+            color={totalIncome - totalExpense >= 0 ? '#4CAF50' : '#F44336'} 
           />
         </View>
         <Text style={[
           styles.balanceValue,
-          { color: totalIncome - totalExpense >= 0 ? COLORS.SUCCESS : COLORS.ERROR }
+          { color: totalIncome - totalExpense >= 0 ? '#4CAF50' : '#F44336' }
         ]}>
           {formatCurrency(totalIncome - totalExpense)}
         </Text>
         <Text style={styles.balanceSubtitle}>
           {totalIncome - totalExpense >= 0 ? 'Pozitif bakiye' : 'Negatif bakiye'}
         </Text>
-      </Card>
+      </View>
 
       {/* Quick Actions */}
       <View style={styles.section}>
@@ -254,8 +255,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.actionCard}
             onPress={() => navigation.navigate('AddTransaction', { defaultType: 'income' })}
           >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.SUCCESS + '20' }]}>
-              <Ionicons name="add-circle" size={24} color={COLORS.SUCCESS} />
+            <View style={[styles.actionIcon, { backgroundColor: '#4CAF5020' }]}>
+              <Ionicons name="add-circle" size={24} color="#4CAF50" />
             </View>
             <Text style={styles.actionTitle}>Gelir Ekle</Text>
             <Text style={styles.actionSubtitle}>Yeni gelir işlemi</Text>
@@ -265,8 +266,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.actionCard}
             onPress={() => navigation.navigate('AddTransaction', { defaultType: 'expense' })}
           >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.ERROR + '20' }]}>
-              <Ionicons name="remove-circle" size={24} color={COLORS.ERROR} />
+            <View style={[styles.actionIcon, { backgroundColor: '#F4433620' }]}>
+              <Ionicons name="remove-circle" size={24} color="#F44336" />
             </View>
             <Text style={styles.actionTitle}>Gider Ekle</Text>
             <Text style={styles.actionSubtitle}>Yeni gider işlemi</Text>
@@ -276,8 +277,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.actionCard}
             onPress={() => navigation.navigate('RecurringPayments')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.WARNING + '20' }]}>
-              <Ionicons name="calendar" size={24} color={COLORS.WARNING} />
+            <View style={[styles.actionIcon, { backgroundColor: '#FF980020' }]}>
+              <Ionicons name="calendar" size={24} color="#FF9800" />
             </View>
             <Text style={styles.actionTitle}>Düzenli Ödemeler</Text>
             <Text style={styles.actionSubtitle}>Abonelik ve faturalar</Text>
@@ -287,8 +288,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.actionCard}
             onPress={() => navigation.navigate('Analytics')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.PRIMARY + '20' }]}>
-              <Ionicons name="analytics" size={24} color={COLORS.PRIMARY} />
+            <View style={[styles.actionIcon, { backgroundColor: '#2196F320' }]}>
+              <Ionicons name="analytics" size={24} color="#2196F3" />
             </View>
             <Text style={styles.actionTitle}>Analizler</Text>
             <Text style={styles.actionSubtitle}>Detaylı raporlar</Text>
@@ -311,7 +312,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             onPress={() => setShowEditModal(false)}
             style={styles.modalCloseButton}
           >
-            <Ionicons name="close" size={24} color={COLORS.TEXT_PRIMARY} />
+            <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>Profil Düzenle</Text>
           <View style={styles.modalPlaceholder} />
@@ -338,7 +339,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
               variant="outlined"
               leftIcon="mail"
               editable={false}
-              inputStyle={{ color: COLORS.TEXT_SECONDARY }}
+              inputStyle={{ color: '#666666' }}
             />
             <Text style={styles.emailNote}>
               E-posta adresinizi değiştirmek için destek ile iletişime geçin.
@@ -370,29 +371,32 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
 
   // Mobile layout
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profil</Text>
-        <View style={styles.headerRight} />
-      </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profil</Text>
+          <View style={styles.headerRight} />
+        </View>
 
-      {renderContent()}
-      {renderEditModal()}
-    </SafeAreaView>
+        {renderContent()}
+        {renderEditModal()}
+      </SafeAreaView>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   scrollView: {
     flex: 1,
@@ -401,47 +405,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   headerTitle: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.lg : TYPOGRAPHY.sizes.xl,
+    fontSize: isSmallDevice ? 18 : 20,
     fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
     textAlign: 'center',
     flex: 1,
   },
   backButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   headerRight: {
     width: 40,
   },
   profileCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: SPACING.md,
+    marginRight: 16,
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: '#2196F3',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.WHITE,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF', // White text
   },
   onlineIndicator: {
     position: 'absolute',
@@ -450,51 +458,55 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: COLORS.SUCCESS,
+    backgroundColor: '#4CAF50',
     borderWidth: 2,
-    borderColor: COLORS.WHITE,
+    borderColor: '#FFFFFF',
   },
   profileInfo: {
     flex: 1,
   },
   displayName: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF', // White text
+    marginBottom: 4,
   },
   email: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.xs,
+    fontSize: 16,
+    color: '#666666', // Gray text
+    marginBottom: 4,
   },
   editButton: {
-    padding: SPACING.sm,
-    backgroundColor: COLORS.SURFACE,
+    padding: 12,
+    backgroundColor: '#1a1a1a', // Dark surface
     borderRadius: 8,
   },
   section: {
-    marginBottom: SPACING.lg,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
-    marginHorizontal: SPACING.md,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF', // White text
+    marginBottom: 12,
+    marginHorizontal: 24,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
+    paddingHorizontal: 24,
+    gap: 12,
     justifyContent: 'space-between',
   },
   statCard: {
     width: '48%',
     alignItems: 'center',
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   statIcon: {
     width: 48,
@@ -502,66 +514,64 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   statTitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.xs,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginBottom: 4,
     textAlign: 'center',
   },
   statValue: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
+    fontSize: 16,
+    fontWeight: '700',
     textAlign: 'center',
   },
   balanceCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
-    padding: SPACING.lg,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    padding: 24,
     alignItems: 'center',
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   balanceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   balanceTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
-    marginRight: SPACING.xs,
+    fontSize: 16,
+    color: '#666666', // Gray text
+    marginRight: 4,
   },
   balanceValue: {
-    fontSize: TYPOGRAPHY.sizes.xxl,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    marginBottom: SPACING.xs,
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   balanceSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
   },
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
+    paddingHorizontal: 24,
+    gap: 12,
     justifyContent: 'space-between',
   },
   actionCard: {
     width: '48%',
     alignItems: 'center',
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    backgroundColor: COLORS.SURFACE,
+    padding: 16,
+    marginBottom: 12,
+    backgroundColor: '#111111', // Dark card background
     borderRadius: 12,
-    shadowColor: COLORS.BLACK,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   actionIcon: {
     width: 40,
@@ -569,68 +579,68 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   actionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF', // White text
     marginBottom: 2,
     textAlign: 'center',
   },
   actionSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     textAlign: 'center',
   },
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Black background
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333',
   },
   modalCloseButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   modalTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF', // White text
   },
   modalPlaceholder: {
     width: 40,
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 16,
   },
   modalSection: {
-    marginVertical: SPACING.md,
+    marginVertical: 16,
   },
   modalSectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#FFFFFF', // White text
+    marginBottom: 12,
   },
   emailNote: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: SPACING.xs,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginTop: 4,
     fontStyle: 'italic',
   },
   modalFooter: {
-    padding: SPACING.md,
+    padding: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.BORDER,
+    borderTopColor: '#333333',
   },
 });
 

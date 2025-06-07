@@ -3,14 +3,13 @@
  * 
  * Bu bileşen kullanıcının hesaplarını listeler ve her hesap için
  * düzenleme/silme işlemlerini sağlar.
+ * Minimal dark theme tasarımla güncellenmiştir.
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BaseText, BaseCard } from '../ui/BaseComponents';
 import { formatCurrency } from '../../utils/formatters';
-import { COLORS, SPACING, LAYOUT, BORDER_RADIUS } from '../../constants/ui';
 
 /**
  * Hesap tipi tanımı (basitleştirilmiş)
@@ -50,17 +49,17 @@ export const AccountsList: React.FC<AccountsListProps> = ({
   const getAccountTypeInfo = (type: string) => {
     switch (type.toLowerCase()) {
       case 'cash':
-        return { icon: 'wallet', color: COLORS.SUCCESS };
+        return { icon: 'wallet', color: '#4CAF50' };
       case 'bank':
-        return { icon: 'card', color: COLORS.PRIMARY };
+        return { icon: 'card', color: '#2196F3' };
       case 'credit_card':
-        return { icon: 'card', color: COLORS.ERROR };
+        return { icon: 'card', color: '#F44336' };
       case 'savings':
-        return { icon: 'home', color: COLORS.INFO };
+        return { icon: 'home', color: '#9C27B0' };
       case 'investment':
-        return { icon: 'trending-up', color: COLORS.WARNING };
+        return { icon: 'trending-up', color: '#FF9800' };
       default:
-        return { icon: 'wallet', color: COLORS.TEXT_SECONDARY };
+        return { icon: 'wallet', color: '#666666' };
     }
   };
 
@@ -113,12 +112,7 @@ export const AccountsList: React.FC<AccountsListProps> = ({
     const isNegative = account.balance < 0;
     
     return (
-      <BaseCard
-        key={account.id}
-        variant="outlined"
-        padding="md"
-        style={styles.accountCard}
-      >
+      <View key={account.id} style={styles.accountCard}>
         <View style={styles.accountHeader}>
           {/* Hesap İkonu ve Bilgileri */}
           <View style={styles.accountInfo}>
@@ -128,41 +122,30 @@ export const AccountsList: React.FC<AccountsListProps> = ({
             ]}>
               <Ionicons
                 name={typeInfo.icon as any}
-                size={LAYOUT.iconSize.md}
-                color={COLORS.WHITE}
+                size={24}
+                color="#FFFFFF"
               />
             </View>
             
             <View style={styles.accountDetails}>
-              <BaseText
-                variant="body"
-                weight="semiBold"
-                numberOfLines={1}
-                style={styles.accountName}
-              >
+              <Text style={styles.accountName} numberOfLines={1}>
                 {account.name}
-              </BaseText>
+              </Text>
               
-              <BaseText
-                variant="caption"
-                color="TEXT_SECONDARY"
-              >
+              <Text style={styles.accountType}>
                 {getAccountTypeName(account.type)}
-              </BaseText>
+              </Text>
             </View>
           </View>
 
           {/* Hesap Bakiyesi */}
           <View style={styles.balanceSection}>
-            <BaseText
-              variant="body"
-              weight="semiBold"
-              color={isNegative ? 'ERROR' : 'SUCCESS'}
-              align="right"
-              style={styles.balanceAmount}
-            >
+            <Text style={[
+              styles.balanceAmount,
+              { color: isNegative ? '#F44336' : '#4CAF50' }
+            ]}>
               {formatCurrency(account.balance)}
-            </BaseText>
+            </Text>
             
             <View style={styles.actionButtons}>
               {/* Düzenle Butonu */}
@@ -172,8 +155,8 @@ export const AccountsList: React.FC<AccountsListProps> = ({
               >
                 <Ionicons
                   name="pencil"
-                  size={LAYOUT.iconSize.sm}
-                  color={COLORS.TEXT_SECONDARY}
+                  size={16}
+                  color="#666666"
                 />
               </TouchableOpacity>
               
@@ -184,14 +167,14 @@ export const AccountsList: React.FC<AccountsListProps> = ({
               >
                 <Ionicons
                   name="trash"
-                  size={LAYOUT.iconSize.sm}
-                  color={COLORS.ERROR}
+                  size={16}
+                  color="#F44336"
                 />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </BaseCard>
+      </View>
     );
   };
 
@@ -199,32 +182,22 @@ export const AccountsList: React.FC<AccountsListProps> = ({
    * Boş durum render eder
    */
   const renderEmptyState = () => (
-    <BaseCard variant="outlined" padding="lg" style={styles.emptyStateCard}>
+    <View style={styles.emptyStateCard}>
       <View style={styles.emptyState}>
         <Ionicons
           name="wallet-outline"
-          size={LAYOUT.iconSize.xl}
-          color={COLORS.TEXT_DISABLED}
+          size={48}
+          color="#666666"
           style={styles.emptyIcon}
         />
         
-        <BaseText
-          variant="subtitle"
-          color="TEXT_SECONDARY"
-          align="center"
-          style={styles.emptyTitle}
-        >
+        <Text style={styles.emptyTitle}>
           Henüz hesap eklenmedi
-        </BaseText>
+        </Text>
         
-        <BaseText
-          variant="caption"
-          color="TEXT_SECONDARY"
-          align="center"
-          style={styles.emptyDescription}
-        >
+        <Text style={styles.emptyDescription}>
           Para yönetimine başlamak için ilk hesabınızı oluşturun
-        </BaseText>
+        </Text>
         
         <TouchableOpacity
           style={styles.addAccountButton}
@@ -232,20 +205,16 @@ export const AccountsList: React.FC<AccountsListProps> = ({
         >
           <Ionicons
             name="add"
-            size={LAYOUT.iconSize.sm}
-            color={COLORS.WHITE}
+            size={16}
+            color="#FFFFFF"
             style={styles.addIcon}
           />
-          <BaseText
-            variant="caption"
-            color="TEXT_LIGHT"
-            weight="medium"
-          >
+          <Text style={styles.addAccountButtonText}>
             Hesap Oluştur
-          </BaseText>
+          </Text>
         </TouchableOpacity>
       </View>
-    </BaseCard>
+    </View>
   );
 
   // Aktif hesapları filtrele ve sırala
@@ -269,13 +238,9 @@ export const AccountsList: React.FC<AccountsListProps> = ({
     <View style={styles.container}>
       {/* Bölüm Başlığı */}
       <View style={styles.header}>
-        <BaseText
-          variant="subtitle"
-          weight="semiBold"
-          style={styles.sectionTitle}
-        >
+        <Text style={styles.sectionTitle}>
           Hesaplarım
-        </BaseText>
+        </Text>
         
         {activeAccounts.length > 0 && (
           <TouchableOpacity
@@ -284,17 +249,12 @@ export const AccountsList: React.FC<AccountsListProps> = ({
           >
             <Ionicons
               name="add"
-              size={LAYOUT.iconSize.sm}
-              color={COLORS.PRIMARY}
+              size={16}
+              color="#2196F3"
             />
-            <BaseText
-              variant="caption"
-              color="PRIMARY"
-              weight="medium"
-              style={styles.addButtonText}
-            >
+            <Text style={styles.addButtonText}>
               Yeni Hesap
-            </BaseText>
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -302,11 +262,11 @@ export const AccountsList: React.FC<AccountsListProps> = ({
       {/* Hesaplar Listesi veya Boş Durum */}
       <View style={styles.accountsList}>
         {loading ? (
-          <BaseCard variant="outlined" padding="lg">
-            <BaseText variant="caption" color="TEXT_SECONDARY" align="center">
+          <View style={styles.loadingCard}>
+            <Text style={styles.loadingText}>
               Hesaplar yükleniyor...
-            </BaseText>
-          </BaseCard>
+            </Text>
+          </View>
         ) : activeAccounts.length === 0 ? (
           renderEmptyState()
         ) : (
@@ -318,12 +278,13 @@ export const AccountsList: React.FC<AccountsListProps> = ({
 };
 
 /**
- * Stil Tanımları
+ * Stil Tanımları - Minimal Dark Theme
  */
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    backgroundColor: '#000000',
   },
 
   // Header
@@ -331,28 +292,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   sectionTitle: {
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.xs,
+    padding: 8,
   },
   addButtonText: {
-    marginLeft: SPACING.xs,
+    marginLeft: 4,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2196F3',
   },
 
   // Hesaplar Listesi
   accountsList: {
-    gap: SPACING.sm,
+    gap: 12,
   },
 
   // Hesap Kartı
   accountCard: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   accountHeader: {
     flexDirection: 'row',
@@ -365,18 +335,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   accountIcon: {
-    width: LAYOUT.iconSize.xl,
-    height: LAYOUT.iconSize.xl,
-    borderRadius: LAYOUT.iconSize.xl / 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.md,
+    marginRight: 12,
   },
   accountDetails: {
     flex: 1,
   },
   accountName: {
-    marginBottom: SPACING.xs,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  accountType: {
+    fontSize: 14,
+    color: '#666666',
   },
 
   // Bakiye Bölümü
@@ -384,44 +361,76 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   balanceAmount: {
-    marginBottom: SPACING.xs,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: SPACING.xs,
+    gap: 8,
   },
   actionButton: {
-    padding: SPACING.xs,
-    borderRadius: BORDER_RADIUS.sm,
-    backgroundColor: COLORS.SURFACE,
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#1A1A1A',
+  },
+
+  // Loading State
+  loadingCard: {
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666666',
   },
 
   // Boş Durum
   emptyStateCard: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: SPACING.lg,
+    paddingVertical: 24,
   },
   emptyIcon: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   emptyTitle: {
-    marginBottom: SPACING.sm,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptyDescription: {
-    marginBottom: SPACING.lg,
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
   },
   addAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   addIcon: {
-    marginRight: SPACING.xs,
+    marginRight: 8,
+  },
+  addAccountButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FFFFFF',
   },
 }); 

@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Switch,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -242,14 +243,14 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             style={[
               styles.typeButton,
               selectedType === TransactionType.EXPENSE && styles.typeButtonActive,
-              { borderColor: COLORS.ERROR }
+              { borderColor: '#F44336' }
             ]}
             onPress={() => setSelectedType(TransactionType.EXPENSE)}
           >
             <Ionicons 
               name="remove-circle-outline" 
               size={24} 
-              color={selectedType === TransactionType.EXPENSE ? COLORS.WHITE : COLORS.ERROR} 
+              color={selectedType === TransactionType.EXPENSE ? '#FFFFFF' : '#F44336'} 
             />
             <Text style={[
               styles.typeButtonText,
@@ -263,14 +264,14 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             style={[
               styles.typeButton,
               selectedType === TransactionType.INCOME && styles.typeButtonActive,
-              { borderColor: COLORS.SUCCESS }
+              { borderColor: '#4CAF50' }
             ]}
             onPress={() => setSelectedType(TransactionType.INCOME)}
           >
             <Ionicons 
               name="add-circle-outline" 
               size={24} 
-              color={selectedType === TransactionType.INCOME ? COLORS.WHITE : COLORS.SUCCESS} 
+              color={selectedType === TransactionType.INCOME ? '#FFFFFF' : '#4CAF50'} 
             />
             <Text style={[
               styles.typeButtonText,
@@ -285,7 +286,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       {/* Amount Input */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Tutar</Text>
-        <Card style={styles.mobileAmountCard}>
+        <View style={styles.mobileAmountCard}>
           <View style={styles.amountContainer}>
             <Text style={styles.currencySymbol}>{currencySymbol}</Text>
             <Input
@@ -305,7 +306,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
               {formatAmountToWords(parseFloat(amount))}
             </Text>
           )}
-        </Card>
+        </View>
       </View>
 
       {/* Description Input */}
@@ -350,7 +351,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 ]}>
                   <CategoryIcon
                     iconName={category.icon}
-                    color={selectedCategory === category.name ? COLORS.WHITE : category.color}
+                    color={selectedCategory === category.name ? '#FFFFFF' : category.color}
                     size="medium"
                   />
                 </View>
@@ -371,7 +372,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         <Text style={styles.sectionTitle}>Hesap</Text>
         {accountViewModel?.isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            <ActivityIndicator size="small" color="#FFFFFF" />
             <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
           </View>
         ) : (accountViewModel?.accounts.length || 0) > 0 ? (
@@ -390,7 +391,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                     <Ionicons 
                       name={account.icon as any} 
                       size={20} 
-                      color={COLORS.WHITE} 
+                      color="#FFFFFF" 
                     />
                   </View>
                   <View style={styles.accountDetails}>
@@ -402,16 +403,16 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 </View>
                 {selectedAccountId === account.id && (
                   <View style={styles.selectedIndicator}>
-                    <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+                    <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
                   </View>
                 )}
               </TouchableOpacity>
             ))}
           </View>
         ) : (
-          <Card style={styles.emptyAccountsCard}>
+          <View style={styles.emptyAccountsCard}>
             <View style={styles.emptyAccountsContainer}>
-              <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
+              <Ionicons name="wallet-outline" size={48} color="#666666" />
               <Text style={styles.emptyAccountsText}>Henüz hesap yok</Text>
               <Text style={styles.emptyAccountsSubtext}>
                 İşlem eklemek için önce bir hesap oluşturmalısınız
@@ -423,7 +424,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 <Text style={styles.createAccountButtonText}>Hesap Oluştur</Text>
               </TouchableOpacity>
             </View>
-          </Card>
+          </View>
         )}
       </View>
 
@@ -432,10 +433,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         <Text style={styles.sectionTitle}>Tarih</Text>
         <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
           <View style={styles.dateInfo}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.PRIMARY} />
+            <Ionicons name="calendar-outline" size={20} color="#2196F3" />
             <Text style={styles.dateText}>{selectedDate.toLocaleDateString('tr-TR')}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
+          <Ionicons name="chevron-forward" size={20} color="#666666" />
         </TouchableOpacity>
       </View>
 
@@ -447,8 +448,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             <Switch
               value={isRecurring}
               onValueChange={setIsRecurring}
-              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-              thumbColor={COLORS.WHITE}
+              trackColor={{ false: '#333333', true: '#2196F3' }}
+              thumbColor="#FFFFFF"
             />
           </View>
           
@@ -500,8 +501,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                   <Switch
                     value={autoCreateTransaction}
                     onValueChange={setAutoCreateTransaction}
-                    trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-                    thumbColor={COLORS.WHITE}
+                    trackColor={{ false: '#333333', true: '#2196F3' }}
+                    thumbColor="#FFFFFF"
                   />
                 </View>
                 <Text style={styles.autoTransactionDescription}>
@@ -526,18 +527,18 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             style={[
               styles.typeButton,
               selectedType === TransactionType.INCOME && styles.typeButtonActive,
-              { borderColor: COLORS.SUCCESS }
+              { borderColor: '#4CAF50' }
             ]}
             onPress={() => setSelectedType(TransactionType.INCOME)}
           >
             <View style={[
               styles.typeIconContainer,
-              { backgroundColor: selectedType === TransactionType.INCOME ? COLORS.SUCCESS : COLORS.SUCCESS + '20' }
+              { backgroundColor: selectedType === TransactionType.INCOME ? '#4CAF50' : '#4CAF5020' }
             ]}>
               <Ionicons 
                 name="trending-up" 
                 size={24} 
-                color={selectedType === TransactionType.INCOME ? COLORS.WHITE : COLORS.SUCCESS} 
+                color={selectedType === TransactionType.INCOME ? '#FFFFFF' : '#4CAF50'} 
               />
             </View>
             <Text style={[
@@ -553,18 +554,18 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             style={[
               styles.typeButton,
               selectedType === TransactionType.EXPENSE && styles.typeButtonActive,
-              { borderColor: COLORS.ERROR }
+              { borderColor: '#F44336' }
             ]}
             onPress={() => setSelectedType(TransactionType.EXPENSE)}
           >
             <View style={[
               styles.typeIconContainer,
-              { backgroundColor: selectedType === TransactionType.EXPENSE ? COLORS.ERROR : COLORS.ERROR + '20' }
+              { backgroundColor: selectedType === TransactionType.EXPENSE ? '#F44336' : '#F4433620' }
             ]}>
               <Ionicons 
                 name="trending-down" 
                 size={24} 
-                color={selectedType === TransactionType.EXPENSE ? COLORS.WHITE : COLORS.ERROR} 
+                color={selectedType === TransactionType.EXPENSE ? '#FFFFFF' : '#F44336'} 
               />
             </View>
             <Text style={[
@@ -583,10 +584,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         <Text style={styles.sectionTitle}>Tarih</Text>
         <TouchableOpacity style={styles.dateSelector} onPress={() => setShowDatePicker(true)}>
           <View style={styles.dateInfo}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.PRIMARY} />
+            <Ionicons name="calendar-outline" size={20} color="#2196F3" />
             <Text style={styles.dateText}>{selectedDate.toLocaleDateString('tr-TR')}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
+          <Ionicons name="chevron-forward" size={20} color="#666666" />
         </TouchableOpacity>
       </View>
 
@@ -595,7 +596,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         {/* Amount Input */}
         <View style={styles.halfSection}>
           <Text style={styles.sectionTitle}>Tutar</Text>
-          <Card style={styles.webAmountCard}>
+          <View style={styles.webAmountCard}>
             <View style={styles.amountContainer}>
               <Text style={styles.currencySymbol}>{currencySymbol}</Text>
               <Input
@@ -615,7 +616,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 {formatAmountToWords(parseFloat(amount))}
               </Text>
             )}
-          </Card>
+          </View>
         </View>
 
         {/* Description Input */}
@@ -664,7 +665,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 ]}>
                   <CategoryIcon
                     iconName={category.icon}
-                    color={selectedCategory === category.name ? COLORS.WHITE : category.color}
+                    color={selectedCategory === category.name ? '#FFFFFF' : category.color}
                     size="medium"
                   />
                 </View>
@@ -685,7 +686,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         <Text style={styles.sectionTitle}>Hesap</Text>
         {accountViewModel?.isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            <ActivityIndicator size="small" color="#FFFFFF" />
             <Text style={styles.loadingText}>Hesaplar yükleniyor...</Text>
           </View>
         ) : (accountViewModel?.accounts.length || 0) > 0 ? (
@@ -704,7 +705,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                     <Ionicons 
                       name={account.icon as any} 
                       size={20} 
-                      color={COLORS.WHITE} 
+                      color="#FFFFFF" 
                     />
                   </View>
                   <View style={styles.accountDetails}>
@@ -716,16 +717,16 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 </View>
                 {selectedAccountId === account.id && (
                   <View style={styles.selectedIndicator}>
-                    <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+                    <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
                   </View>
                 )}
               </TouchableOpacity>
             ))}
           </View>
         ) : (
-          <Card style={styles.emptyAccountsCard}>
+          <View style={styles.emptyAccountsCard}>
             <View style={styles.emptyAccountsContainer}>
-              <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_TERTIARY} />
+              <Ionicons name="wallet-outline" size={48} color="#666666" />
               <Text style={styles.emptyAccountsText}>Henüz hesap yok</Text>
               <Text style={styles.emptyAccountsSubtext}>
                 İşlem eklemek için önce bir hesap oluşturmalısınız
@@ -737,7 +738,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 <Text style={styles.createAccountButtonText}>Hesap Oluştur</Text>
               </TouchableOpacity>
             </View>
-          </Card>
+          </View>
         )}
       </View>
 
@@ -749,8 +750,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             <Switch
               value={isRecurring}
               onValueChange={setIsRecurring}
-              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-              thumbColor={COLORS.WHITE}
+              trackColor={{ false: '#333333', true: '#2196F3' }}
+              thumbColor="#FFFFFF"
             />
           </View>
           
@@ -802,8 +803,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                   <Switch
                     value={autoCreateTransaction}
                     onValueChange={setAutoCreateTransaction}
-                    trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-                    thumbColor={COLORS.WHITE}
+                    trackColor={{ false: '#333333', true: '#2196F3' }}
+                    thumbColor="#FFFFFF"
                   />
                 </View>
                 <Text style={styles.autoTransactionDescription}>
@@ -819,6 +820,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
 
   return (
     <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
       {isWeb ? (
         // Web Layout
         <WebLayout title="Yeni İşlem" activeRoute="addTransaction" navigation={navigation}>
@@ -836,10 +838,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 disabled={!isFormValid() || loading}
               >
                 {loading ? (
-                  <ActivityIndicator size="small" color={COLORS.WHITE} />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="checkmark" size={20} color={COLORS.WHITE} />
+                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
                     <Text style={styles.saveButtonText}>İşlemi Kaydet</Text>
                   </>
                 )}
@@ -856,7 +858,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Yeni İşlem</Text>
             <View style={styles.headerRight} />
@@ -876,10 +878,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
               disabled={!isFormValid() || loading}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={COLORS.WHITE} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Ionicons name="checkmark" size={20} color={COLORS.WHITE} />
+                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
                   <Text style={styles.saveButtonText}>İşlemi Kaydet</Text>
                 </>
               )}
@@ -905,7 +907,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   scrollView: {
     flex: 1,
@@ -914,59 +916,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   headerTitle: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.lg : TYPOGRAPHY.sizes.xl,
+    fontSize: isSmallDevice ? 18 : 20,
     fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
     textAlign: 'center',
     flex: 1,
   },
   backButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   headerRight: {
     width: 40, // Same width as back button for centering
   },
   section: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginHorizontal: 24,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
+    color: '#FFFFFF', // White text
+    marginBottom: 12,
   },
   typeSelector: {
     flexDirection: 'row',
-    gap: SPACING.sm,
+    gap: 12,
   },
   typeButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 2,
-    backgroundColor: COLORS.SURFACE,
-    gap: SPACING.xs,
+    backgroundColor: '#111111', // Dark background
+    gap: 8,
   },
   typeButtonActive: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: '#2196F3', // Blue active background
   },
   typeButtonText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
     textAlign: 'center',
   },
   typeButtonTextActive: {
-    color: COLORS.WHITE,
+    color: '#FFFFFF', // White active text
   },
   typeIconContainer: {
     width: 32,
@@ -976,19 +978,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   typeDescription: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray text
     textAlign: 'center',
   },
   // Mobile Amount Card
   mobileAmountCard: {
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
     marginHorizontal: 0,
     marginBottom: 0,
     alignItems: 'center',
-    paddingVertical: SPACING.lg,
+    paddingVertical: 24,
   },
   // Web Amount Card (for side-by-side layout)
   webAmountCard: {
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
     marginHorizontal: 0,
     marginBottom: 0,
     alignItems: 'center',
@@ -1001,10 +1011,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   currencySymbol: {
-    fontSize: TYPOGRAPHY.sizes.xl,
+    fontSize: 20,
     fontWeight: '700',
-    color: COLORS.PRIMARY,
-    marginRight: SPACING.sm,
+    color: '#2196F3', // Blue accent
+    marginRight: 12,
   },
   amountInput: {
     flex: 1,
@@ -1013,32 +1023,32 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     textAlign: 'center',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
   },
   amountWords: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray text
     textAlign: 'center',
-    marginTop: SPACING.xs,
+    marginTop: 4,
   },
   categoryContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   categoryScrollContent: {
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   categoryItem: {
     alignItems: 'center',
-    marginRight: SPACING.md,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.sm,
+    marginRight: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 16,
     minWidth: 80,
   },
   categoryItemActive: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111', // Dark active background
     transform: [{ scale: 1.05 }],
   },
   categoryIconContainer: {
@@ -1047,35 +1057,35 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.xs,
+    marginBottom: 8,
   },
   categoryText: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 12,
+    color: '#FFFFFF', // White text
     textAlign: 'center',
     fontWeight: '500',
   },
   categoryTextActive: {
-    color: COLORS.PRIMARY,
+    color: '#2196F3', // Blue active text
     fontWeight: '600',
   },
   accountsContainer: {
-    paddingHorizontal: SPACING.sm,
+    paddingHorizontal: 12,
   },
   accountItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.SURFACE,
+    padding: 16,
+    backgroundColor: '#111111', // Dark card background
     borderRadius: 16,
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   accountItemActive: {
-    borderColor: COLORS.PRIMARY,
-    backgroundColor: COLORS.PRIMARY + '10',
+    borderColor: '#2196F3', // Blue border
+    backgroundColor: '#2196F310', // Blue tint
   },
   accountInfo: {
     flexDirection: 'row',
@@ -1088,119 +1098,123 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.md,
+    marginRight: 16,
   },
   accountDetails: {
     flex: 1,
   },
   accountName: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '600',
   },
   accountBalance: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     marginTop: 2,
   },
   selectedIndicator: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   dateSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.SURFACE,
+    padding: 16,
+    backgroundColor: '#111111', // Dark card background
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#333333',
   },
   dateInfo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   dateText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.sm,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
+    marginLeft: 12,
     fontWeight: '500',
   },
   emptyAccountsCard: {
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
     marginHorizontal: 0,
     marginBottom: 0,
-    paddingVertical: SPACING.xl,
+    paddingVertical: 32,
   },
   emptyAccountsContainer: {
     alignItems: 'center',
-    paddingVertical: SPACING.lg,
+    paddingVertical: 24,
   },
   emptyAccountsText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '600',
-    marginTop: SPACING.sm,
+    marginTop: 12,
   },
   emptyAccountsSubtext: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     textAlign: 'center',
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.lg,
+    marginTop: 4,
+    marginBottom: 24,
   },
   createAccountButton: {
-    backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    backgroundColor: '#2196F3', // Blue button
+    paddingHorizontal: 24,
+    paddingVertical: 16,
     borderRadius: 12,
   },
   createAccountButtonText: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.WHITE,
+    color: '#FFFFFF', // White text
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.lg,
+    paddingVertical: 24,
   },
   loadingText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginLeft: SPACING.sm,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginLeft: 12,
   },
   saveButtonContainer: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
-    backgroundColor: COLORS.BACKGROUND,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    backgroundColor: '#000000', // Black background
     borderTopWidth: 1,
-    borderTopColor: COLORS.BORDER,
+    borderTopColor: '#333333',
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.PRIMARY,
-    paddingVertical: SPACING.md,
+    backgroundColor: '#2196F3', // Blue button
+    paddingVertical: 16,
     borderRadius: 16,
     minHeight: 56,
   },
   saveButtonDisabled: {
-    backgroundColor: COLORS.TEXT_TERTIARY,
+    backgroundColor: '#666666', // Gray disabled
   },
   saveButtonText: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.WHITE,
-    marginLeft: SPACING.sm,
+    color: '#FFFFFF', // White text
+    marginLeft: 12,
   },
   // Web-specific styles for side-by-side layout
   rowSection: {
     flexDirection: 'row',
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
-    gap: SPACING.md,
+    marginHorizontal: 24,
+    marginBottom: 24,
+    gap: 16,
   },
   halfSection: {
     flex: 1,
@@ -1214,77 +1228,80 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     flex: 1,
+    backgroundColor: '#000000', // Black background
   },
   webSaveButtonContainer: {
-    padding: SPACING.md,
+    padding: 16,
   },
   recurringHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   recurringOptions: {
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111', // Dark background
     borderRadius: 12,
-    padding: SPACING.md,
-    marginTop: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#333333',
+    padding: 16,
+    marginTop: 12,
   },
   recurringSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FFFFFF', // White text
+    marginBottom: 12,
   },
   frequencySection: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   frequencyGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 12,
   },
   frequencyButton: {
     flex: 1,
     minWidth: '22%',
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xs,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 8,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Black background
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: '#333333',
     alignItems: 'center',
   },
   frequencyButtonActive: {
-    backgroundColor: COLORS.PRIMARY,
-    borderColor: COLORS.PRIMARY,
+    backgroundColor: '#2196F3', // Blue active
+    borderColor: '#2196F3',
   },
   frequencyButtonText: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#FFFFFF', // White text
   },
   frequencyButtonTextActive: {
-    color: COLORS.WHITE,
+    color: '#FFFFFF', // White active text
   },
   reminderSection: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   reminderInput: {
     width: 100,
   },
   autoTransactionSection: {
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
   },
   autoTransactionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.xs,
+    marginBottom: 8,
   },
   autoTransactionDescription: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray text
   },
 });
 

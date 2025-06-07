@@ -62,17 +62,20 @@ const TabNavigator: React.FC = () => {
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
-        tabBarActiveTintColor: COLORS.PRIMARY,
-        tabBarInactiveTintColor: COLORS.TEXT_SECONDARY,
+        tabBarActiveTintColor: '#FFFFFF',
+        tabBarInactiveTintColor: '#666666',
         tabBarStyle: {
-          backgroundColor: COLORS.SURFACE,
-          borderTopColor: COLORS.BORDER,
-          borderTopWidth: 1,
+          backgroundColor: '#000000',
+          borderTopWidth: 0,
           paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8),
           height: Math.max(65 + insets.bottom, Platform.OS === 'ios' ? 85 : 65),
           ...(isWeb && {
             display: 'none',
           }),
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
         },
         headerShown: false,
       })}
@@ -128,7 +131,7 @@ const PlaceholderScreen: React.FC<{ title: string; subtitle?: string }> = ({ tit
 
 const MainNavigator: React.FC = () => {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.BACKGROUND }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }} edges={['top']}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
@@ -297,8 +300,8 @@ const MainNavigator: React.FC = () => {
             },
           }}
         />
-        <Stack.Screen 
-          name="Analytics" 
+        <Stack.Screen
+          name="Analytics"
           component={AnalyticsScreen}
           options={{
             cardStyleInterpolator: ({ current, layouts }) => {

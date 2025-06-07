@@ -8,15 +8,13 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
-import { Card } from '../components/common/Card';
-import { Button } from '../components/common/Button';
 import { WebLayout } from '../components/layout/WebLayout';
 import { CategoryChart } from '../components/charts/CategoryChart';
-import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { ReportsViewModel } from '../viewmodels/ReportsViewModel';
@@ -247,17 +245,17 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
 
   // Tasarruf skoru rengi
   const getSavingsScoreColor = (score: number) => {
-    if (score >= 70) return COLORS.SUCCESS;
-    if (score >= 40) return COLORS.WARNING;
-    return COLORS.ERROR;
+    if (score >= 70) return '#4CAF50'; // Success color
+    if (score >= 40) return '#FF9800'; // Warning color
+    return '#F44336'; // Error color
   };
 
   const renderContent = () => (
     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
       {/* Tasarruf Skoru */}
-      <Card style={styles.section}>
+      <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="trophy" size={24} color={COLORS.WARNING} />
+          <Ionicons name="trophy" size={24} color="#FF9800" />
           <Text style={styles.sectionTitle}>Aylık Tasarruf Skoru</Text>
         </View>
         
@@ -284,46 +282,46 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
                 Gider: {formatCurrency(analytics.monthlyExpense)}
               </Text>
               <Text style={[styles.breakdownItem, { 
-                color: analytics.monthlyIncome - analytics.monthlyExpense >= 0 ? COLORS.SUCCESS : COLORS.ERROR 
+                color: analytics.monthlyIncome - analytics.monthlyExpense >= 0 ? '#4CAF50' : '#F44336' 
               }]}>
                 Net: {formatCurrency(analytics.monthlyIncome - analytics.monthlyExpense)}
               </Text>
             </View>
           </View>
         </View>
-      </Card>
+      </View>
 
       {/* Uyarılar */}
       {analytics.alerts.length > 0 && (
-        <Card style={styles.section}>
+        <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="warning" size={24} color={COLORS.ERROR} />
+            <Ionicons name="warning" size={24} color="#F44336" />
             <Text style={styles.sectionTitle}>Akıllı Uyarılar</Text>
           </View>
           
           {analytics.alerts.map((alert, index) => (
             <View key={index} style={[styles.alertItem, { 
-              backgroundColor: alert.type === 'danger' ? COLORS.ERROR + '10' : COLORS.WARNING + '10' 
+              backgroundColor: alert.type === 'danger' ? '#F4433610' : '#FF980010' 
             }]}>
               <Ionicons 
                 name={alert.type === 'danger' ? 'alert-circle' : 'warning'} 
                 size={20} 
-                color={alert.type === 'danger' ? COLORS.ERROR : COLORS.WARNING} 
+                color={alert.type === 'danger' ? '#F44336' : '#FF9800'} 
               />
               <Text style={[styles.alertText, {
-                color: alert.type === 'danger' ? COLORS.ERROR : COLORS.WARNING
+                color: alert.type === 'danger' ? '#F44336' : '#FF9800'
               }]}>
                 {alert.message}
               </Text>
             </View>
           ))}
-        </Card>
+        </View>
       )}
 
       {/* Kategori Trendleri */}
-      <Card style={styles.section}>
+      <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="trending-up" size={24} color={COLORS.PRIMARY} />
+          <Ionicons name="trending-up" size={24} color="#2196F3" />
           <Text style={styles.sectionTitle}>Kategorilerdeki Harcama Trendi</Text>
         </View>
         
@@ -340,14 +338,14 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
               <View style={styles.trendRight}>
                 <View style={[styles.trendIndicator, {
                   backgroundColor: category.trend.isIncrease 
-                    ? (category.trend.severity === 'danger' ? COLORS.ERROR : 
-                       category.trend.severity === 'warning' ? COLORS.WARNING : COLORS.ERROR)
-                    : COLORS.SUCCESS
+                    ? (category.trend.severity === 'danger' ? '#F44336' : 
+                       category.trend.severity === 'warning' ? '#FF9800' : '#F44336')
+                    : '#4CAF50'
                 }]}>
                   <Ionicons 
                     name={category.trend.isIncrease ? 'arrow-up' : 'arrow-down'} 
                     size={12} 
-                    color={COLORS.WHITE} 
+                    color="#FFFFFF" 
                   />
                   <Text style={styles.trendPercentage}>
                     %{category.trend.percentage.toFixed(0)}
@@ -359,12 +357,12 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
         ) : (
           <Text style={styles.noDataText}>Bu ay henüz yeterli veri yok</Text>
         )}
-      </Card>
+      </View>
 
       {/* Gelecek Ay Tahmini */}
-      <Card style={styles.section}>
+      <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="calendar" size={24} color={COLORS.PRIMARY} />
+          <Ionicons name="calendar" size={24} color="#2196F3" />
           <Text style={styles.sectionTitle}>Gelecek Ay Tahmini Bakiye</Text>
         </View>
         
@@ -374,11 +372,11 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
             {formatCurrency(analytics.currentBalance)}
           </Text>
           
-          <Ionicons name="arrow-down" size={24} color={COLORS.TEXT_SECONDARY} style={styles.arrowIcon} />
+          <Ionicons name="arrow-down" size={24} color="#666666" style={styles.arrowIcon} />
           
           <Text style={styles.futureBalanceLabel}>Tahmini Gelecek Ay Bakiyesi</Text>
           <Text style={[styles.futureBalanceAmount, {
-            color: analytics.futureBalance >= analytics.currentBalance ? COLORS.SUCCESS : COLORS.ERROR
+            color: analytics.futureBalance >= analytics.currentBalance ? '#4CAF50' : '#F44336'
           }]}>
             {formatCurrency(analytics.futureBalance)}
           </Text>
@@ -387,12 +385,12 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
             *Mevcut aylık gelir-gider ortalamasına göre hesaplanmıştır
           </Text>
         </View>
-      </Card>
+      </View>
 
       {/* Hedef Hesaplayıcısı */}
-      <Card style={styles.section}>
+      <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Ionicons name="flag" size={24} color={COLORS.SUCCESS} />
+          <Ionicons name="flag" size={24} color="#4CAF50" />
           <Text style={styles.sectionTitle}>Hedef Hesaplayıcısı</Text>
         </View>
         
@@ -407,7 +405,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
             value={goalAmount}
             onChangeText={formatGoalAmount}
             placeholder="Hedef tutarınız"
-            placeholderTextColor={COLORS.TEXT_SECONDARY}
+            placeholderTextColor="#666666"
             keyboardType="numeric"
           />
         </View>
@@ -430,7 +428,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
               </>
             ) : (
               <View style={styles.goalImpossible}>
-                <Ionicons name="warning" size={20} color={COLORS.ERROR} />
+                <Ionicons name="warning" size={20} color="#F44336" />
                 <Text style={styles.goalImpossibleText}>
                   Mevcut harcama alışkanlıklarınızla bu hedefe ulaşmanız mümkün değil. 
                   Önce tasarruf oranınızı artırmanız gerekiyor.
@@ -439,16 +437,16 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
             )}
           </View>
         )}
-      </Card>
+      </View>
 
       {/* Kategori Grafikleri */}
       {reportsViewModel && (
         <>
           {/* Gider Kategorileri Grafiği */}
           {getCurrentCategories().expense.length > 0 && (
-            <Card style={styles.section}>
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="pie-chart" size={24} color={COLORS.ERROR} />
+                <Ionicons name="pie-chart" size={24} color="#F44336" />
                 <Text style={styles.sectionTitle}>Gider Kategorileri Dağılımı</Text>
               </View>
               <CategoryChart
@@ -461,14 +459,14 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
                 title=""
                 showValues={true}
               />
-            </Card>
+            </View>
           )}
 
           {/* Gelir Kategorileri Grafiği */}
           {getCurrentCategories().income.length > 0 && (
-            <Card style={styles.section}>
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="pie-chart" size={24} color={COLORS.SUCCESS} />
+                <Ionicons name="pie-chart" size={24} color="#4CAF50" />
                 <Text style={styles.sectionTitle}>Gelir Kategorileri Dağılımı</Text>
               </View>
               <CategoryChart
@@ -481,24 +479,24 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
                 title=""
                 showValues={true}
               />
-            </Card>
+            </View>
           )}
 
           {/* Kategori verisi yoksa */}
           {getCurrentCategories().expense.length === 0 && getCurrentCategories().income.length === 0 && (
-            <Card style={styles.section}>
+            <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="pie-chart-outline" size={24} color={COLORS.TEXT_SECONDARY} />
+                <Ionicons name="pie-chart-outline" size={24} color="#666666" />
                 <Text style={styles.sectionTitle}>Kategori Analizi</Text>
               </View>
               <View style={styles.emptyChartContainer}>
-                <Ionicons name="pie-chart-outline" size={48} color={COLORS.TEXT_SECONDARY} />
+                <Ionicons name="pie-chart-outline" size={48} color="#666666" />
                 <Text style={styles.emptyChartText}>Bu ay henüz kategori verisi yok</Text>
                 <Text style={styles.emptyChartSubtext}>
                   İşlem eklediğinizde kategori dağılımları burada görünecek
                 </Text>
               </View>
-            </Card>
+            </View>
           )}
         </>
       )}
@@ -508,12 +506,15 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
   // Loading state
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
-          <Text style={styles.loadingText}>Analizler hazırlanıyor...</Text>
-        </View>
-      </SafeAreaView>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#2196F3" />
+            <Text style={styles.loadingText}>Analizler hazırlanıyor...</Text>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
@@ -530,37 +531,40 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
 
   // Mobile layout
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Analizler</Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={() => {
-            setLoading(true);
-            calculateAnalytics();
-            setLoading(false);
-          }}
-        >
-          <Ionicons name="refresh" size={24} color={COLORS.PRIMARY} />
-        </TouchableOpacity>
-      </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Analizler</Text>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={() => {
+              setLoading(true);
+              calculateAnalytics();
+              setLoading(false);
+            }}
+          >
+            <Ionicons name="refresh" size={24} color="#2196F3" />
+          </TouchableOpacity>
+        </View>
 
-      {renderContent()}
-    </SafeAreaView>
+        {renderContent()}
+      </SafeAreaView>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   centerContainer: {
     flex: 1,
@@ -568,49 +572,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: SPACING.md,
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666666', // Gray text
   },
   webContent: {
     flex: 1,
-    padding: SPACING.lg,
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
   },
   backButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF', // White text
   },
   refreshButton: {
-    padding: SPACING.xs,
+    padding: 4,
   },
   scrollView: {
     flex: 1,
   },
   section: {
-    margin: SPACING.md,
-    padding: SPACING.lg,
+    margin: 16,
+    padding: 20,
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.sm,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF', // White text
+    marginLeft: 8,
   },
   
   // Tasarruf Skoru
@@ -623,46 +631,46 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 8,
-    borderColor: COLORS.PRIMARY,
+    borderColor: '#2196F3',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.lg,
+    marginRight: 20,
   },
   scoreText: {
-    fontSize: TYPOGRAPHY.sizes.xxl,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
+    fontSize: 24,
+    fontWeight: '700',
   },
   scoreSubtext: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
   },
   scoreDetails: {
     flex: 1,
   },
   scoreDescription: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.md,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginBottom: 16,
   },
   scoreBreakdown: {
-    gap: SPACING.xs,
+    gap: 4,
   },
   breakdownItem: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
+    color: '#FFFFFF', // White text
   },
   
   // Uyarılar
   alertItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
     borderRadius: 8,
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   alertText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    marginLeft: SPACING.sm,
+    fontSize: 14,
+    marginLeft: 8,
     flex: 1,
   },
   
@@ -671,21 +679,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333',
   },
   trendLeft: {
     flex: 1,
   },
   trendCategoryName: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FFFFFF', // White text
   },
   trendAmount: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray text
   },
   trendRight: {
     alignItems: 'flex-end',
@@ -693,21 +701,21 @@ const styles = StyleSheet.create({
   trendIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    gap: SPACING.xs,
+    gap: 4,
   },
   trendPercentage: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.WHITE,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
+    fontSize: 12,
+    color: '#FFFFFF', // White text
+    fontWeight: '500',
   },
   noDataText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     textAlign: 'center',
-    padding: SPACING.lg,
+    padding: 20,
   },
   
   // Gelecek Ay Tahmini
@@ -715,111 +723,111 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   currentBalanceLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
   },
   currentBalanceAmount: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.md,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF', // White text
+    marginBottom: 16,
   },
   arrowIcon: {
-    marginVertical: SPACING.sm,
+    marginVertical: 8,
   },
   futureBalanceLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
   },
   futureBalanceAmount: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    marginBottom: SPACING.md,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
   },
   predictionNote: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 12,
+    color: '#666666', // Gray text
     textAlign: 'center',
     fontStyle: 'italic',
   },
   
   // Hedef Hesaplayıcısı
   goalDescription: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.md,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginBottom: 16,
   },
   goalInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#1a1a1a', // Dark surface
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
+    borderColor: '#333333',
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   currencySymbol: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.medium as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginRight: SPACING.xs,
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#FFFFFF', // White text
+    marginRight: 4,
   },
   goalInput: {
     flex: 1,
-    fontSize: TYPOGRAPHY.sizes.lg,
-    color: COLORS.TEXT_PRIMARY,
-    paddingVertical: SPACING.md,
+    fontSize: 18,
+    color: '#FFFFFF', // White text
+    paddingVertical: 16,
   },
   goalResult: {
-    backgroundColor: COLORS.SUCCESS + '10',
-    padding: SPACING.md,
+    backgroundColor: '#4CAF5010',
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
   goalResultText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
+    fontSize: 14,
+    color: '#FFFFFF', // White text
+    marginBottom: 4,
   },
   goalTimeText: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.SUCCESS,
-    marginBottom: SPACING.xs,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4CAF50',
+    marginBottom: 4,
   },
   goalMonthlyText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
   },
   goalImpossible: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.ERROR + '10',
-    padding: SPACING.md,
+    backgroundColor: '#F4433610',
+    padding: 16,
     borderRadius: 8,
   },
   goalImpossibleText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.ERROR,
-    marginLeft: SPACING.sm,
+    fontSize: 14,
+    color: '#F44336',
+    marginLeft: 8,
     flex: 1,
   },
   emptyChartContainer: {
     alignItems: 'center',
-    padding: SPACING.xl,
+    padding: 32,
   },
   emptyChartText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: SPACING.sm,
+    fontSize: 16,
+    color: '#666666', // Gray text
+    marginTop: 8,
     textAlign: 'center',
   },
   emptyChartSubtext: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     textAlign: 'center',
-    marginTop: SPACING.xs,
+    marginTop: 4,
   },
 });
 

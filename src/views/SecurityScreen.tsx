@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -140,14 +141,14 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
     onPress?: () => void;
     children?: React.ReactNode;
   }) => (
-    <Card style={styles.securityCard}>
+    <View style={styles.securityCard}>
       <TouchableOpacity 
         style={styles.securityHeader} 
         onPress={onPress}
         disabled={!onPress}
       >
         <View style={styles.securityIcon}>
-          <Ionicons name={icon as any} size={24} color={COLORS.PRIMARY} />
+          <Ionicons name={icon as any} size={24} color="#2196F3" />
         </View>
         <View style={styles.securityInfo}>
           <Text style={styles.securityTitle}>{title}</Text>
@@ -157,12 +158,12 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
           <Ionicons 
             name="chevron-down" 
             size={20} 
-            color={COLORS.TEXT_SECONDARY} 
+            color="#666666" 
           />
         )}
       </TouchableOpacity>
       {children}
-    </Card>
+    </View>
   );
 
   const renderContent = () => (
@@ -309,99 +310,106 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
 
   // Mobile layout
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Güvenlik</Text>
-      </View>
-      {renderContent()}
-    </SafeAreaView>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Güvenlik</Text>
+        </View>
+        {renderContent()}
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333',
   },
   backButton: {
-    marginRight: SPACING.md,
+    marginRight: 16,
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
   },
   pageTitle: {
-    fontSize: TYPOGRAPHY.sizes.xl,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
-    marginTop: SPACING.md,
+    color: '#FFFFFF', // White text
+    marginBottom: 4,
+    marginTop: 16,
   },
   pageSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.lg,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginBottom: 24,
   },
   securityCard: {
-    marginBottom: SPACING.md,
+    marginBottom: 16,
     padding: 0,
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   securityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: 16,
   },
   securityIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.PRIMARY + '20',
+    backgroundColor: '#2196F320',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.sm,
+    marginRight: 12,
   },
   securityInfo: {
     flex: 1,
   },
   securityTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 16,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
+    color: '#FFFFFF', // White text
+    marginBottom: 4,
   },
   securitySubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
   },
   formContainer: {
-    padding: SPACING.md,
+    padding: 16,
     paddingTop: 0,
     borderTopWidth: 1,
-    borderTopColor: COLORS.BORDER,
+    borderTopColor: '#333333',
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginTop: SPACING.md,
+    gap: 12,
+    marginTop: 16,
   },
   cancelButton: {
     flex: 1,
@@ -410,12 +418,12 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   resetButton: {
-    marginTop: SPACING.sm,
+    marginTop: 12,
   },
   resetDescription: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.sm,
+    fontSize: 14,
+    color: '#666666', // Gray text
+    marginBottom: 12,
     textAlign: 'center',
   },
 });

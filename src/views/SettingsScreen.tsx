@@ -9,6 +9,7 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +57,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     >
       <View style={styles.settingLeft}>
         <View style={styles.settingIcon}>
-          <Ionicons name={icon as any} size={20} color={COLORS.PRIMARY} />
+          <Ionicons name={icon as any} size={20} color="#2196F3" />
         </View>
         <View style={styles.settingInfo}>
           <Text style={styles.settingTitle}>{title}</Text>
@@ -66,7 +67,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       <View style={styles.settingRight}>
         {rightElement}
         {showArrow && !rightElement && (
-          <Ionicons name="chevron-forward" size={20} color={COLORS.TEXT_SECONDARY} />
+          <Ionicons name="chevron-forward" size={20} color="#666666" />
         )}
       </View>
     </TouchableOpacity>
@@ -81,9 +82,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   }) => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <Card style={styles.sectionCard}>
+      <View style={styles.sectionCard}>
         {children}
-      </Card>
+      </View>
     </View>
   );
 
@@ -232,7 +233,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       {/* User Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Kullanıcı</Text>
-        <Card style={styles.sectionCard}>
+        <View style={styles.sectionCard}>
           <SettingItem
             icon="person"
             title="Profil"
@@ -250,7 +251,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               navigation.navigate('Security');
             }}
           />
-        </Card>
+        </View>
       </View>
 
       {/* App Settings - This whole section might be removed or simplified */}
@@ -308,7 +309,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       {/* Data & Backup */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Veri ve Yedekleme</Text>
-        <Card style={styles.sectionCard}>
+        <View style={styles.sectionCard}>
           <SettingItem
             icon="download"
             title="Verileri İndir"
@@ -317,7 +318,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             showArrow={!exportingData}
             rightElement={
               exportingData ? (
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+                <ActivityIndicator size="small" color="#2196F3" />
               ) : null
             }
           />
@@ -342,13 +343,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               );
             }}
           />
-        </Card>
+        </View>
       </View>
 
       {/* About */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Hakkında</Text>
-        <Card style={styles.sectionCard}>
+        <View style={styles.sectionCard}>
           <SettingItem
             icon="information-circle"
             title="Uygulama Sürümü"
@@ -371,7 +372,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               Alert.alert('Gizlilik', 'Gizlilik politikası yakında gelecek');
             }}
           />
-        </Card>
+        </View>
       </View>
 
       {/* Logout */}
@@ -403,59 +404,66 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   // Mobile layout
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Ayarlar</Text>
-      </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Ayarlar</Text>
+        </View>
 
-      {renderContent()}
-    </SafeAreaView>
+        {renderContent()}
+      </SafeAreaView>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.lg : TYPOGRAPHY.sizes.xl,
+    fontSize: isSmallDevice ? 18 : 20,
     fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
+    color: '#FFFFFF', // White text
   },
   section: {
-    marginBottom: SPACING.lg,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.TEXT_SECONDARY,
-    marginBottom: SPACING.sm,
-    marginLeft: SPACING.md,
+    color: '#666666', // Gray text
+    marginBottom: 12,
+    marginLeft: 24,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   sectionCard: {
-    marginHorizontal: SPACING.md,
+    marginHorizontal: 24,
+    backgroundColor: '#111111', // Dark card background
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
     padding: 0,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: '#333333',
   },
   settingLeft: {
     flexDirection: 'row',
@@ -466,22 +474,22 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#1a1a1a', // Dark surface
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: SPACING.sm,
+    marginRight: 12,
   },
   settingInfo: {
     flex: 1,
   },
   settingTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    color: '#FFFFFF', // White text
     fontWeight: '500',
   },
   settingSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     marginTop: 2,
   },
   settingRight: {
@@ -489,23 +497,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutContainer: {
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.xl,
+    paddingHorizontal: 24,
+    marginBottom: 32,
   },
   footer: {
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingBottom: SPACING.xl,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   footerText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666', // Gray text
     textAlign: 'center',
-    marginBottom: SPACING.xs,
+    marginBottom: 4,
   },
   footerVersion: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_TERTIARY,
+    fontSize: 12,
+    color: '#444444', // Darker gray text
   },
 });
 

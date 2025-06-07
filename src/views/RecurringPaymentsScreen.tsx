@@ -8,14 +8,13 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
-import { Card } from '../components/common/Card';
 import { RecurringPaymentCard } from '../components/recurring/RecurringPaymentCard';
 import { CreateRecurringPaymentModal } from '../components/recurring/CreateRecurringPaymentModal';
-import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { RecurringPaymentViewModel } from '../viewmodels/RecurringPaymentViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
@@ -86,238 +85,252 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
   // Loading state
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyStateText}>Giriş yapmanız gerekiyor</Text>
-        </View>
-      </SafeAreaView>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.centerContainer}>
+            <Text style={styles.emptyStateText}>Giriş yapmanız gerekiyor</Text>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
   if (!paymentViewModel || !accountViewModel) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
-          <Text style={styles.loadingText}>Düzenli ödemeler yükleniyor...</Text>
-        </View>
-      </SafeAreaView>
+      <>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#2196F3" />
+            <Text style={styles.loadingText}>Düzenli ödemeler yükleniyor...</Text>
+          </View>
+        </SafeAreaView>
+      </>
     );
   }
 
   const summary = paymentViewModel.paymentSummary;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Düzenli Ödemeler</Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add" size={24} color={COLORS.PRIMARY} />
-        </TouchableOpacity>
-      </View>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Düzenli Ödemeler</Text>
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={() => setShowCreateModal(true)}
+          >
+            <Ionicons name="add" size={24} color="#2196F3" />
+          </TouchableOpacity>
+        </View>
 
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[COLORS.PRIMARY]}
-            tintColor={COLORS.PRIMARY}
-          />
-        }
-      >
-        {/* Summary Card */}
-        <Card style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Özet</Text>
-          <View style={styles.summaryGrid}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>
-                {formatCurrency(summary.totalMonthlyAmount)}
-              </Text>
-              <Text style={styles.summaryLabel}>Aylık Toplam</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>
-                {summary.activeCount}
-              </Text>
-              <Text style={styles.summaryLabel}>Aktif Ödeme</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={[
-                styles.summaryValue,
-                summary.upcomingCount > 0 && { color: COLORS.WARNING }
-              ]}>
-                {summary.upcomingCount}
-              </Text>
-              <Text style={styles.summaryLabel}>Bu Hafta</Text>
-            </View>
-            <View style={styles.summaryItem}>
-              <Text style={[
-                styles.summaryValue,
-                summary.overdueCount > 0 && { color: COLORS.ERROR }
-              ]}>
-                {summary.overdueCount}
-              </Text>
-              <Text style={styles.summaryLabel}>Gecikmiş</Text>
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollViewContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={["#2196F3"]}
+              tintColor="#2196F3"
+            />
+          }
+        >
+          {/* Summary Card */}
+          <View style={styles.summaryCard}>
+            <Text style={styles.summaryTitle}>Özet</Text>
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency(summary.totalMonthlyAmount)}
+                </Text>
+                <Text style={styles.summaryLabel}>Aylık Toplam</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValue}>
+                  {summary.activeCount}
+                </Text>
+                <Text style={styles.summaryLabel}>Aktif Ödeme</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[
+                  styles.summaryValue,
+                  summary.upcomingCount > 0 && { color: '#FF9800' }
+                ]}>
+                  {summary.upcomingCount}
+                </Text>
+                <Text style={styles.summaryLabel}>Bu Hafta</Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[
+                  styles.summaryValue,
+                  summary.overdueCount > 0 && { color: '#F44336' }
+                ]}>
+                  {summary.overdueCount}
+                </Text>
+                <Text style={styles.summaryLabel}>Gecikmiş</Text>
+              </View>
             </View>
           </View>
-        </Card>
 
-        {/* Overdue Payments */}
-        {paymentViewModel.overduePayments.length > 0 && (
-          <Card style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="alert-circle" size={20} color={COLORS.ERROR} />
-              <Text style={[styles.sectionTitle, { color: COLORS.ERROR }]}>
-                Gecikmiş Ödemeler ({paymentViewModel.overduePayments.length})
-              </Text>
-            </View>
-            {paymentViewModel.overduePayments.map((payment) => (
-              <RecurringPaymentCard
-                key={payment.id}
-                payment={payment}
-                onProcessPayment={() => paymentViewModel.processPayment(payment.id)}
-                onSkipPayment={() => paymentViewModel.skipPayment(payment.id)}
-                onToggleStatus={() => paymentViewModel.togglePaymentStatus(payment.id)}
-                onDelete={() => handleDeletePayment(payment.id, payment.name)}
-              />
-            ))}
-          </Card>
-        )}
-
-        {/* All Active Payments */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="list" size={20} color={COLORS.TEXT_PRIMARY} />
-            <Text style={styles.sectionTitle}>
-              Tüm Aktif Ödemeler ({paymentViewModel.activePayments.length})
-            </Text>
-          </View>
-          {paymentViewModel.activePayments.length > 0 ? (
-            paymentViewModel.activePayments.map((payment) => (
-              <RecurringPaymentCard
-                key={payment.id}
-                payment={payment}
-                onProcessPayment={() => paymentViewModel.processPayment(payment.id)}
-                onSkipPayment={() => paymentViewModel.skipPayment(payment.id)}
-                onToggleStatus={() => paymentViewModel.togglePaymentStatus(payment.id)}
-                onDelete={() => handleDeletePayment(payment.id, payment.name)}
-              />
-            ))
-          ) : (
-            <View style={styles.emptySection}>
-              <Ionicons name="calendar-outline" size={48} color={COLORS.TEXT_SECONDARY} />
-              <Text style={styles.emptySectionText}>Henüz aktif düzenli ödeme yok</Text>
-              <TouchableOpacity 
-                style={styles.addFirstPaymentButton}
-                onPress={() => setShowCreateModal(true)}
-              >
-                <Text style={styles.addFirstPaymentText}>İlk Düzenli Ödemenizi Ekleyin</Text>
-              </TouchableOpacity>
+          {/* Overdue Payments */}
+          {paymentViewModel.overduePayments.length > 0 && (
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="alert-circle" size={20} color="#F44336" />
+                <Text style={[styles.sectionTitle, { color: '#F44336' }]}>
+                  Gecikmiş Ödemeler ({paymentViewModel.overduePayments.length})
+                </Text>
+              </View>
+              {paymentViewModel.overduePayments.map((payment) => (
+                <RecurringPaymentCard
+                  key={payment.id}
+                  payment={payment}
+                  onProcessPayment={() => paymentViewModel.processPayment(payment.id)}
+                  onSkipPayment={() => paymentViewModel.skipPayment(payment.id)}
+                  onToggleStatus={() => paymentViewModel.togglePaymentStatus(payment.id)}
+                  onDelete={() => handleDeletePayment(payment.id, payment.name)}
+                />
+              ))}
             </View>
           )}
-        </Card>
-      </ScrollView>
 
-      {/* Create Modal */}
-      <CreateRecurringPaymentModal
-        visible={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSubmit={async (paymentData) => {
-          if (paymentViewModel) {
-            const success = await paymentViewModel.createRecurringPayment(paymentData);
-            if (success) {
-              Alert.alert('Başarılı', 'Düzenli ödeme oluşturuldu');
+          {/* All Active Payments */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="list" size={20} color="#FFFFFF" />
+              <Text style={styles.sectionTitle}>
+                Tüm Aktif Ödemeler ({paymentViewModel.activePayments.length})
+              </Text>
+            </View>
+            {paymentViewModel.activePayments.length > 0 ? (
+              paymentViewModel.activePayments.map((payment) => (
+                <RecurringPaymentCard
+                  key={payment.id}
+                  payment={payment}
+                  onProcessPayment={() => paymentViewModel.processPayment(payment.id)}
+                  onSkipPayment={() => paymentViewModel.skipPayment(payment.id)}
+                  onToggleStatus={() => paymentViewModel.togglePaymentStatus(payment.id)}
+                  onDelete={() => handleDeletePayment(payment.id, payment.name)}
+                />
+              ))
+            ) : (
+              <View style={styles.emptySection}>
+                <Ionicons name="calendar-outline" size={48} color="#666666" />
+                <Text style={styles.emptySectionText}>Henüz aktif düzenli ödeme yok</Text>
+                <TouchableOpacity 
+                  style={styles.addFirstPaymentButton}
+                  onPress={() => setShowCreateModal(true)}
+                >
+                  <Text style={styles.addFirstPaymentText}>İlk Düzenli Ödemenizi Ekleyin</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Create Modal */}
+        <CreateRecurringPaymentModal
+          visible={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={async (paymentData) => {
+            if (paymentViewModel) {
+              const success = await paymentViewModel.createRecurringPayment(paymentData);
+              if (success) {
+                Alert.alert('Başarılı', 'Düzenli ödeme oluşturuldu');
+              }
+              return success;
             }
-            return success;
-          }
-          return false;
-        }}
-        accounts={accountViewModel.accounts}
-        isLoading={paymentViewModel.isLoading}
-      />
-    </SafeAreaView>
+            return false;
+          }}
+          accounts={accountViewModel.accounts}
+          isLoading={paymentViewModel.isLoading}
+        />
+      </SafeAreaView>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACING.lg,
+    padding: 20,
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
-    paddingBottom: SPACING.lg,
+    paddingBottom: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   addButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.SURFACE,
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 16,
+    color: '#666666',
     textAlign: 'center',
-    marginTop: SPACING.sm,
+    marginTop: 8,
   },
   emptyStateText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 16,
+    color: '#666666',
     textAlign: 'center',
   },
   summaryCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 20,
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   summaryTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.md,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 16,
   },
   summaryGrid: {
     flexDirection: 'row',
@@ -328,52 +341,57 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryValue: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold as any,
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.xs,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
   summaryLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666',
     textAlign: 'center',
   },
   sectionCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 20,
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
+    marginBottom: 16,
+    gap: 8,
   },
   sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   emptySection: {
     alignItems: 'center',
-    paddingVertical: SPACING.xl,
+    paddingVertical: 32,
   },
   emptySectionText: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 16,
+    color: '#666666',
     textAlign: 'center',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginTop: 16,
+    marginBottom: 20,
   },
   addFirstPaymentButton: {
-    backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   addFirstPaymentText: {
-    color: COLORS.WHITE,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold as any,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

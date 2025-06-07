@@ -10,6 +10,7 @@
  * - TypeScript tip güvenliği
  * - Performans optimizasyonları
  * - Consistent state management
+ * - Minimal dark theme design
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -19,6 +20,7 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
@@ -270,35 +272,37 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
 
   // Mobile Layout
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[COLORS.PRIMARY]}
-            tintColor={COLORS.PRIMARY}
-          />
-        }
-      >
-        {renderContent()}
-      </ScrollView>
-    </SafeAreaView>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={['#FFFFFF']}
+              tintColor="#FFFFFF"
+            />
+          }
+        >
+          {renderContent()}
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 });
 
 /**
- * Stil Tanımları
+ * Stil Tanımları - Minimal Dark Theme
  * 
- * Clean code prensiplerine uygun olarak minimal stil tanımları.
- * Büyük kısmı alt bileşenlerde tanımlanır.
+ * Login/Register ekranlarıyla tutarlı minimal dark theme tasarım
  */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: '#000000', // Pure black background like login screens
   },
   scrollView: {
     flex: 1,
@@ -306,6 +310,7 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     padding: 20,
+    backgroundColor: '#000000',
   },
 });
 

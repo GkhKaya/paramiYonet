@@ -123,7 +123,7 @@ export class AccountViewModel extends BaseViewModel {
     this.accountsWithRealTimeBalances.forEach(account => {
       // Sadece toplam bakiyeye dahil edilenler toplam bakiyeye eklenir
       if (account.includeInTotalBalance) {
-        summary.totalBalance += account.balance;
+      summary.totalBalance += account.balance;
       }
       
       // Fakat tüm hesaplar kendi kategorilerinde sayılır

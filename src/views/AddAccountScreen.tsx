@@ -212,15 +212,15 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         return;
       }
     } else {
-      if (!initialBalance.trim()) {
-        Alert.alert('Hata', 'Başlangıç bakiyesi gereklidir');
-        return;
-      }
-      const balance = parseFloat(initialBalance.replace(',', '.'));
-      if (isNaN(balance)) {
-        Alert.alert('Hata', 'Geçerli bir bakiye giriniz');
-        return;
-      }
+    if (!initialBalance.trim()) {
+      Alert.alert('Hata', 'Başlangıç bakiyesi gereklidir');
+      return;
+    }
+    const balance = parseFloat(initialBalance.replace(',', '.'));
+    if (isNaN(balance)) {
+      Alert.alert('Hata', 'Geçerli bir bakiye giriniz');
+      return;
+    }
     }
 
     if (!viewModel) {
@@ -406,32 +406,32 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
             </View>
           ) : (
             // Diğer hesaplar için normal balance input
-            <View style={styles.balanceInputContainer}>
-              {/* Toggle Button for Positive/Negative */}
-              <TouchableOpacity
-                style={[
-                  styles.signToggleButton,
-                  { backgroundColor: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR },
-                  !canBePositive() && styles.signToggleButtonDisabled
-                ]}
-                onPress={() => canBePositive() && setIsPositiveBalance(!isPositiveBalance)}
-                disabled={!canBePositive()}
-              >
-                <Text style={styles.signToggleText}>
-                  {isPositiveBalance ? '+' : '-'}
-                </Text>
-              </TouchableOpacity>
-              
-              <Text style={styles.currencySymbol}>{currencySymbol}</Text>
-              <TextInput
-                style={styles.balanceInput}
-                value={initialBalance}
-                onChangeText={(value) => setInitialBalance(formatBalanceInput(value))}
-                placeholder="0,00"
-                placeholderTextColor={COLORS.TEXT_SECONDARY}
-                keyboardType="decimal-pad"
-              />
-            </View>
+          <View style={styles.balanceInputContainer}>
+            {/* Toggle Button for Positive/Negative */}
+            <TouchableOpacity
+              style={[
+                styles.signToggleButton,
+                { backgroundColor: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR },
+                !canBePositive() && styles.signToggleButtonDisabled
+              ]}
+              onPress={() => canBePositive() && setIsPositiveBalance(!isPositiveBalance)}
+              disabled={!canBePositive()}
+            >
+              <Text style={styles.signToggleText}>
+                {isPositiveBalance ? '+' : '-'}
+              </Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+            <TextInput
+              style={styles.balanceInput}
+              value={initialBalance}
+              onChangeText={(value) => setInitialBalance(formatBalanceInput(value))}
+              placeholder="0,00"
+              placeholderTextColor={COLORS.TEXT_SECONDARY}
+              keyboardType="decimal-pad"
+            />
+          </View>
           )}
           
           {/* Balance Preview */}
@@ -520,16 +520,16 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
                 </Text>
               </View>
             ) : (
-              <Text style={styles.previewBalance}>
-                {(() => {
-                  const balance = getFinalBalance();
-                  if (balance < 0) {
-                    return `-${currencySymbol}${Math.abs(balance).toLocaleString('tr-TR')}`;
-                  } else {
-                    return `${currencySymbol}${balance.toLocaleString('tr-TR')}`;
-                  }
-                })()}
-              </Text>
+            <Text style={styles.previewBalance}>
+              {(() => {
+                const balance = getFinalBalance();
+                if (balance < 0) {
+                  return `-${currencySymbol}${Math.abs(balance).toLocaleString('tr-TR')}`;
+                } else {
+                  return `${currencySymbol}${balance.toLocaleString('tr-TR')}`;
+                }
+              })()}
+            </Text>
             )}
           </View>
         </Card>
