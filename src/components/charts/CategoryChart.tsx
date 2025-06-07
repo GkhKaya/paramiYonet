@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ScrollView } from 'react-native';
 import Svg, { Rect, Path, Circle, Polyline, Text as SvgText } from 'react-native-svg';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
+import { useCurrency } from '../../hooks';
 
 const { width } = Dimensions.get('window');
 
@@ -26,20 +27,13 @@ export const CategoryChart: React.FC<CategoryChartProps> = ({
   showValues = true 
 }) => {
   const [selectedChart, setSelectedChart] = useState<ChartType>('pie');
-  const currencySymbol = '₺';
+  const { formatCurrency } = useCurrency({ minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   const chartTypes = [
     { key: 'pie' as ChartType, label: 'Pasta' },
     { key: 'vertical' as ChartType, label: 'Çubuk' },
     { key: 'line' as ChartType, label: 'Çizgi' },
   ];
-
-  const formatCurrency = (amount: number) => {
-    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })}`;
-  };
 
   if (data.length === 0) {
     return (

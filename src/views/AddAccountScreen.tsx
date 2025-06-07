@@ -20,6 +20,7 @@ import { AccountType, CreateAccountRequest } from '../models/Account';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import GoldPriceService from '../services/GoldPriceService';
+import { useCurrency } from '../hooks';
 
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
@@ -116,7 +117,8 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
     editAccount?.includeInTotalBalance !== undefined ? editAccount.includeInTotalBalance : true
   );
 
-  const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
+  // Custom hooks
+  const { currencySymbol, formatInput } = useCurrency();
   const goldService = GoldPriceService.getInstance();
 
   // Güncel altın fiyatını çek
@@ -146,9 +148,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
 
   // Helper function to format balance input
   const formatBalanceInput = (value: string) => {
-    // Only allow numbers, commas and dots (no minus sign since we have toggle)
-    const cleanValue = value.replace(/[^0-9,\.]/g, '');
-    return cleanValue;
+    return formatInput(value);
   };
 
   // Get the final balance value (with sign)

@@ -187,8 +187,9 @@ class GoldPriceService {
     };
   }
 
-  // Fiyat formatlama
+  // Fiyat formatlama - formatCurrency artık utils/currency'den import edilebilir
   formatPrice(price: number): string {
+    // Bu fonksiyonu kullanan yerler utils/currency formatCurrency'yi kullanabilir
     return `₺${price.toLocaleString('tr-TR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,

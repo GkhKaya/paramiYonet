@@ -10,6 +10,7 @@ import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction, TransactionType } from '../../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../../models/Category';
+import { useCurrency, useCategory, useDate } from '../../hooks';
 
 interface RecentTransactionsProps {
   /** Son işlemler listesi */
@@ -25,43 +26,30 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   onViewAll,
   loading = false,
 }) => {
+  // Custom hooks
+  const { formatDirectional } = useCurrency();
+  const { getDetails } = useCategory();
+  const { formatRelative } = useDate();
+
   /**
    * Tutar formatını düzenler
    */
   const formatAmount = (amount: number, type: TransactionType): string => {
-    const sign = type === TransactionType.INCOME ? '+' : '-';
-    return `${sign}${amount.toLocaleString('tr-TR')} ₺`;
+    return formatDirectional(amount, type);
   };
 
   /**
    * Tarihi formatlar
    */
   const formatDate = (date: Date): string => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return 'Bugün';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Dün';
-    } else {
-      return date.toLocaleDateString('tr-TR', {
-        day: 'numeric',
-        month: 'short',
-      });
-    }
+    return formatRelative(date);
   };
 
   /**
    * Kategori detaylarını getir
    */
   const getCategoryDetails = (categoryName: string, type: TransactionType) => {
-    const categories = type === TransactionType.INCOME 
-      ? DEFAULT_INCOME_CATEGORIES 
-      : DEFAULT_EXPENSE_CATEGORIES;
-    
-    return categories.find(cat => cat.name === categoryName) || categories[0];
+    return getDetails(categoryName, type);
   };
 
   /**

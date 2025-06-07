@@ -1,8 +1,13 @@
 /**
  * Formatters - Para, Tarih ve Sayı Formatlama Yardımcıları
  * 
- * Bu dosya uygulamada kullanılan tüm formatlama işlemlerini içerir.
- * Clean code prensiplerine uygun olarak her fonksiyon tek bir sorumluluğa sahiptir.
+ * @deprecated Bu dosya eski formatters içindir. Yeni projeler için:
+ * - Para formatı: utils/currency.ts kullanın
+ * - Tarih formatı: utils/date.ts kullanın
+ * - Kategori işlemleri: utils/category.ts kullanın
+ * - Hook'lar: hooks/useCurrency.ts, hooks/useDate.ts, hooks/useCategory.ts kullanın
+ * 
+ * Bu dosya backward compatibility için tutulmaktadır.
  */
 
 /**

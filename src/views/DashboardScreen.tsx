@@ -27,6 +27,7 @@ import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import { isWeb, getResponsiveColumns } from '../utils/platform';
+import { useCurrency, useCategory, useDate } from '../hooks';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -43,7 +44,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
   const [refreshing, setRefreshing] = useState(false);
   const [balanceVisible, setBalanceVisible] = useState(true);
 
-  const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
+  // Custom hooks
+  const { formatCurrency, currencySymbol } = useCurrency();
+  const { getDetails } = useCategory();
+  const { formatShort } = useDate();
   
   // Initialize ViewModels with user ID when available
   useEffect(() => {
@@ -84,41 +88,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
 
   const totalBalance = accountViewModel?.totalBalance || 0;
   
-  const formatCurrency = (amount: number) => {
-    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
-
   const formatAccountBalance = (balance: number) => {
-    if (balance < 0) {
-      return `-₺${Math.abs(balance).toLocaleString('tr-TR', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      })}`;
-    }
-    
-    return `₺${balance.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
+    return formatCurrency(balance);
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-    });
+  const formatTransactionDate = (date: Date) => {
+    return formatShort(date);
   };
 
   const getCategoryDetails = (categoryName: string, type: TransactionType) => {
-    const categories = type === TransactionType.INCOME 
-      ? DEFAULT_INCOME_CATEGORIES 
-      : DEFAULT_EXPENSE_CATEGORIES;
-    
-    const category = categories.find(cat => cat.name === categoryName) || categories[0];
-    return category;
+    return getDetails(categoryName, type);
   };
 
   const navigateToAddTransaction = (type: TransactionType) => {
@@ -321,7 +300,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
                         <View style={styles.transactionSubInfo}>
                           <Text style={styles.transactionCat}>{transaction.category}</Text>
                           <Text style={styles.transactionDot}>•</Text>
-                          <Text style={styles.transactionTime}>{formatDate(transaction.date)}</Text>
+                          <Text style={styles.transactionTime}>{formatTransactionDate(transaction.date)}</Text>
                         </View>
                       </View>
                       

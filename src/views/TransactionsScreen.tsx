@@ -28,6 +28,7 @@ import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { isWeb } from '../utils/platform';
+import { useCurrency, useCategory, useDate } from '../hooks';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -50,37 +51,21 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     date: new Date(),
   });
 
-  const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
-
-  const formatCurrency = (amount: number) => {
-    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  // Custom hooks
+  const { formatCurrency, currencySymbol, parseInput } = useCurrency({ maximumFractionDigits: 2, minimumFractionDigits: 2 });
+  const { getDetails } = useCategory();
+  const { formatShort, formatMonthYear } = useDate();
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
+    return formatShort(date);
   };
 
   const formatMonth = (date: Date) => {
-    return date.toLocaleDateString('tr-TR', {
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatMonthYear(date);
   };
 
   const getCategoryDetails = (categoryName: string, type: TransactionType) => {
-    const categories = type === TransactionType.INCOME 
-      ? DEFAULT_INCOME_CATEGORIES 
-      : DEFAULT_EXPENSE_CATEGORIES;
-    
-    const category = categories.find(cat => cat.name === categoryName) || categories[0];
-    return category;
+    return getDetails(categoryName, type);
   };
 
   const handleTransactionPress = (transaction: Transaction) => {

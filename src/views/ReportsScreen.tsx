@@ -32,6 +32,7 @@ import { useViewModels } from '../contexts/ViewModelContext';
 import { ReportsViewModel } from '../viewmodels/ReportsViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { isWeb } from '../utils/platform';
+import { useCurrency, useCategory, useDate } from '../hooks';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -69,7 +70,10 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     alerts: [] as Array<{ type: 'warning' | 'danger'; message: string; category?: string }>,
   });
 
-  const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
+  // Custom hooks
+  const { formatCurrency, currencySymbol, formatInput } = useCurrency();
+  const { getDetails } = useCategory();
+  const { formatShort, formatMonthYear } = useDate();
 
   // Analytics calculation functions
   const calculateSavingsScore = (income: number, expense: number): number => {
@@ -124,12 +128,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     return { months: months % 12, years, isPossible: true };
   };
 
-  const formatCurrency = (amount: number) => {
-    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  // formatCurrency artık hook'tan geliyor
 
   const formatGoalAmount = (text: string) => {
     const cleaned = text.replace(/[^0-9.,]/g, '');

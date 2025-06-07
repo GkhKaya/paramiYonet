@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../../constants';
 import { Account } from '../../models';
+import { useCurrency } from '../../hooks';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -20,14 +21,7 @@ export const AccountCard: React.FC<AccountCardProps> = ({
   onPress,
   showBalance = true,
 }) => {
-  const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
-
-  const formatBalance = (balance: number) => {
-    return `${currencySymbol}${balance.toLocaleString('tr-TR', { 
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2 
-    })}`;
-  };
+  const { formatCurrency: formatBalance } = useCurrency();
 
   const getAccountTypeLabel = (type: string) => {
     switch (type) {

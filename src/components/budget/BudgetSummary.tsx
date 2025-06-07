@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
+import { useCurrency } from '../../hooks';
 
 interface BudgetSummaryProps {
   totalBudgeted: number;
@@ -18,12 +19,7 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
   overBudgetCount,
   status,
 }) => {
-  const formatCurrency = (amount: number): string => {
-    return `₺${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  const { formatCurrency } = useCurrency();
 
   const getStatusColor = (): string => {
     switch (status) {

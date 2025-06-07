@@ -31,6 +31,7 @@ import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { RecurringPaymentViewModel } from '../viewmodels/RecurringPaymentViewModel';
 import { isWeb } from '../utils/platform';
+import { useCurrency, useCategory, useDate } from '../hooks';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -64,11 +65,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const [reminderDays, setReminderDays] = useState('3');
   const [autoCreateTransaction, setAutoCreateTransaction] = useState(true);
 
-  const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
+  // Custom hooks
+  const { formatCurrency: formatCurrencyUtil, currencySymbol, formatInput, parseInput } = useCurrency();
+  const { getDetails, getAllCategories } = useCategory({ type: selectedType });
+  const { formatSmart } = useDate();
   
-  const availableCategories = selectedType === TransactionType.INCOME 
-    ? DEFAULT_INCOME_CATEGORIES 
-    : DEFAULT_EXPENSE_CATEGORIES;
+  const availableCategories = getAllCategories();
 
   // Helper functions
   const formatAmountToWords = (amount: number): string => {
@@ -89,10 +91,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   };
 
   const formatCurrency = (amount: number) => {
-    return `${currencySymbol}${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
+    return formatCurrencyUtil(amount);
   };
 
   // Initialize AccountViewModel when user is available

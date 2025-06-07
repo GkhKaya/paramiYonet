@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import { Budget } from '../../models/Budget';
+import { useCurrency } from '../../hooks';
 
 interface BudgetCardProps {
   budget: Budget;
@@ -20,12 +21,7 @@ export const BudgetCard: React.FC<BudgetCardProps> = ({
   onDelete,
   showActions = true,
 }) => {
-  const formatCurrency = (amount: number): string => {
-    return `₺${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  const { formatCurrency } = useCurrency();
 
   const getProgressColor = (percentage: number): string => {
     if (percentage >= 100) return COLORS.ERROR;

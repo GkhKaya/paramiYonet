@@ -269,13 +269,7 @@ export class RecurringPaymentViewModel {
     }
   };
 
-  // Utility methods
-  formatCurrency = (amount: number): string => {
-    return `₺${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  // Utility methods - formatCurrency artık utils/currency'den import edilebilir
 
   getFrequencyLabel = (frequency: string): string => {
     const labels: { [key: string]: string } = {

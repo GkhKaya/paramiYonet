@@ -258,12 +258,7 @@ export class BudgetViewModel {
     };
   };
 
-  formatCurrency = (amount: number): string => {
-    return `₺${amount.toLocaleString('tr-TR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`;
-  };
+  // formatCurrency artık utils/currency'den import edilebilir
 
   // Cleanup
   dispose = () => {
