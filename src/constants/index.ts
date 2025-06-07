@@ -21,11 +21,11 @@ export const CURRENCIES: { code: Currency; symbol: string; name: string }[] = [
 export const COLORS = {
   PRIMARY: '#007AFF',           // iOS Blue
   SECONDARY: '#FFD60A',         // Gold/Yellow
-  SUCCESS: '#30D158',           // Green
+  SUCCESS: '#00E676',           // Bright Green - Daha kontrastlı
   WARNING: '#FF9F0A',           // Orange
-  ERROR: '#FF453A',             // Red
-  INCOME: '#30D158',            // Green
-  EXPENSE: '#FF453A',           // Red
+  ERROR: '#FF1744',             // Bright Red - Daha kontrastlı
+  INCOME: '#00E676',            // Bright Green - Daha kontrastlı
+  EXPENSE: '#FF1744',           // Bright Red - Daha kontrastlı
   
   // Dark Theme Background Colors
   BACKGROUND: '#000000',        // Pure Black
@@ -61,11 +61,11 @@ export const THEME_COLORS = {
     textSecondary: '#8E8E93',
     textTertiary: '#48484A',
     border: '#38383A',
-    success: '#30D158',
+    success: '#00E676',
     warning: '#FF9F0A',
-    error: '#FF453A',
-    income: '#30D158',
-    expense: '#FF453A',
+    error: '#FF1744',
+    income: '#00E676',
+    expense: '#FF1744',
   },
   light: {
     primary: '#007AFF',
@@ -77,11 +77,11 @@ export const THEME_COLORS = {
     textSecondary: '#3C3C43',
     textTertiary: '#8E8E93',
     border: '#C6C6C8',
-    success: '#34C759',
+    success: '#00C853',
     warning: '#FF9500',
-    error: '#FF3B30',
-    income: '#34C759',
-    expense: '#FF3B30',
+    error: '#D32F2F',
+    income: '#00C853',
+    expense: '#D32F2F',
   },
 };
 

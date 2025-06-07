@@ -559,9 +559,9 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
 
     // Tasarruf skoru rengi
     const getSavingsScoreColor = (score: number) => {
-      if (score >= 70) return '#4CAF50'; // Green
+      if (score >= 70) return '#00E676'; // Bright Green
       if (score >= 40) return '#FF9800'; // Orange
-      return '#F44336'; // Red
+      return '#FF1744'; // Bright Red
     };
 
     // Kategori verilerini al

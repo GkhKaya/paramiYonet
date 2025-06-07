@@ -284,7 +284,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
             <View style={styles.typeBadgeContainer}>
               <View style={[
                 styles.typeBadge,
-                { backgroundColor: isIncome ? '#4CAF50' : '#F44336' }
+                { backgroundColor: isIncome ? '#00E676' : '#FF1744' }
               ]}>
                 <Ionicons 
                   name={isIncome ? "add-circle" : "remove-circle"} 
@@ -309,7 +309,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                   variant="outlined"
                 />
               ) : (
-                <Text style={[styles.amountDisplay, { color: isIncome ? '#4CAF50' : '#F44336' }]}>
+                <Text style={[styles.amountDisplay, { color: isIncome ? '#00E676' : '#FF1744' }]}>
                   {isIncome ? '+' : '-'}{formatCurrency(selectedTransaction.amount)}
                 </Text>
               )}
@@ -548,13 +548,13 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
             <View style={styles.statsContent}>
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Toplam Gelir</Text>
-                <Text style={[styles.statValue, { color: '#4CAF50' }]}>
+                <Text style={[styles.statValue, { color: '#00E676' }]}>
                   {formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
                 </Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statLabel}>Toplam Gider</Text>
-                <Text style={[styles.statValue, { color: '#F44336' }]}>
+                <Text style={[styles.statValue, { color: '#FF1744' }]}>
                   {formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
                 </Text>
               </View>
@@ -562,7 +562,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                 <Text style={styles.statLabel}>Net Tutar</Text>
                 <Text style={[
                   styles.statValue,
-                  { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#4CAF50' : '#F44336' }
+                  { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#00E676' : '#FF1744' }
                 ]}>
                   {formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
                 </Text>
@@ -663,13 +663,13 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
           <View style={styles.statsContent}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Toplam Gelir</Text>
-              <Text style={[styles.statValue, { color: '#4CAF50' }]}>
+              <Text style={[styles.statValue, { color: '#00E676' }]}>
                 +{formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
               </Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Toplam Gider</Text>
-              <Text style={[styles.statValue, { color: '#F44336' }]}>
+              <Text style={[styles.statValue, { color: '#FF1744' }]}>
                 -{formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
               </Text>
             </View>
@@ -677,7 +677,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
               <Text style={styles.statLabel}>Net Miktar</Text>
               <Text style={[
                 styles.statValue,
-                { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#4CAF50' : '#F44336' }
+                { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#00E676' : '#FF1744' }
               ]}>
                 {(viewModel?.monthlyStats.netAmount || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
               </Text>

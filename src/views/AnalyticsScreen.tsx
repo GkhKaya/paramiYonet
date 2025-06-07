@@ -245,9 +245,9 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
 
   // Tasarruf skoru rengi
   const getSavingsScoreColor = (score: number) => {
-    if (score >= 70) return '#4CAF50'; // Success color
+    if (score >= 70) return '#00E676'; // Bright Success color
     if (score >= 40) return '#FF9800'; // Warning color
-    return '#F44336'; // Error color
+    return '#FF1744'; // Bright Error color
   };
 
   const renderContent = () => (
@@ -282,7 +282,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
                 Gider: {formatCurrency(analytics.monthlyExpense)}
               </Text>
               <Text style={[styles.breakdownItem, { 
-                color: analytics.monthlyIncome - analytics.monthlyExpense >= 0 ? '#4CAF50' : '#F44336' 
+                color: analytics.monthlyIncome - analytics.monthlyExpense >= 0 ? '#00E676' : '#FF1744' 
               }]}>
                 Net: {formatCurrency(analytics.monthlyIncome - analytics.monthlyExpense)}
               </Text>

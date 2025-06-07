@@ -206,14 +206,14 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             icon="trending-up"
             title="Toplam Gelir"
             value={formatCurrency(totalIncome)}
-            color="#4CAF50"
+            color="#00E676"
             isLoading={loading}
           />
           <StatCard
             icon="trending-down"
             title="Toplam Gider"
             value={formatCurrency(totalExpense)}
-            color="#F44336"
+            color="#FF1744"
             isLoading={loading}
           />
           <StatCard
@@ -233,12 +233,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
           <Ionicons 
             name="stats-chart" 
             size={24} 
-            color={totalIncome - totalExpense >= 0 ? '#4CAF50' : '#F44336'} 
+            color={totalIncome - totalExpense >= 0 ? '#00E676' : '#FF1744'} 
           />
         </View>
         <Text style={[
           styles.balanceValue,
-          { color: totalIncome - totalExpense >= 0 ? '#4CAF50' : '#F44336' }
+          { color: totalIncome - totalExpense >= 0 ? '#00E676' : '#FF1744' }
         ]}>
           {formatCurrency(totalIncome - totalExpense)}
         </Text>
@@ -255,8 +255,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.actionCard}
             onPress={() => navigation.navigate('AddTransaction', { defaultType: 'income' })}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#4CAF5020' }]}>
-              <Ionicons name="add-circle" size={24} color="#4CAF50" />
+            <View style={[styles.actionIcon, { backgroundColor: '#00E67620' }]}>
+              <Ionicons name="add-circle" size={24} color="#00E676" />
             </View>
             <Text style={styles.actionTitle}>Gelir Ekle</Text>
             <Text style={styles.actionSubtitle}>Yeni gelir işlemi</Text>
@@ -266,8 +266,8 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
             style={styles.actionCard}
             onPress={() => navigation.navigate('AddTransaction', { defaultType: 'expense' })}
           >
-            <View style={[styles.actionIcon, { backgroundColor: '#F4433620' }]}>
-              <Ionicons name="remove-circle" size={24} color="#F44336" />
+            <View style={[styles.actionIcon, { backgroundColor: '#FF174420' }]}>
+              <Ionicons name="remove-circle" size={24} color="#FF1744" />
             </View>
             <Text style={styles.actionTitle}>Gider Ekle</Text>
             <Text style={styles.actionSubtitle}>Yeni gider işlemi</Text>
