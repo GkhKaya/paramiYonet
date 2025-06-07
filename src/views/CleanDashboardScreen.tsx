@@ -24,7 +24,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { observer } from 'mobx-react-lite';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, CommonActions } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 // Custom Components
 import { DashboardHeader } from '../components/dashboard/DashboardHeader';
@@ -40,8 +41,9 @@ import { isWeb } from '../utils/platform';
 // Context and ViewModels
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
-import { Account } from '../models/Account';
+import { Account, AccountType } from '../models/Account';
 import { TransactionType } from '../models/Transaction';
+import { MainStackParamList } from '../types';
 
 interface CleanDashboardScreenProps {
   navigation: any;
@@ -54,6 +56,7 @@ interface CleanDashboardScreenProps {
  * hızlı işlemler yapmasını sağlar.
  */
 const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ navigation }) => {
+  const parentNavigation = useNavigation<any>();
   const { user } = useAuth();
   const { transactionViewModel, accountViewModel, isLoading: viewModelsLoading } = useViewModels();
 
@@ -136,25 +139,55 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
    * İşlem ekleme sayfasına yönlendirir
    */
   const navigateToAddTransaction = useCallback((type: TransactionType) => {
-    navigation.navigate('AddTransaction', { defaultType: type });
-  }, [navigation]);
+    const paramType = type === TransactionType.INCOME ? 'income' : 'expense';
+    console.log('Dashboard quick action pressed:', paramType);
+    
+    // Root navigator'ı bul
+    let rootNav = parentNavigation;
+    while (rootNav.getParent()) {
+      rootNav = rootNav.getParent();
+    }
+    
+    console.log('Root navigation state:', rootNav.getState());
+    console.log('Parent navigation state:', parentNavigation.getState());
+    
+    try {
+      // Root navigator ile dene
+      rootNav.navigate('AddTransaction', { defaultType: paramType });
+      console.log('Root navigation attempt completed');
+    } catch (error) {
+      console.error('Root navigation failed:', error);
+      
+      try {
+        // CommonActions ile dene
+        const action = CommonActions.navigate({
+          name: 'AddTransaction',
+          params: { defaultType: paramType }
+        });
+        parentNavigation.dispatch(action);
+        console.log('CommonActions navigation dispatched from dashboard');
+      } catch (error2) {
+        console.error('CommonActions also failed:', error2);
+      }
+    }
+  }, [parentNavigation]);
 
   /**
    * Hesap ekleme sayfasına yönlendirir
    */
   const navigateToAddAccount = useCallback(() => {
-    navigation.navigate('AddAccount');
-  }, [navigation]);
+    parentNavigation.navigate('AddAccount');
+  }, [parentNavigation]);
 
   /**
-   * Raporlar sayfasına yönlendirir
+   * Raporlar sayfasına yönlendirir (tab navigation)
    */
   const navigateToReports = useCallback(() => {
     navigation.navigate('Reports');
   }, [navigation]);
 
   /**
-   * İşlemler sayfasına yönlendirir
+   * İşlemler sayfasına yönlendirir (tab navigation)
    */
   const navigateToTransactions = useCallback(() => {
     navigation.navigate('Transactions');
@@ -164,15 +197,28 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
    * Analizler sayfasına yönlendirir
    */
   const navigateToAnalytics = useCallback(() => {
-    navigation.navigate('Analytics');
-  }, [navigation]);
+    parentNavigation.navigate('Analytics');
+  }, [parentNavigation]);
 
   /**
    * Hesap düzenleme sayfasına yönlendirir
    */
   const handleEditAccount = useCallback((account: AccountItem) => {
-    navigation.navigate('AddAccount', { editAccount: account });
-  }, [navigation]);
+    const editAccount: Account = {
+      id: account.id,
+      name: account.name,
+      type: account.type as AccountType,
+      balance: account.balance,
+      isActive: account.isActive,
+      color: account.color,
+      userId: user?.id || '',
+      icon: 'wallet',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      includeInTotalBalance: true,
+    };
+    parentNavigation.navigate('AddAccount', { editAccount });
+  }, [parentNavigation, user]);
 
   /**
    * Hesap silme işlemini gerçekleştirir
@@ -213,8 +259,8 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
 
   // Quick Actions Configuration - Hızlı eylem butonları konfigürasyonu
   const quickActions = createCommonQuickActions(
-    () => navigateToAddTransaction(TransactionType.INCOME),
-    () => navigateToAddTransaction(TransactionType.EXPENSE),
+    () => navigateToAddTransaction(TransactionType.INCOME),   // onAddIncome
+    () => navigateToAddTransaction(TransactionType.EXPENSE),  // onAddExpense
     navigateToAddAccount,
     navigateToReports,
     navigateToTransactions,

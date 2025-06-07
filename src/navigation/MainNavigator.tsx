@@ -1,9 +1,10 @@
 import React from 'react';
-import { Text, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import { Text, Dimensions, Platform, TouchableOpacity, StyleSheet } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { COLORS } from '../constants';
 import { MainStackParamList, MainTabParamList } from '../types';
 import { isWeb } from '../utils/platform';
@@ -33,6 +34,7 @@ const Stack = createStackNavigator<MainStackParamList>();
 
 const TabNavigator: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   
   return (
     <Tab.Navigator
@@ -42,25 +44,55 @@ const TabNavigator: React.FC = () => {
 
           switch (route.name) {
             case 'Dashboard':
-              iconName = focused ? 'home' : 'home-outline';
+              iconName = focused ? 'receipt' : 'receipt-outline';
               break;
             case 'Transactions':
-              iconName = focused ? 'list' : 'list-outline';
+              iconName = focused ? 'time' : 'time-outline';
               break;
             case 'AddTransaction':
-              iconName = focused ? 'add-circle' : 'add-circle-outline';
-              break;
+              return null; // Custom button için icon döndürmeyelim
             case 'Reports':
-              iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+              iconName = focused ? 'document-text' : 'document-text-outline';
               break;
             case 'Settings':
-              iconName = focused ? 'settings' : 'settings-outline';
+              iconName = focused ? 'person' : 'person-outline';
               break; 
             default:
               iconName = 'circle';
           }
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
+        },
+        tabBarButton: (props) => {
+          if (route.name === 'AddTransaction') {
+            return (
+              <TouchableOpacity
+                style={styles.customTabButton}
+                onPress={() => {
+                  console.log('+ button pressed');
+                  
+                  // Root navigator'ı bul
+                  let rootNav = navigation;
+                  while (rootNav.getParent()) {
+                    rootNav = rootNav.getParent();
+                  }
+                  
+                  console.log('+ button root navigation state:', rootNav.getState());
+                  
+                  try {
+                    rootNav.navigate('AddTransaction');
+                    console.log('+ button root navigation completed');
+                  } catch (error) {
+                    console.error('+ button navigation failed:', error);
+                  }
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={26} color="#FFFFFF" />
+              </TouchableOpacity>
+            );
+          }
+          return <TouchableOpacity {...props} />;
         },
         tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: '#666666',
@@ -84,21 +116,21 @@ const TabNavigator: React.FC = () => {
         name="Dashboard"
         component={CleanDashboardScreen}
         options={{
-          title: 'Ana Sayfa',
+          title: 'Kayıtlar',
         }}
       />
       <Tab.Screen
         name="Transactions"
         component={TransactionsScreen}
         options={{
-          title: 'İşlemler',
+          title: 'Grafikler',
         }}
       />
       <Tab.Screen
         name="AddTransaction"
-        component={AddTransactionScreen}
+        component={CleanDashboardScreen} // Placeholder component - asla render edilmeyecek
         options={{
-          title: 'Ekle',
+          title: '',
         }}
       />
       <Tab.Screen
@@ -112,7 +144,7 @@ const TabNavigator: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          title: 'Ayarlar',
+          title: 'Ben',
         }}
       />
     </Tab.Navigator>
@@ -354,5 +386,24 @@ const MainNavigator: React.FC = () => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  customTabButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#000000',
+  },
+});
 
 export default MainNavigator; 
