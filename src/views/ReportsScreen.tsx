@@ -11,6 +11,7 @@ import {
   Alert,
   TextInput,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -287,7 +288,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   const currentCategories = getCurrentCategories();
 
   const handleEditAccount = (account: Account) => {
-    navigation.navigate('AddAccount', { editAccount: account });
+    if (Platform.OS === 'web') {
+      navigation.navigate('AddAccount', { editAccount: account }, {
+        animation: 'none'
+      });
+    } else {
+      navigation.navigate('AddAccount', { editAccount: account });
+    }
   };
 
   const handleDeleteAccount = (account: Account) => {
@@ -328,7 +335,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   };
 
   const handleGoldAccountDetail = (account: Account) => {
-    navigation.navigate('GoldAccountDetail', { account });
+    if (Platform.OS === 'web') {
+      navigation.navigate('GoldAccountDetail', { account }, {
+        animation: 'none'
+      });
+    } else {
+      navigation.navigate('GoldAccountDetail', { account });
+    }
   };
 
   // Loading state
@@ -898,7 +911,15 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
             <Text style={styles.accountsSectionTitle}>Hesap Özeti</Text>
             <TouchableOpacity 
               style={styles.addAccountButton}
-              onPress={() => navigation.navigate('AddAccount')}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  navigation.navigate('AddAccount', undefined, {
+                    animation: 'none'
+                  });
+                } else {
+                  navigation.navigate('AddAccount');
+                }
+              }}
             >
               <Ionicons name="add" size={20} color="#2196F3" />
               <Text style={styles.addAccountText}>Hesap Ekle</Text>
@@ -1051,7 +1072,15 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               <Text style={styles.emptyAccountsText}>Henüz hesap eklenmedi</Text>
               <TouchableOpacity 
                 style={styles.addFirstAccountButton}
-                onPress={() => navigation.navigate('AddAccount')}
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    navigation.navigate('AddAccount', undefined, {
+                      animation: 'none'
+                    });
+                  } else {
+                    navigation.navigate('AddAccount');
+                  }
+                }}
               >
                 <Text style={styles.addFirstAccountText}>İlk Hesabını Ekle</Text>
               </TouchableOpacity>
@@ -1262,57 +1291,64 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     );
   };
 
+  // Web Layout
+  if (isWeb) {
     return (
+      <WebLayout title="Raporlar" activeRoute="reports" navigation={navigation}>
+        <View style={styles.webContainer}>
+          <PeriodSelector />
+          <TabSelector />
+
+          <ScrollView 
+            style={styles.content}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                colors={['#FFFFFF']}
+                tintColor="#FFFFFF"
+              />
+            }
+          >
+            {renderContent()}
+          </ScrollView>
+          
+          <CreateBudgetModal
+            visible={showCreateBudgetModal}
+            onClose={() => setShowCreateBudgetModal(false)}
+            onSubmit={async () => {
+              setShowCreateBudgetModal(false);
+              handleRefresh();
+              return true;
+            }}
+            isLoading={false}
+          />
+        </View>
+      </WebLayout>
+    );
+  }
+
+  // Mobile Layout
+  return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      {isWeb ? (
-        <WebLayout title="Raporlar" activeRoute="reports" navigation={navigation}>
-          <View style={styles.webContainer}>
-            <PeriodSelector />
-            <TabSelector />
-            <ScrollView 
-              style={styles.content}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={handleRefresh}
-                  colors={['#FFFFFF']}
-                  tintColor="#FFFFFF"
-                />
-              }
-            >
-              {renderContent()}
-            </ScrollView>
-            <CreateBudgetModal
-              visible={showCreateBudgetModal}
-              onClose={() => setShowCreateBudgetModal(false)}
-              onSubmit={async () => {
-                setShowCreateBudgetModal(false);
-                handleRefresh();
-                return true;
-              }}
-              isLoading={false}
-            />
-          </View>
-        </WebLayout>
-      ) : (
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Raporlar</Text>
         </View>
 
-          <PeriodSelector />
-          <TabSelector />
+        <PeriodSelector />
+        <TabSelector />
 
         <ScrollView 
-            style={styles.content}
+          style={styles.content}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-                colors={['#FFFFFF']}
-                tintColor="#FFFFFF"
+              colors={['#FFFFFF']}
+              tintColor="#FFFFFF"
             />
           }
         >
@@ -1322,15 +1358,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
         <CreateBudgetModal
           visible={showCreateBudgetModal}
           onClose={() => setShowCreateBudgetModal(false)}
-            onSubmit={async () => {
-              setShowCreateBudgetModal(false);
-              handleRefresh();
-              return true;
-            }}
-            isLoading={false}
+          onSubmit={async () => {
+            setShowCreateBudgetModal(false);
+            handleRefresh();
+            return true;
+          }}
+          isLoading={false}
         />
       </SafeAreaView>
-      )}
     </>
   );
 });
@@ -1342,7 +1377,7 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     flex: 1,
-    backgroundColor: '#000000', // Pure black background
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   centerContainer: {
     flex: 1,

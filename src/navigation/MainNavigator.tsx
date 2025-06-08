@@ -69,22 +69,13 @@ const TabNavigator: React.FC = () => {
               <TouchableOpacity
                 style={styles.customTabButton}
                 onPress={() => {
-                  console.log('+ button pressed');
-                  
                   // Root navigator'ı bul
                   let rootNav = navigation;
                   while (rootNav.getParent()) {
                     rootNav = rootNav.getParent();
                   }
                   
-                  console.log('+ button root navigation state:', rootNav.getState());
-                  
-                  try {
-                    rootNav.navigate('AddTransaction');
-                    console.log('+ button root navigation completed');
-                  } catch (error) {
-                    console.error('+ button navigation failed:', error);
-                  }
+                  rootNav.navigate('AddTransaction');
                 }}
                 activeOpacity={0.8}
               >
@@ -102,7 +93,7 @@ const TabNavigator: React.FC = () => {
           paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 8),
           height: Math.max(65 + insets.bottom, Platform.OS === 'ios' ? 85 : 65),
           ...(isWeb && {
-            display: 'none',
+            display: 'none', // Hide mobile tabs on web
           }),
         },
         tabBarLabelStyle: {
@@ -167,6 +158,10 @@ const MainNavigator: React.FC = () => {
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
+          ...(Platform.OS === 'web' && {
+            animationEnabled: false,
+            cardStyleInterpolator: () => ({}),
+          }),
         }}
       >
         <Stack.Screen 
@@ -177,7 +172,27 @@ const MainNavigator: React.FC = () => {
           name="AddTransaction" 
           component={AddTransactionScreen}
           options={{
-            presentation: 'modal', // Modal olarak aç
+            presentation: 'modal',
+            animationTypeForReplace: 'push',
+            cardStyleInterpolator: ({ current }) => ({
+              cardStyle: {
+                opacity: current.progress,
+              },
+            }),
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 200, // Daha hızlı açılma
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 150, // Daha hızlı kapanma
+                },
+              },
+            },
           }}
         />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
@@ -186,40 +201,42 @@ const MainNavigator: React.FC = () => {
           name="Profile" 
           component={ProfileScreen}
           options={{
-            cardStyleInterpolator: ({ current, layouts }) => {
-              return {
-                cardStyle: {
-                  transform: [
-                    {
-                      translateX: current.progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [layouts.screen.width, 0],
-                      }),
-                    },
-                  ],
+            ...(Platform.OS !== 'web' && {
+              cardStyleInterpolator: ({ current, layouts }) => {
+                return {
+                  cardStyle: {
+                    transform: [
+                      {
+                        translateX: current.progress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [layouts.screen.width, 0],
+                        }),
+                      },
+                    ],
+                  },
+                  overlayStyle: {
+                    opacity: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 0.5],
+                    }),
+                  },
+                };
+              },
+              transitionSpec: {
+                open: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                  },
                 },
-                overlayStyle: {
-                  opacity: current.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.5],
-                  }),
-                },
-              };
-            },
-            transitionSpec: {
-              open: {
-                animation: 'timing',
-                config: {
-                  duration: 300,
+                close: {
+                  animation: 'timing',
+                  config: {
+                    duration: 250,
+                  },
                 },
               },
-              close: {
-                animation: 'timing',
-                config: {
-                  duration: 250,
-                },
-              },
-            },
+            }),
           }}
         />
         <Stack.Screen 
@@ -266,80 +283,84 @@ const MainNavigator: React.FC = () => {
           name="HelpAndSupport" 
           component={HelpAndSupportScreen}
           options={{
-            cardStyleInterpolator: ({ current, layouts }) => {
-              return {
-                cardStyle: {
-                  transform: [
-                    {
-                      translateX: current.progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [layouts.screen.width, 0],
-                      }),
-                    },
-                  ],
+            ...(Platform.OS !== 'web' && {
+              cardStyleInterpolator: ({ current, layouts }) => {
+                return {
+                  cardStyle: {
+                    transform: [
+                      {
+                        translateX: current.progress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [layouts.screen.width, 0],
+                        }),
+                      },
+                    ],
+                  },
+                  overlayStyle: {
+                    opacity: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 0.5],
+                    }),
+                  },
+                };
+              },
+              transitionSpec: {
+                open: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                  },
                 },
-                overlayStyle: {
-                  opacity: current.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.5],
-                  }),
-                },
-              };
-            },
-            transitionSpec: {
-              open: {
-                animation: 'timing',
-                config: {
-                  duration: 300,
+                close: {
+                  animation: 'timing',
+                  config: {
+                    duration: 250,
+                  },
                 },
               },
-              close: {
-                animation: 'timing',
-                config: {
-                  duration: 250,
-                },
-              },
-            },
+            }),
           }}
         />
         <Stack.Screen 
           name="Security" 
           component={SecurityScreen}
           options={{
-            cardStyleInterpolator: ({ current, layouts }) => {
-              return {
-                cardStyle: {
-                  transform: [
-                    {
-                      translateX: current.progress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [layouts.screen.width, 0],
-                      }),
-                    },
-                  ],
+            ...(Platform.OS !== 'web' && {
+              cardStyleInterpolator: ({ current, layouts }) => {
+                return {
+                  cardStyle: {
+                    transform: [
+                      {
+                        translateX: current.progress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [layouts.screen.width, 0],
+                        }),
+                      },
+                    ],
+                  },
+                  overlayStyle: {
+                    opacity: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 0.5],
+                    }),
+                  },
+                };
+              },
+              transitionSpec: {
+                open: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                  },
                 },
-                overlayStyle: {
-                  opacity: current.progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 0.5],
-                  }),
-                },
-              };
-            },
-            transitionSpec: {
-              open: {
-                animation: 'timing',
-                config: {
-                  duration: 300,
+                close: {
+                  animation: 'timing',
+                  config: {
+                    duration: 250,
+                  },
                 },
               },
-              close: {
-                animation: 'timing',
-                config: {
-                  duration: 250,
-                },
-              },
-            },
+            }),
           }}
         />
         <Stack.Screen

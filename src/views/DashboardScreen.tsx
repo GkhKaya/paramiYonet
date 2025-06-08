@@ -591,8 +591,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
   // Web layout
   return (
     <WebLayout title="Dashboard" activeRoute="dashboard" navigation={navigation}>
-      {renderContent()}
-      {renderAccountsSection()}
+      <View style={styles.webContainer}>
+        {renderContent()}
+        {renderAccountsSection()}
+      </View>
     </WebLayout>
   );
 });
@@ -601,6 +603,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
+  },
+  webContainer: {
+    flex: 1,
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   scrollView: {
     flex: 1,

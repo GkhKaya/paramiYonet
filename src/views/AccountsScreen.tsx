@@ -275,7 +275,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = observer(({ navigation }) 
   if (isWeb) {
     return (
       <WebLayout title="Hesaplarım" activeRoute="accounts" navigation={navigation}>
-        <View style={styles.webContent}>
+        <View style={[styles.webContent, styles.webContainer]}>
           <View style={styles.webHeader}>
             <Text style={styles.webHeaderTitle}>Hesaplarım</Text>
             <TouchableOpacity
@@ -487,6 +487,9 @@ const styles = StyleSheet.create({
   },
   webContent: {
     flex: 1,
+  },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   webHeader: {
     flexDirection: 'row',

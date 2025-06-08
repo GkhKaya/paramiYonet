@@ -6,11 +6,13 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Transaction, TransactionType } from '../../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../../models/Category';
 import { useCurrency, useCategory, useDate } from '../../hooks';
+
+const isWeb = Platform.OS === 'web';
 
 interface RecentTransactionsProps {
   /** Son işlemler listesi */
@@ -94,7 +96,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, isWeb && styles.webContainer]}>
         <Text style={styles.sectionTitle}>
           Son İşlemler
         </Text>
@@ -109,7 +111,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
 
   if (transactions.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, isWeb && styles.webContainer]}>
         <Text style={styles.sectionTitle}>
           Son İşlemler
         </Text>
@@ -123,7 +125,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && styles.webContainer]}>
       {/* Başlık ve Tümünü Gör Butonu */}
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>
@@ -163,6 +165,9 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 24,
     backgroundColor: '#000000',
+  },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
 
   // Başlık

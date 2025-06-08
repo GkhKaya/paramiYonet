@@ -10,6 +10,7 @@ import {
   Switch,
   ActivityIndicator,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -240,7 +241,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             subtitle={user?.email || 'Kullanıcı'}
             onPress={() => {
               // Navigate to profile screen
-              navigation.navigate('Profile');
+              if (Platform.OS === 'web') {
+                navigation.navigate('Profile', undefined, {
+                  animation: 'none'
+                });
+              } else {
+                navigation.navigate('Profile');
+              }
             }}
           />
           <SettingItem
@@ -248,7 +255,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Güvenlik"
             subtitle="Şifre ve güvenlik ayarları"
             onPress={() => {
-              navigation.navigate('Security');
+              if (Platform.OS === 'web') {
+                navigation.navigate('Security', undefined, {
+                  animation: 'none'
+                });
+              } else {
+                navigation.navigate('Security');
+              }
             }}
           />
         </View>
@@ -361,7 +374,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Yardım ve Destek"
             subtitle="SSS ve destek"
             onPress={() => {
-              navigation.navigate('HelpAndSupport');
+              if (Platform.OS === 'web') {
+                navigation.navigate('HelpAndSupport', undefined, {
+                  animation: 'none'
+                });
+              } else {
+                navigation.navigate('HelpAndSupport');
+              }
             }}
           />
           <SettingItem
@@ -393,11 +412,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     </ScrollView>
   );
 
-  // Web layout
+  // Web Layout - Professional Settings
   if (isWeb) {
     return (
       <WebLayout title="Ayarlar" activeRoute="settings" navigation={navigation}>
-        {renderContent()}
+        <View style={styles.webContainer}>
+          {renderContent()}
+        </View>
       </WebLayout>
     );
   }
@@ -422,6 +443,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000', // Pure black background
+  },
+  webContainer: {
+    flex: 1,
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   scrollView: {
     flex: 1,

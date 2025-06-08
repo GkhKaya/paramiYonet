@@ -7,9 +7,11 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '../../utils/formatters';
+
+const isWeb = Platform.OS === 'web';
 
 /**
  * Hesap tipi tanımı (basitleştirilmiş)
@@ -235,7 +237,7 @@ export const AccountsList: React.FC<AccountsListProps> = ({
     });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && styles.webContainer]}>
       {/* Bölüm Başlığı */}
       <View style={styles.header}>
         <Text style={styles.sectionTitle}>
@@ -285,6 +287,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 24,
     backgroundColor: '#000000',
+  },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
 
   // Header

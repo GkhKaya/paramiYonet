@@ -174,7 +174,7 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
   if (isWeb) {
     return (
       <WebLayout title="Yardım ve Destek" activeRoute="settings" navigation={navigation}>
-        <View style={styles.webContainer}>
+        <View style={[styles.webContainer, styles.webContainerTransparent]}>
          {renderContent()}
         </View>
       </WebLayout>
@@ -199,6 +199,9 @@ const styles = StyleSheet.create({
   webContainer: {
     flex: 1,
     padding: 16,
+  },
+  webContainerTransparent: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   scrollView: {
     flex: 1,

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -141,7 +142,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
     onPress?: () => void;
     children?: React.ReactNode;
   }) => (
-    <View style={styles.securityCard}>
+    <View style={[styles.securityCard, Platform.OS === 'web' && styles.webSecurityCard]}>
       <TouchableOpacity 
         style={styles.securityHeader} 
         onPress={onPress}
@@ -168,7 +169,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
 
   const renderContent = () => (
     <ScrollView style={styles.scrollView}>
-      <View style={styles.container}>
+      <View style={[styles.contentContainer, Platform.OS === 'web' && styles.webContentContainer]}>
         <Text style={styles.pageTitle}>Güvenlik Ayarları</Text>
         <Text style={styles.pageSubtitle}>
           Hesap güvenliğinizi yönetin ve şifrelerinizi güncelleyin
@@ -182,7 +183,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
           onPress={() => setShowPasswordForm(!showPasswordForm)}
         >
           {showPasswordForm && (
-            <View style={styles.formContainer}>
+            <View style={[styles.formContainer, Platform.OS === 'web' && styles.webFormContainer]}>
               <Input
                 label="Mevcut Şifre"
                 value={currentPassword}
@@ -238,7 +239,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
           onPress={() => setShowEmailForm(!showEmailForm)}
         >
           {showEmailForm && (
-            <View style={styles.formContainer}>
+            <View style={[styles.formContainer, Platform.OS === 'web' && styles.webFormContainer]}>
               <Input
                 label="Yeni E-posta Adresi"
                 value={newEmail}
@@ -283,7 +284,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
           title="Şifre Sıfırlama Linki Gönder"
           subtitle="E-posta ile şifre sıfırlama bağlantısı alın"
         >
-          <View style={styles.formContainer}>
+          <View style={[styles.formContainer, Platform.OS === 'web' && styles.webFormContainer]}>
             <Text style={styles.resetDescription}>
               E-posta adresinize şifre sıfırlama bağlantısı gönderilecek.
             </Text>
@@ -303,7 +304,9 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   if (isWeb) {
     return (
       <WebLayout title="Güvenlik" activeRoute="settings" navigation={navigation}>
-        {renderContent()}
+        <View style={styles.webContainer}>
+          {renderContent()}
+        </View>
       </WebLayout>
     );
   }
@@ -332,6 +335,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000', // Pure black background
+  },
+  webContainer: {
+    flex: 1,
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  webContentContainer: {
+    backgroundColor: 'transparent', // Web'de transparent arka plan
   },
   scrollView: {
     flex: 1,
@@ -373,6 +386,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
   },
+  webSecurityCard: {
+    backgroundColor: '#2C2C2E', // Web'de gri kart arka planı
+    borderColor: '#38383A',
+  },
   securityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -405,6 +422,9 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     borderTopWidth: 1,
     borderTopColor: '#333333',
+  },
+  webFormContainer: {
+    borderTopColor: '#38383A', // Web'de gri kenarlık
   },
   buttonContainer: {
     flexDirection: 'row',

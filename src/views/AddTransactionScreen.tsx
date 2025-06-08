@@ -196,9 +196,9 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         contentContainerStyle={styles.categoryScrollContent}
       >
         <View style={styles.categoryGrid}>
-          {availableCategories.map((category, index) => (
+          {availableCategories.map((category) => (
             <TouchableOpacity
-              key={index}
+              key={category.name}
               style={[
                 styles.categoryItem,
                 selectedCategory === category.name && styles.selectedCategoryItem
@@ -207,13 +207,13 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             >
               <View style={[
                 styles.categoryIcon,
-                { backgroundColor: category.color }, // Yuvarlak ikona kategori rengi
+                { backgroundColor: category.color },
                 selectedCategory === category.name && styles.selectedCategoryIcon
               ]}>
-                <Ionicons
-                  name={category.icon as any}
-                  size={24}
-                  color="#FFFFFF" // İkonlar her zaman beyaz
+                <Ionicons 
+                  name={category.icon as any} 
+                  size={24} 
+                  color="#FFFFFF" 
                 />
               </View>
               <Text style={[
@@ -229,11 +229,11 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     </View>
   );
 
-  // Amount display
+  // Amount Display
   const AmountDisplay = () => (
     <View style={styles.amountContainer}>
       <Text style={styles.amountText}>
-        {currencySymbol}{amount === '0' ? '0' : amount}
+        {currencySymbol}{formatCurrency(amount)}
       </Text>
     </View>
   );
@@ -241,56 +241,20 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   // Numpad
   const Numpad = () => (
     <View style={styles.numpadContainer}>
-      {/* Description input */}
+      {/* Description Input */}
       <View style={styles.descriptionContainer}>
         <TextInput
           style={styles.descriptionInput}
+          placeholder="Açıklama (isteğe bağlı)"
+          placeholderTextColor="#666666"
           value={description}
           onChangeText={setDescription}
-          placeholder="Bir not girin..."
-          placeholderTextColor="#666666"
+          multiline={false}
         />
       </View>
 
-      {/* Number pad */}
+      {/* Numpad Grid */}
       <View style={styles.numpadGrid}>
-        {/* Row 1 */}
-        <View style={styles.numpadRow}>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('7')}>
-            <Text style={styles.numpadButtonText}>7</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('8')}>
-            <Text style={styles.numpadButtonText}>8</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('9')}>
-            <Text style={styles.numpadButtonText}>9</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.numpadButton, styles.todayButton]} 
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Ionicons name="calendar" size={14} color="#2196F3" />
-            <Text style={styles.todayButtonText}>Bugün</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Row 2 */}
-        <View style={styles.numpadRow}>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('4')}>
-            <Text style={styles.numpadButtonText}>4</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('5')}>
-            <Text style={styles.numpadButtonText}>5</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('6')}>
-            <Text style={styles.numpadButtonText}>6</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => {}}>
-            <Text style={styles.numpadOperatorText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Row 3 */}
         <View style={styles.numpadRow}>
           <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('1')}>
             <Text style={styles.numpadButtonText}>1</Text>
@@ -301,33 +265,68 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('3')}>
             <Text style={styles.numpadButtonText}>3</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={handleClearPress}>
-            <Text style={styles.numpadOperatorText}>−</Text>
+          <TouchableOpacity style={styles.numpadButton} onPress={handleDeletePress}>
+            <Ionicons name="backspace-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        {/* Row 4 */}
         <View style={styles.numpadRow}>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('4')}>
+            <Text style={styles.numpadButtonText}>4</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('5')}>
+            <Text style={styles.numpadButtonText}>5</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('6')}>
+            <Text style={styles.numpadButtonText}>6</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.numpadButton} onPress={handleClearPress}>
+            <Text style={styles.numpadOperatorText}>C</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.numpadRow}>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('7')}>
+            <Text style={styles.numpadButtonText}>7</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('8')}>
+            <Text style={styles.numpadButtonText}>8</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('9')}>
+            <Text style={styles.numpadButtonText}>9</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.numpadButton} onPress={handleDecimalPress}>
-            <Text style={styles.numpadButtonText}>,</Text>
+            <Text style={styles.numpadOperatorText}>,</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.numpadRow}>
+          <TouchableOpacity style={styles.numpadButton} onPress={() => setShowDatePicker(true)}>
+            <View style={styles.todayButton}>
+              <Ionicons name="calendar-outline" size={12} color="#2196F3" />
+              <Text style={styles.todayButtonText}>{formatShort(selectedDate)}</Text>
+            </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('0')}>
             <Text style={styles.numpadButtonText}>0</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={handleDeletePress}>
-            <Ionicons name="backspace" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.numpadButton, styles.saveButton]} 
             onPress={handleSave}
-            disabled={loading || !selectedCategory || amount === '0'}
+            disabled={loading}
           >
-            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+            <Ionicons 
+              name={loading ? "hourglass-outline" : "checkmark-outline"} 
+              size={20} 
+              color="#FFFFFF" 
+            />
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -373,7 +372,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000', // Eski siyah arka plan
+    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
@@ -384,17 +383,17 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     fontSize: 16,
-    color: '#FFFFFF', // Beyaz text
+    color: '#FFFFFF',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF', // Beyaz text
+    color: '#FFFFFF',
   },
   categoryContainer: {
     flex: 1,
-    backgroundColor: '#000000', // Siyah arka plan
-    maxHeight: height * 0.45, // Maksimum yükseklik sınırı
+    backgroundColor: '#000000',
+    maxHeight: height * 0.45,
   },
   categoryScrollView: {
     flex: 1,
@@ -423,7 +422,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    // backgroundColor artık inline olarak category.color gelecek
     marginBottom: 8,
   },
   selectedCategoryIcon: {
@@ -432,39 +430,39 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 12,
-    color: '#FFFFFF', // Beyaz text
+    color: '#FFFFFF',
     textAlign: 'center',
     fontWeight: '500',
   },
   selectedCategoryText: {
     color: '#FFFFFF',
-    fontWeight: '700', // Seçili kategoride daha kalın
+    fontWeight: '700',
   },
   amountContainer: {
     alignItems: 'center',
-    paddingVertical: 15, // Küçültüldü
+    paddingVertical: 15,
     backgroundColor: '#000000',
   },
   amountText: {
-    fontSize: 28, // Küçültüldü
+    fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF', // Beyaz tutar text
+    color: '#FFFFFF',
   },
   numpadContainer: {
     backgroundColor: '#000000',
-    paddingBottom: 15, // Küçültüldü
-    maxHeight: height * 0.35, // Maksimum yükseklik sınırı
+    paddingBottom: 15,
+    maxHeight: height * 0.35,
   },
   descriptionContainer: {
     paddingHorizontal: 20,
-    marginBottom: 8, // Küçültüldü
+    marginBottom: 8,
   },
   descriptionInput: {
-    backgroundColor: '#1A1A1A', // Koyu gri input
+    backgroundColor: '#1A1A1A',
     borderRadius: 8,
     paddingHorizontal: 15,
-    paddingVertical: 10, // Küçültüldü
-    fontSize: 14, // Küçültüldü
+    paddingVertical: 10,
+    fontSize: 14,
     color: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#333333',
@@ -474,13 +472,13 @@ const styles = StyleSheet.create({
   },
   numpadRow: {
     flexDirection: 'row',
-    marginBottom: 8, // Küçültüldü
+    marginBottom: 8,
   },
   numpadButton: {
     flex: 1,
-    height: 42, // Küçültüldü
-    backgroundColor: '#1A1A1A', // Koyu gri butonlar
-    marginHorizontal: 4, // Küçültüldü
+    height: 42,
+    backgroundColor: '#1A1A1A',
+    marginHorizontal: 4,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -488,28 +486,28 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
   },
   numpadButtonText: {
-    fontSize: 18, // Küçültüldü
+    fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF', // Beyaz text
+    color: '#FFFFFF',
   },
   numpadOperatorText: {
-    fontSize: 20, // Küçültüldü
+    fontSize: 20,
     fontWeight: '600',
-    color: '#FFFFFF', // Beyaz operator text
+    color: '#FFFFFF',
   },
   todayButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3, // Küçültüldü
+    gap: 3,
   },
   todayButtonText: {
-    fontSize: 10, // Küçültüldü
-    color: '#2196F3', // Mavi "bugün" text
+    fontSize: 10,
+    color: '#2196F3',
     fontWeight: '500',
   },
   saveButton: {
-    backgroundColor: '#4CAF50', // Yeşil kaydet butonu
+    backgroundColor: '#4CAF50',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -538,4 +536,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddTransactionScreen; 
+export default AddTransactionScreen;

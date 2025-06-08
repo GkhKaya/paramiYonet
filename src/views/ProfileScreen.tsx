@@ -363,8 +363,10 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
   if (isWeb) {
     return (
       <WebLayout title="Profil" activeRoute="profile" navigation={navigation}>
-        {renderContent()}
-        {renderEditModal()}
+        <View style={styles.webContainer}>
+          {renderContent()}
+          {renderEditModal()}
+        </View>
       </WebLayout>
     );
   }
@@ -397,6 +399,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000', // Pure black background
+  },
+  webContainer: {
+    flex: 1,
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   scrollView: {
     flex: 1,

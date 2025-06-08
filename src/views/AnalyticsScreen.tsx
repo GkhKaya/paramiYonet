@@ -522,7 +522,7 @@ const AnalyticsScreen: React.FC<AnalyticsScreenProps> = observer(({ navigation }
   if (isWeb) {
     return (
       <WebLayout title="Analizler" activeRoute="analytics" navigation={navigation}>
-        <View style={styles.webContent}>
+        <View style={[styles.webContent, styles.webContainer]}>
           {renderContent()}
         </View>
       </WebLayout>
@@ -579,6 +579,9 @@ const styles = StyleSheet.create({
   webContent: {
     flex: 1,
     padding: 20,
+  },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
   header: {
     flexDirection: 'row',

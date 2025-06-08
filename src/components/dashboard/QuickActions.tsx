@@ -7,8 +7,10 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
+const isWeb = Platform.OS === 'web';
 
 /**
  * Tek bir hızlı eylem butonu için tip tanımı
@@ -83,7 +85,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && styles.webContainer]}>
       {/* Bölüm Başlığı */}
       <Text style={styles.sectionTitle}>
         Hızlı İşlemler
@@ -178,6 +180,9 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: 24,
     backgroundColor: '#000000',
+  },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
   },
 
   // Bölüm Başlığı

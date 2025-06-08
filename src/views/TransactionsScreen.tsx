@@ -12,6 +12,7 @@ import {
   Modal,
   Alert,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,14 +21,12 @@ import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { CategoryIcon } from '../components/common/CategoryIcon';
-import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
-import { isWeb } from '../utils/platform';
 import { useCurrency, useCategory, useDate } from '../hooks';
 
 // Get screen dimensions for responsive sizing
@@ -153,7 +152,10 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     onPress: () => void;
   }) => (
     <TouchableOpacity
-      style={[styles.filterButton, isActive && styles.filterButtonActive]}
+      style={[
+        styles.filterButton, 
+        isActive && styles.filterButtonActive
+      ]}
       onPress={onPress}
     >
       <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
@@ -171,11 +173,12 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
         <View style={styles.transactionCard}>
           <View style={styles.transactionContent}>
             <View style={styles.transactionLeft}>
-              <CategoryIcon
-                iconName={item.categoryIcon}
-                color={category.color}
-                size="medium"
-              />
+              <View style={[
+                styles.categoryIconContainer,
+                { backgroundColor: category.color }
+              ]}>
+                <Text style={styles.categoryIconText}>{category.icon}</Text>
+              </View>
               <View style={styles.transactionInfo}>
                 <Text style={styles.transactionDescription}>{item.description}</Text>
                 <Text style={styles.transactionCategory}>{item.category}</Text>
@@ -475,117 +478,6 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     );
   }
 
-  // Web layout
-  if (isWeb) {
-    return (
-      <WebLayout title="İşlemler" activeRoute="transactions" navigation={navigation}>
-        <View style={styles.webContent}>
-          {/* Month Selector */}
-          <MonthSelector />
-
-          {/* Search and Filters */}
-          <View style={styles.searchSection}>
-            <Input
-              placeholder="İşlem ara..."
-              value={viewModel?.searchTerm || ''}
-              onChangeText={(term) => viewModel?.setSearchTerm(term)}
-              leftIcon="search"
-            />
-            
-            <View style={styles.filterScrollContainer}>
-              {/* Sol Scroll Indicator */}
-              <View style={styles.filterScrollIndicatorLeft}>
-                <Ionicons name="chevron-back" size={14} color="#666666" />
-              </View>
-              
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                style={styles.filterScrollView}
-                contentContainerStyle={styles.filterContainer}
-              >
-                <FilterButton
-                  title="Tümü"
-                  isActive={!viewModel?.filters.type}
-                  onPress={() => viewModel?.setFilters({ type: undefined })}
-                />
-                <FilterButton
-                  title="Gelir"
-                  isActive={viewModel?.filters.type === TransactionType.INCOME}
-                  onPress={() => viewModel?.setFilters({ type: TransactionType.INCOME })}
-                />
-                <FilterButton
-                  title="Gider"
-                  isActive={viewModel?.filters.type === TransactionType.EXPENSE}
-                  onPress={() => viewModel?.setFilters({ type: TransactionType.EXPENSE })}
-                />
-              </ScrollView>
-              
-              {/* Sağ Scroll Indicator */}
-              <View style={styles.filterScrollIndicatorRight}>
-                <Ionicons name="chevron-forward" size={14} color="#666666" />
-              </View>
-            </View>
-          </View>
-
-          {/* Monthly Stats */}
-          <View style={styles.statsCard}>
-            <View style={styles.statsContent}>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Toplam Gelir</Text>
-                <Text style={[styles.statValue, { color: '#00E676' }]}>
-                  {formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Toplam Gider</Text>
-                <Text style={[styles.statValue, { color: '#FF1744' }]}>
-                  {formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
-                </Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Net Tutar</Text>
-                <Text style={[
-                  styles.statValue,
-                  { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#00E676' : '#FF1744' }
-                ]}>
-                  {formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Transactions List */}
-          <View style={styles.listContainer}>
-            {(viewModel?.dayGroups.length || 0) === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={64} color="#666666" />
-                <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
-                <Text style={styles.emptyStateText}>
-                  Bu ay için henüz bir işlem kaydı bulunmuyor.
-                </Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.scrollView}>
-                {viewModel?.dayGroups.map((dayGroup) => (
-                  <View key={dayGroup.date}>
-                    <DayGroupHeader dayGroup={dayGroup} />
-                    {dayGroup.transactions.map((transaction) => (
-                      <TransactionItem key={transaction.id} item={transaction} />
-                    ))}
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-
-          <TransactionModal />
-        </View>
-      </WebLayout>
-    );
-  }
-
-  // Mobile layout
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
@@ -760,6 +652,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
   },
+  webFilterButton: {
+    backgroundColor: '#2C2C2E', // Web'de gri buton arka planı
+    borderColor: '#38383A',
+  },
   filterButtonActive: {
     backgroundColor: '#2196F3', // Blue active state
     borderColor: '#2196F3',
@@ -785,6 +681,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
     padding: 0,
+  },
+  webTransactionCard: {
+    backgroundColor: '#2C2C2E', // Web'de gri kart arka planı
+    borderColor: '#38383A',
   },
   transactionContent: {
     flexDirection: 'row',
@@ -853,6 +753,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#333333',
   },
+  webMonthSelector: {
+    backgroundColor: '#2C2C2E', // Web'de gri arka plan
+    borderColor: '#38383A',
+  },
   monthButton: {
     padding: 8,
     borderRadius: 8,
@@ -871,6 +775,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#000000', // Black background
+  },
+  webSectionHeader: {
+    backgroundColor: 'transparent', // Web'de transparent arka plan
   },
   sectionTitle: {
     fontSize: 16,
@@ -919,6 +826,10 @@ const styles = StyleSheet.create({
     borderColor: '#333333',
     marginBottom: 16,
     marginHorizontal: 24,
+  },
+  webStatsCard: {
+    backgroundColor: '#2C2C2E', // Web'de gri kart arka planı
+    borderColor: '#38383A',
   },
   statsContent: {
     flexDirection: 'row',
@@ -1096,6 +1007,26 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: '#000000', // Black background for web
+  },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
+  },
+  categoryIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  webCategoryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  categoryIconText: {
+    fontSize: 20,
+    color: '#FFFFFF',
   },
 });
 

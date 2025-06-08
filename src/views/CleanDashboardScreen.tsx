@@ -140,7 +140,6 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
    */
   const navigateToAddTransaction = useCallback((type: TransactionType) => {
     const paramType = type === TransactionType.INCOME ? 'income' : 'expense';
-    console.log('Dashboard quick action pressed:', paramType);
     
     // Root navigator'ı bul
     let rootNav = parentNavigation;
@@ -148,28 +147,7 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
       rootNav = rootNav.getParent();
     }
     
-    console.log('Root navigation state:', rootNav.getState());
-    console.log('Parent navigation state:', parentNavigation.getState());
-    
-    try {
-      // Root navigator ile dene
-      rootNav.navigate('AddTransaction', { defaultType: paramType });
-      console.log('Root navigation attempt completed');
-    } catch (error) {
-      console.error('Root navigation failed:', error);
-      
-      try {
-        // CommonActions ile dene
-        const action = CommonActions.navigate({
-          name: 'AddTransaction',
-          params: { defaultType: paramType }
-        });
-        parentNavigation.dispatch(action);
-        console.log('CommonActions navigation dispatched from dashboard');
-      } catch (error2) {
-        console.error('CommonActions also failed:', error2);
-      }
-    }
+    rootNav.navigate('AddTransaction', { defaultType: paramType });
   }, [parentNavigation]);
 
   /**
@@ -305,11 +283,11 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
     </>
   );
 
-  // Web Layout
+  // Web Layout - Professional Dashboard
   if (isWeb) {
     return (
       <WebLayout title="Dashboard" activeRoute="dashboard" navigation={navigation}>
-        <View style={styles.webContainer}>
+        <View style={styles.webContentContainer}>
           {renderContent()}
         </View>
       </WebLayout>
@@ -357,6 +335,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#000000',
+  },
+  webContentContainer: {
+    flex: 1,
+    backgroundColor: 'transparent', // Let WebLayout handle the background
   },
 });
 

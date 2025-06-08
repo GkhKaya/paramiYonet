@@ -7,9 +7,11 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatCurrency } from '../../utils/formatters';
+
+const isWeb = Platform.OS === 'web';
 
 interface DashboardHeaderProps {
   /** Kullanıcının görünen adı */
@@ -72,7 +74,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && styles.webContainer]}>
       {/* Kullanıcı Karşılama */}
       <View style={styles.greetingSection}>
         <Text style={styles.greetingText}>
@@ -87,7 +89,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       </View>
 
       {/* Toplam Bakiye Kartı */}
-      <View style={styles.balanceCard}>
+      <View style={[styles.balanceCard, isWeb && styles.webBalanceCard]}>
         <View style={styles.balanceHeader}>
           <Text style={styles.balanceLabel}>
             Toplam Bakiye
@@ -154,6 +156,9 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
     backgroundColor: '#000000',
   },
+  webContainer: {
+    backgroundColor: 'transparent', // Web'de arka plan WebLayout tarafından sağlanır
+  },
 
   // Karşılama Bölümü
   greetingSection: {
@@ -178,6 +183,10 @@ const styles = StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: '#333333',
+  },
+  webBalanceCard: {
+    backgroundColor: '#2C2C2E', // Web'de gri kart arka planı
+    borderColor: '#38383A',
   },
   balanceHeader: {
     flexDirection: 'row',
