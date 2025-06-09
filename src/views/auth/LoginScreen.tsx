@@ -168,24 +168,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                   <Text style={styles.signUpButtonText}>Sign up</Text>
                 </TouchableOpacity>
 
-                {/* Social Login Buttons */}
-                <View style={styles.socialContainer}>
-                  <TouchableOpacity style={styles.googleButton}>
-                    <View style={styles.socialButtonContent}>
-                      <View style={styles.googleIcon}>
-                        <Text style={styles.googleIconText}>G</Text>
-                      </View>
-                      <Text style={styles.socialButtonText}>Continue with Google</Text>
-                    </View>
-                  </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.appleButton}>
-                    <View style={styles.socialButtonContent}>
-                      <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-                      <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -299,47 +282,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  socialContainer: {
-    gap: 12,
-  },
-  googleButton: {
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#333333',
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  appleButton: {
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#333333',
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  socialButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  googleIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleIconText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#4285F4',
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
-  },
+
 });
 
 export default LoginScreen; 
