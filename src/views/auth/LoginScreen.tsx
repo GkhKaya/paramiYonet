@@ -33,6 +33,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
   const { signIn, loading, getSavedCredentials } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -46,6 +47,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
       if (credentials) {
         setEmail(credentials.email);
         setPassword(credentials.password);
+        setRememberMe(true);
       }
     };
     
@@ -65,7 +67,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
       return;
     }
 
-    const result = await signIn(email, password, false);
+    const result = await signIn(email, password, rememberMe);
     if (result) {
       onLoginSuccess();
     }
@@ -87,11 +89,11 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
             >
               <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
                 {/* Welcome Title */}
-                <Text style={styles.welcomeTitle}>Welcome back.</Text>
+                <Text style={styles.welcomeTitle}>Tekrar hoş geldiniz.</Text>
                 
                 {/* Email Input */}
                 <View style={styles.inputSection}>
-                  <Text style={styles.inputLabel}>Email address</Text>
+                  <Text style={styles.inputLabel}>E-posta adresi</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
@@ -113,7 +115,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
 
                 {/* Password Input */}
                 <View style={styles.inputSection}>
-                  <Text style={styles.inputLabel}>Password</Text>
+                  <Text style={styles.inputLabel}>Şifre</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={[styles.input, styles.passwordInput]}
@@ -141,9 +143,22 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                   </View>
                 </View>
 
+                {/* Remember Me Checkbox */}
+                <TouchableOpacity 
+                  style={styles.rememberMeContainer}
+                  onPress={() => setRememberMe(!rememberMe)}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && (
+                      <Ionicons name="checkmark" size={16} color="#000000" />
+                    )}
+                  </View>
+                  <Text style={styles.rememberMeText}>Beni hatırla</Text>
+                </TouchableOpacity>
+
                 {/* Forgot Password */}
                 <TouchableOpacity style={styles.forgotPassword}>
-                  <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                  <Text style={styles.forgotPasswordText}>Şifremi unuttum?</Text>
                 </TouchableOpacity>
 
                 {/* Sign In Button */}
@@ -156,7 +171,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                   disabled={!email || !password || loading}
                 >
                   <Text style={styles.signInButtonText}>
-                    {loading ? 'Signing in...' : 'Sign in'}
+                    {loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
                   </Text>
                 </TouchableOpacity>
 
@@ -165,9 +180,8 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                   style={styles.signUpButton}
                   onPress={onNavigateToRegister}
                 >
-                  <Text style={styles.signUpButtonText}>Sign up</Text>
+                  <Text style={styles.signUpButtonText}>Hesap oluştur</Text>
                 </TouchableOpacity>
-
 
               </Animated.View>
             </ScrollView>
@@ -251,6 +265,30 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 16,
     color: '#666666',
+    fontWeight: '500',
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#666666',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  rememberMeText: {
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   signInButton: {

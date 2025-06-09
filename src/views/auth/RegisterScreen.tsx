@@ -94,11 +94,11 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
             >
               <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
                 {/* Welcome Title */}
-                <Text style={styles.welcomeTitle}>Create account.</Text>
+                <Text style={styles.welcomeTitle}>Hesap oluştur.</Text>
                 
                 {/* Full Name Input */}
                 <View style={styles.inputSection}>
-                  <Text style={styles.inputLabel}>Full name</Text>
+                  <Text style={styles.inputLabel}>Ad Soyad</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
@@ -118,7 +118,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
 
                 {/* Email Input */}
                 <View style={styles.inputSection}>
-                  <Text style={styles.inputLabel}>Email address</Text>
+                  <Text style={styles.inputLabel}>E-posta adresi</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={styles.input}
@@ -140,7 +140,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
 
                 {/* Password Input */}
                 <View style={styles.inputSection}>
-                  <Text style={styles.inputLabel}>Password</Text>
+                  <Text style={styles.inputLabel}>Şifre</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={[styles.input, styles.passwordInput]}
@@ -170,7 +170,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
 
                 {/* Confirm Password Input */}
                 <View style={styles.inputSection}>
-                  <Text style={styles.inputLabel}>Confirm password</Text>
+                  <Text style={styles.inputLabel}>Şifre tekrar</Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={[styles.input, styles.passwordInput]}
@@ -208,7 +208,7 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
                   disabled={!isFormValid || loading}
                 >
                   <Text style={styles.signUpButtonText}>
-                    {loading ? 'Creating account...' : 'Sign up'}
+                    {loading ? 'Hesap oluşturuluyor...' : 'Hesap oluştur'}
                   </Text>
                 </TouchableOpacity>
 
@@ -217,27 +217,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
                   style={styles.signInButton}
                   onPress={onNavigateToLogin}
                 >
-                  <Text style={styles.signInButtonText}>Sign in</Text>
+                  <Text style={styles.signInButtonText}>Giriş yap</Text>
                 </TouchableOpacity>
-
-                {/* Social Login Buttons */}
-                <View style={styles.socialContainer}>
-                  <TouchableOpacity style={styles.googleButton}>
-                    <View style={styles.socialButtonContent}>
-                      <View style={styles.googleIcon}>
-                        <Text style={styles.googleIconText}>G</Text>
-                      </View>
-                      <Text style={styles.socialButtonText}>Continue with Google</Text>
-                    </View>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.appleButton}>
-                    <View style={styles.socialButtonContent}>
-                      <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-                      <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
               </Animated.View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -341,47 +322,6 @@ const styles = StyleSheet.create({
   signInButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  socialContainer: {
-    gap: 12,
-  },
-  googleButton: {
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#333333',
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  appleButton: {
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#333333',
-    borderRadius: 12,
-    paddingVertical: 14,
-  },
-  socialButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  googleIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleIconText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#4285F4',
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
     color: '#FFFFFF',
   },
 });
