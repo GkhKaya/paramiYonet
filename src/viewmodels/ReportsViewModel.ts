@@ -138,6 +138,10 @@ export class ReportsViewModel {
         transactionsList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         this.setTransactions(transactionsList);
+        // Bütçe ilerlemesini güncellemeyi unutma!
+        if (this.budgetViewModel) {
+          this.budgetViewModel.updateBudgetProgress(transactionsList);
+        }
         this.setLoading(false);
       },
       (error) => {

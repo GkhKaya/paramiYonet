@@ -179,13 +179,24 @@ export class BudgetViewModel {
   updateBudgetProgress = async (transactions: Transaction[]): Promise<void> => {
     try {
       for (const budget of this.activeBudgets) {
-        // Bu bütçe kategorisindeki harcamaları hesapla
-        const categoryTransactions = transactions.filter(t => 
-          t.type === TransactionType.EXPENSE &&
-          t.category === budget.categoryName &&
-          t.date >= budget.startDate &&
-          t.date <= budget.endDate
-        );
+        let categoryTransactions: Transaction[];
+
+        // 'Tüm Kategoriler' bütçesi için özel durum
+        if (budget.categoryName === 'Tüm Kategoriler') {
+          categoryTransactions = transactions.filter(t => 
+            t.type === TransactionType.EXPENSE &&
+            t.date >= budget.startDate &&
+            t.date <= budget.endDate
+          );
+        } else {
+          // Belirli bir kategori için normal filtreleme
+          categoryTransactions = transactions.filter(t => 
+            t.type === TransactionType.EXPENSE &&
+            t.category === budget.categoryName &&
+            t.date >= budget.startDate &&
+            t.date <= budget.endDate
+          );
+        }
 
         const spentAmount = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
 

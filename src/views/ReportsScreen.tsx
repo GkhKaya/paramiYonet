@@ -1168,81 +1168,80 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   };
 
   const BudgetsTab = () => {
-    const budgetSummary = reportsViewModel!.getBudgetSummary();
-    
+    if (!reportsViewModel) {
+      return <ActivityIndicator color={COLORS.PRIMARY} style={{ marginTop: 20 }} />;
+    }
+
+    const { activeBudgets, getBudgetSummary, deleteBudget } = reportsViewModel;
+    const summary = getBudgetSummary();
+
     return (
-      <View>
-        {/* Add Budget Button */}
-        <View style={styles.budgetsSection}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.tabContentContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.PRIMARY} />
+        }
+      >
+        <BudgetSummary
+          totalBudgeted={summary.totalBudgeted}
+          totalSpent={summary.totalSpent}
+          activeBudgetCount={summary.activeBudgetCount}
+          overBudgetCount={summary.overBudgetCount}
+          status={summary.status}
+        />
+
+        <View style={styles.budgetListHeader}>
+          <Text style={styles.budgetListTitle}>Aktif Bütçeler</Text>
           <TouchableOpacity 
-            style={styles.addBudgetButton}
+            style={styles.addBudgetButton} 
             onPress={() => setShowCreateBudgetModal(true)}
           >
-            <Ionicons name="add-circle" size={24} color="#2196F3" />
-            <Text style={styles.addBudgetText}>Yeni Bütçe Ekle</Text>
+            <Ionicons name="add-circle" size={28} color={COLORS.PRIMARY} />
           </TouchableOpacity>
         </View>
 
-        {/* Budget Summary */}
-        {reportsViewModel!.activeBudgets.length > 0 && (
-          <View style={styles.budgetsSection}>
-          <BudgetSummary
-            totalBudgeted={budgetSummary.totalBudgeted}
-            totalSpent={budgetSummary.totalSpent}
-            activeBudgetCount={budgetSummary.activeBudgetCount}
-            overBudgetCount={budgetSummary.overBudgetCount}
-            status={budgetSummary.status}
-          />
+        {activeBudgets.length > 0 ? (
+          activeBudgets.map(budget => (
+            <BudgetCard
+              key={budget.id}
+              budget={budget}
+              onEdit={() => {
+                Alert.alert('Bütçe Düzenle', `Bu özellik yakında eklenecektir.`);
+              }}
+              onDelete={() => {
+                   Alert.alert(
+                     'Bütçeyi Sil',
+                     `"${budget.categoryName}" bütçesini silmek istediğinizden emin misiniz?`,
+                     [
+                       { text: 'İptal', style: 'cancel' },
+                       { 
+                         text: 'Sil', 
+                         style: 'destructive',
+                         onPress: async () => {
+                            const success = await deleteBudget(budget.id);
+                            if (success) {
+                                Alert.alert('Başarılı', 'Bütçe silindi');
+                            } else {
+                                Alert.alert('Hata', 'Bütçe silinirken bir sorun oluştu.');
+                            }
+                         }
+                       }
+                     ]
+                   );
+                 }}
+            />
+          ))
+        ) : (
+          <View style={styles.emptyBudgetsContainer}>
+            <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_SECONDARY} />
+            <Text style={styles.emptyBudgetsTitle}>Henüz Bütçe Oluşturulmadı</Text>
+            <Text style={styles.emptyBudgetsText}>
+              Yukarıdaki '+' butonuna basarak ilk bütçenizi oluşturun.
+            </Text>
           </View>
         )}
-
-        {/* Budget Cards */}
-        <View style={styles.budgetsSection}>
-          <View style={styles.budgetsSectionHeader}>
-            <Ionicons name="pie-chart" size={24} color="#2196F3" />
-            <Text style={styles.budgetsSectionTitle}>Aktif Bütçeler</Text>
-          </View>
-          {reportsViewModel!.activeBudgets.length > 0 ? (
-            reportsViewModel!.activeBudgets.map((budget) => (
-              <BudgetCard 
-                key={budget.id} 
-                budget={budget}
-                onEdit={() => {
-                  // TODO: Edit budget modal
-                  console.log('Edit budget:', budget.id);
-                }}
-                onDelete={() => {
-                  Alert.alert(
-                    'Bütçeyi Sil',
-                    `"${budget.categoryName}" bütçesini silmek istediğinizden emin misiniz?`,
-                    [
-                      { text: 'İptal', style: 'cancel' },
-                      { 
-                        text: 'Sil', 
-                        style: 'destructive',
-                        onPress: async () => {
-                          const success = await reportsViewModel!.deleteBudget(budget.id);
-                          if (success) {
-                            Alert.alert('Başarılı', 'Bütçe silindi');
-                          }
-                        }
-                      }
-                    ]
-                  );
-                }}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyBudgets}>
-              <Ionicons name="pie-chart-outline" size={48} color="#666666" />
-              <Text style={styles.emptyBudgetsText}>Henüz bütçe eklenmedi</Text>
-              <Text style={styles.emptyBudgetsSubtext}>
-                Harcamalarınızı kontrol etmek için bütçe ekleyin
-              </Text>
-            </View>
-          )}
-        </View>
-      </View>
+      </ScrollView>
     );
   };
 
@@ -1291,82 +1290,46 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     );
   };
 
-  // Web Layout
-  if (isWeb) {
+  if (!reportsViewModel || !accountViewModel) {
     return (
-      <WebLayout title="Raporlar" activeRoute="reports" navigation={navigation}>
-        <View style={styles.webContainer}>
-          <PeriodSelector />
-          <TabSelector />
-
-          <ScrollView 
-            style={styles.content}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={['#FFFFFF']}
-                tintColor="#FFFFFF"
-              />
-            }
-          >
-            {renderContent()}
-          </ScrollView>
-          
-          <CreateBudgetModal
-            visible={showCreateBudgetModal}
-            onClose={() => setShowCreateBudgetModal(false)}
-            onSubmit={async () => {
-              setShowCreateBudgetModal(false);
-              handleRefresh();
-              return true;
-            }}
-            isLoading={false}
-          />
-        </View>
-      </WebLayout>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.BACKGROUND }}>
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+      </View>
     );
   }
 
-  // Mobile Layout
   return (
-    <>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <WebLayout title="Raporlar">
       <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Header */}
+        <StatusBar barStyle={isWeb ? 'dark-content' : 'light-content'} />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Raporlar</Text>
         </View>
 
-        <PeriodSelector />
         <TabSelector />
 
-        <ScrollView 
-          style={styles.content}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={['#FFFFFF']}
-              tintColor="#FFFFFF"
-            />
-          }
-        >
-          {renderContent()}
-        </ScrollView>
+        {renderContent()}
+
+        {reportsViewModel && (
+          <CreateBudgetModal
+            visible={showCreateBudgetModal}
+            onClose={() => setShowCreateBudgetModal(false)}
+            onSubmit={async (data) => {
+              const success = await reportsViewModel.budgetViewModel.createBudget(data);
+              if (success) {
+                Alert.alert('Başarılı', 'Yeni bütçe başarıyla oluşturuldu.');
+                setShowCreateBudgetModal(false);
+              } else {
+                Alert.alert('Hata', reportsViewModel.budgetViewModel.error || 'Bütçe oluşturulurken bir hata oluştu.');
+              }
+              return success; 
+            }}
+            isLoading={reportsViewModel.budgetViewModel.isLoading}
+          />
+        )}
         
-        <CreateBudgetModal
-          visible={showCreateBudgetModal}
-          onClose={() => setShowCreateBudgetModal(false)}
-          onSubmit={async () => {
-            setShowCreateBudgetModal(false);
-            handleRefresh();
-            return true;
-          }}
-          isLoading={false}
-        />
       </SafeAreaView>
-    </>
+    </WebLayout>
   );
 });
 
@@ -2459,6 +2422,64 @@ const styles = StyleSheet.create({
     color: '#666666', // Gray text
     textAlign: 'center',
     marginTop: 4,
+  },
+  tabContentContainer: {
+    padding: SPACING.MEDIUM,
+    paddingBottom: 100, // Make space for floating action button if any
+  },
+  placeholderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.LARGE,
+    marginTop: 50,
+  },
+  placeholderTitle: {
+    ...TYPOGRAPHY.H3,
+    color: COLORS.TEXT_PRIMARY,
+    textAlign: 'center',
+    marginTop: SPACING.MEDIUM,
+  },
+  placeholderText: {
+    ...TYPOGRAPHY.BODY,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginTop: SPACING.SMALL,
+  },
+  emptyBudgetsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.LARGE,
+    marginTop: SPACING.LARGE,
+    backgroundColor: COLORS.CARD_BACKGROUND,
+    borderRadius: 16,
+  },
+  emptyBudgetsTitle: {
+    ...TYPOGRAPHY.H4,
+    color: COLORS.TEXT_PRIMARY,
+    marginTop: SPACING.MEDIUM,
+  },
+  emptyBudgetsText: {
+    ...TYPOGRAPHY.BODY,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginTop: SPACING.X_SMALL,
+  },
+  budgetListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: SPACING.LARGE,
+    marginBottom: SPACING.MEDIUM,
+    paddingHorizontal: SPACING.X_SMALL,
+  },
+  budgetListTitle: {
+    ...TYPOGRAPHY.H2,
+    color: COLORS.TEXT_PRIMARY,
+  },
+  addBudgetButton: {
+    padding: SPACING.X_SMALL,
   },
 });
 
