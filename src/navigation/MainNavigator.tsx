@@ -47,7 +47,7 @@ const TabNavigator: React.FC = () => {
               iconName = focused ? 'receipt' : 'receipt-outline';
               break;
             case 'Transactions':
-              iconName = focused ? 'time' : 'time-outline';
+              iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
               break;
             case 'AddTransaction':
               return null; // Custom button için icon döndürmeyelim
@@ -114,7 +114,7 @@ const TabNavigator: React.FC = () => {
         name="Transactions"
         component={TransactionsScreen}
         options={{
-          title: 'Grafikler',
+          title: 'İşlemler',
         }}
       />
       <Tab.Screen
