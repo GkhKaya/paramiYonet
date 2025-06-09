@@ -21,6 +21,7 @@ import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { CategoryIcon } from '../components/common/CategoryIcon';
+import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../models/Category';
@@ -177,7 +178,11 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                 styles.categoryIconContainer,
                 { backgroundColor: category.color }
               ]}>
-                <Text style={styles.categoryIconText}>{category.icon}</Text>
+              <Ionicons 
+                name={category.icon as any} 
+                size={20} 
+                color="#FFFFFF" 
+              />
               </View>
               <View style={styles.transactionInfo}>
                 <Text style={styles.transactionDescription}>{item.description}</Text>
@@ -224,7 +229,10 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   );
 
   const DayGroupHeader = ({ dayGroup }: { dayGroup: any }) => (
-    <View style={styles.sectionHeader}>
+    <View style={[
+      styles.sectionHeader,
+      Platform.OS === 'web' && styles.webSectionHeader
+    ]}>
       <Text style={styles.sectionTitle}>{dayGroup.displayDate}</Text>
       <Text style={[
         styles.sectionAmount,
@@ -478,10 +486,8 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     );
   }
 
-  return (
+  const ContentLayout = () => (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>İşlemler</Text>
@@ -609,6 +615,22 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
         </View>
 
         <TransactionModal />
+    </>
+  );
+
+  if (Platform.OS === 'web') {
+    return (
+      <WebLayout title="İşlemler" activeRoute="transactions" navigation={navigation}>
+        <ContentLayout />
+      </WebLayout>
+    );
+  }
+
+  return (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ContentLayout />
       </SafeAreaView>
     </>
   );
@@ -777,7 +799,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000', // Black background
   },
   webSectionHeader: {
-    backgroundColor: 'transparent', // Web'de transparent arka plan
+    backgroundColor: 'transparent', // Web'de sitenin arka planıyla aynı
   },
   sectionTitle: {
     fontSize: 16,
@@ -1024,10 +1046,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
-  categoryIconText: {
-    fontSize: 20,
-    color: '#FFFFFF',
-  },
+
 });
 
 export default TransactionsScreen; 

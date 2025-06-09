@@ -289,9 +289,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const savedCredentials = await getSavedCredentials();
       if (savedCredentials) {
         console.log('Saved credentials found, attempting auto-login...');
-        // Otomatik giriş yapmayı dene (rememberMe parametresi false çünkü zaten kaydedilmiş)
-        const success = await signIn(savedCredentials.email, savedCredentials.password, false);
-        return success;
+        // Otomatik giriş için direkt Firebase sign in kullanıyoruz,
+        // signIn fonksiyonumuzu çağırmayız çünkü o kayıtlı bilgileri silebilir
+        await signInWithEmailAndPassword(auth, savedCredentials.email, savedCredentials.password);
+        return true;
       }
       return false;
     } catch (error) {

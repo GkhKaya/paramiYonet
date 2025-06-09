@@ -64,7 +64,7 @@ const WebDatePickerModal: React.FC<WebDatePickerModalProps> = ({ visible, onClos
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.webDatePickerBackdrop} onPress={onClose}>
+    <Pressable style={styles.webDatePickerBackdrop} onPress={onClose}>
         <Pressable style={styles.webDatePickerContainer} onPress={(e) => e.stopPropagation()}>
           <View style={styles.webDatePickerHeader}>
             <Text style={styles.webDatePickerTitle}>Tarih Seç</Text>
@@ -97,8 +97,8 @@ const WebDatePickerModal: React.FC<WebDatePickerModalProps> = ({ visible, onClos
               </TouchableOpacity>
             </View>
           </View>
-        </Pressable>
       </Pressable>
+    </Pressable>
     </Modal>
   );
 };
@@ -326,7 +326,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const AmountDisplay = () => (
     <View style={styles.amountContainer}>
       <Text style={styles.amountText}>
-        {currencySymbol}{formatCurrency(parseFloat(amount.replace(',', '.')) || 0)}
+        {formatCurrency(parseFloat(amount.replace(',', '.')) || 0)}
       </Text>
     </View>
   );
@@ -469,12 +469,11 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                     style={styles.webAmountInput}
                     value={amount === '0' ? '' : amount}
                     onChangeText={handleAmountChange}
-                    placeholder="0,00"
+                    placeholder="0,00 ₺"
                     placeholderTextColor="#666"
                     keyboardType="numeric"
                     maxLength={15}
                 />
-                <Text style={styles.webCurrencySymbol}>{currencySymbol}</Text>
                 </View>
             </View>
 

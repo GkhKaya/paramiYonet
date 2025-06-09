@@ -45,7 +45,6 @@ const navigationItems = [
 
 const quickActions = [
   { icon: 'add-circle', label: 'Hızlı Ekle', color: '#007AFF' },
-  { icon: 'download-outline', label: 'Dışa Aktar', color: '#00C853' },
   { icon: 'help-circle-outline', label: 'Yardım', color: '#FF9500' },
 ];
 
@@ -98,10 +97,7 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
             );
           }
           break;
-        case 'download-outline':
-          // Dışa aktarma işlemi (gelecekte implement edilecek)
-          console.log('Export functionality not implemented yet');
-          break;
+
         case 'help-circle-outline':
           // Yardım sayfasına git
           navigation.navigate('HelpAndSupport', undefined, {
@@ -161,7 +157,10 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
             </TouchableOpacity>
           ))}
           
-          <View style={styles.userProfile}>
+          <TouchableOpacity 
+            style={styles.userProfile}
+            onPress={() => navigation?.navigate('Profile', undefined, { animation: 'none' })}
+          >
             <View style={styles.avatar}>
               <Ionicons name="person" size={20} color={COLORS.WHITE} />
             </View>
@@ -169,10 +168,10 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
               <Text style={styles.userName}>Gökhan Kaya</Text>
               <Text style={styles.userRole}>Admin</Text>
             </View>
-            <TouchableOpacity style={styles.dropdownButton}>
+            <View style={styles.dropdownButton}>
               <Ionicons name="chevron-down" size={16} color={COLORS.TEXT_SECONDARY} />
-            </TouchableOpacity>
-          </View>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
