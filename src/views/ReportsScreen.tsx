@@ -1176,13 +1176,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     const summary = getBudgetSummary();
 
     return (
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.tabContentContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.PRIMARY} />
-        }
-      >
+      <View>
         <BudgetSummary
           totalBudgeted={summary.totalBudgeted}
           totalSpent={summary.totalSpent}
@@ -1241,7 +1235,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
             </Text>
           </View>
         )}
-      </ScrollView>
+      </View>
     );
   };
 
@@ -1308,7 +1302,15 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
 
         <TabSelector />
 
-        {renderContent()}
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#FFFFFF" />
+          }
+        >
+          {renderContent()}
+        </ScrollView>
 
         {reportsViewModel && (
           <CreateBudgetModal
@@ -2391,15 +2393,7 @@ const styles = StyleSheet.create({
   },
   // Budget Styles
   addBudgetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 8,
-    backgroundColor: '#111111', // Dark background
-    borderWidth: 2,
-    borderColor: '#2196F3',
-    borderStyle: 'dashed',
+    padding: 4,
   },
   addBudgetText: {
     color: '#2196F3',
@@ -2424,62 +2418,56 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tabContentContainer: {
-    padding: SPACING.MEDIUM,
+    padding: 16,
     paddingBottom: 100, // Make space for floating action button if any
   },
   placeholderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACING.LARGE,
+    padding: 32,
     marginTop: 50,
   },
   placeholderTitle: {
-    ...TYPOGRAPHY.H3,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: SPACING.MEDIUM,
+    marginTop: 16,
   },
   placeholderText: {
-    ...TYPOGRAPHY.BODY,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    color: '#666666',
     textAlign: 'center',
-    marginTop: SPACING.SMALL,
+    marginTop: 8,
   },
   emptyBudgetsContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: SPACING.LARGE,
-    marginTop: SPACING.LARGE,
-    backgroundColor: COLORS.CARD_BACKGROUND,
+    padding: 24,
+    marginTop: 24,
+    backgroundColor: '#111111',
     borderRadius: 16,
   },
   emptyBudgetsTitle: {
-    ...TYPOGRAPHY.H4,
-    color: COLORS.TEXT_PRIMARY,
-    marginTop: SPACING.MEDIUM,
-  },
-  emptyBudgetsText: {
-    ...TYPOGRAPHY.BODY,
-    color: COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
-    marginTop: SPACING.X_SMALL,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 16,
   },
   budgetListHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginTop: SPACING.LARGE,
-    marginBottom: SPACING.MEDIUM,
-    paddingHorizontal: SPACING.X_SMALL,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   budgetListTitle: {
-    ...TYPOGRAPHY.H2,
-    color: COLORS.TEXT_PRIMARY,
-  },
-  addBudgetButton: {
-    padding: SPACING.X_SMALL,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 

@@ -1,11 +1,21 @@
-import { GoldPriceData, CanliDovizGoldResponse } from '../types';
+import { GoldPriceData } from '../types';
+
+interface TruncgilGoldResponse {
+  GRA: {
+    Selling: number;
+    Type: string;
+    Name: string;
+    Change: number;
+    Buying: number;
+  };
+}
 
 class GoldPriceService {
   private static instance: GoldPriceService;
   private currentPrices: GoldPriceData | null = null;
   private lastFetchTime: Date | null = null;
   private readonly CACHE_DURATION = 2 * 60 * 1000; // 2 dakika cache
-  private readonly BASE_URL = 'https://canlidoviz.com';
+  private readonly TRUNCGIL_GOLD_URL = 'https://finance.truncgil.com/api/gold-rates/GRA';
 
   static getInstance(): GoldPriceService {
     if (!GoldPriceService.instance) {
@@ -24,150 +34,57 @@ class GoldPriceService {
     }
 
     try {
-      const goldPrices = await this.fetchGoldPricesFromCanliDoviz();
-      this.currentPrices = goldPrices;
-      this.lastFetchTime = new Date();
-      return goldPrices;
-    } catch (error) {
-      console.error('Altın fiyatları çekilirken hata:', error);
+      console.log('Fetching current gold prices from Truncgil API...');
       
-      // API başarısızsa fallback fiyatları döndür
-      const fallbackPrices: GoldPriceData = {
-        buyPrice: 4240,
-        sellPrice: 4270,
-        lastUpdate: new Date(),
-        change: 0,
-        changeAmount: 0,
-        gramPrice: 4255,
-        source: 'Fallback Data',
-      };
-      
-      return fallbackPrices;
-    }
-  }
-
-  private async fetchGoldPricesFromCanliDoviz(): Promise<GoldPriceData> {
-    try {
-      // Canlidoviz sitesinden HTML çekiyoruz
-      const response = await fetch(`${this.BASE_URL}/altin-fiyatlari/merkez-bankasi`, {
+      const response = await fetch(this.TRUNCGIL_GOLD_URL, {
         method: 'GET',
         headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_7_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Mobile/15E148 Safari/604.1',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-          'Cache-Control': 'no-cache',
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (compatible; GoldPriceService/1.0)',
         },
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Truncgil API error: ${response.status}`);
       }
 
-      const html = await response.text();
+      const data: TruncgilGoldResponse = await response.json();
       
-      // HTML'den altın fiyatlarını parse ediyoruz
-      const goldPriceData = this.parseGoldPricesFromHTML(html);
-      
-      return goldPriceData;
-    } catch (error) {
-      console.error('Canlidoviz\'den veri çekme hatası:', error);
-      throw error;
-    }
-  }
-
-  private parseGoldPricesFromHTML(html: string): GoldPriceData {
-    try {
-      // Gram altın fiyatını çıkarıyoruz
-      const gramGoldRegex = /Gram Altın[^<]*<\/span>[^>]*>([0-9,\.]+)/i;
-      const gramGoldMatch = html.match(gramGoldRegex);
-      let gramPrice = 4260.76; // Default değer
-      
-      if (gramGoldMatch && gramGoldMatch[1]) {
-        gramPrice = parseFloat(gramGoldMatch[1].replace(',', '.'));
+      if (!data.GRA) {
+        throw new Error('Invalid response from Truncgil API');
       }
 
-      // Değişim yüzdesini çıkarıyoruz
-      const changeRegex = /Gram Altın[^%]*%([0-9\-,\.]+)/i;
-      const changeMatch = html.match(changeRegex);
-      let changePercent = 0.57; // Default değer
-      
-      if (changeMatch && changeMatch[1]) {
-        changePercent = parseFloat(changeMatch[1].replace(',', '.'));
-      }
+      const gramGold = data.GRA;
+      const buyPrice = gramGold.Buying;
+      const sellPrice = gramGold.Selling;
+      const gramPrice = (buyPrice + sellPrice) / 2; // Ortalama fiyat
+      const change = gramGold.Change;
+      const changeAmount = (gramPrice * change) / 100;
 
-      // Değişim miktarını hesaplıyoruz
-      const changeAmount = (gramPrice * changePercent) / 100;
-
-      // Alış ve satış fiyatlarını hesaplıyoruz (spread yaklaşık %0.5)
-      const spread = gramPrice * 0.005;
-      const buyPrice = gramPrice - spread;
-      const sellPrice = gramPrice + spread;
-
-      return {
+      const goldPrices: GoldPriceData = {
         buyPrice: Math.round(buyPrice * 100) / 100,
         sellPrice: Math.round(sellPrice * 100) / 100,
         lastUpdate: new Date(),
-        change: changePercent,
+        change: Math.round(change * 100) / 100,
         changeAmount: Math.round(changeAmount * 100) / 100,
-        gramPrice: gramPrice,
-        source: 'Canlidoviz.com',
+        gramPrice: Math.round(gramPrice * 100) / 100,
+        source: 'Truncgil Finance API',
       };
-    } catch (error) {
-      console.error('HTML parse hatası:', error);
+
+      this.currentPrices = goldPrices;
+      this.lastFetchTime = new Date();
+      console.log('Truncgil API success:', goldPrices);
       
-      // Parse hatası durumunda varsayılan değerler
-      return {
-        buyPrice: 4240,
-        sellPrice: 4270,
-        lastUpdate: new Date(),
-        change: 0.57,
-        changeAmount: 24.06,
-        gramPrice: 4260.76,
-        source: 'Canlidoviz.com (Parse Error)',
-      };
-    }
-  }
-
-  // Alternatif API endpoint'i deneme metodu
-  private async fetchFromAlternativeAPI(): Promise<GoldPriceData> {
-    try {
-      // Canlidoviz'in muhtemel API endpoint'ini deniyoruz
-      const apiResponse = await fetch(`${this.BASE_URL}/api/gold-prices`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      });
-
-      if (apiResponse.ok) {
-        const data = await apiResponse.json();
-        return this.transformAPIResponse(data);
-      } else {
-        throw new Error('API response not ok');
-      }
+      return goldPrices;
     } catch (error) {
-      console.log('Alternative API failed, using HTML parsing');
-      throw error;
+      console.error('Truncgil API error:', error);
+      throw new Error('Altın fiyatları şu anda alınamıyor. Lütfen daha sonra tekrar deneyin.');
     }
-  }
-
-  private transformAPIResponse(data: any): GoldPriceData {
-    return {
-      buyPrice: data.buyPrice || data.alis || 0,
-      sellPrice: data.sellPrice || data.satis || 0,
-      lastUpdate: new Date(),
-      change: data.change || data.degisim || 0,
-      changeAmount: data.changeAmount || data.degisimMiktar || 0,
-      gramPrice: data.gramPrice || data.gramFiyat || 0,
-      source: 'Canlidoviz.com API',
-    };
   }
 
   // Belirli bir süre aralığında fiyat geçmişini çekme
   async getGoldPriceHistory(days: number = 7): Promise<GoldPriceData[]> {
-    // Bu metod gelecekte implementasyon için hazırlanmış
-    // Şimdilik mevcut fiyatı döndürüyor
+    // Truncgil API'sinde geçmiş veriler yok, mevcut fiyatı döndür
     const currentPrice = await this.getCurrentGoldPrices();
     return [currentPrice];
   }
@@ -177,7 +94,7 @@ class GoldPriceService {
     const purchaseValue = holding.grams * holding.purchasePrice;
     const currentValue = holding.grams * currentPrice;
     const profitLoss = currentValue - purchaseValue;
-    const profitLossPercentage = (profitLoss / purchaseValue) * 100;
+    const profitLossPercentage = purchaseValue > 0 ? (profitLoss / purchaseValue) * 100 : 0;
     
     return {
       purchaseValue,
@@ -187,9 +104,8 @@ class GoldPriceService {
     };
   }
 
-  // Fiyat formatlama - formatCurrency artık utils/currency'den import edilebilir
+  // Fiyat formatlama
   formatPrice(price: number): string {
-    // Bu fonksiyonu kullanan yerler utils/currency formatCurrency'yi kullanabilir
     return `₺${price.toLocaleString('tr-TR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,

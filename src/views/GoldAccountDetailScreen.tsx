@@ -36,9 +36,12 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
   const [goldDetails, setGoldDetails] = useState<GoldAccountDetails | null>(null);
   const [currentGoldPrice, setCurrentGoldPrice] = useState(4250);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [addGramsModalVisible, setAddGramsModalVisible] = useState(false);
   const [newGrams, setNewGrams] = useState('');
   const [addingGrams, setAddingGrams] = useState(false);
+  const [priceSource, setPriceSource] = useState('');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   const currencySymbol = CURRENCIES.find(c => c.code === 'TRY')?.symbol || '₺';
   const goldService = GoldPriceService.getInstance();
@@ -47,13 +50,20 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
     loadGoldDetails();
   }, []);
 
-  const loadGoldDetails = async () => {
-    setLoading(true);
+  const loadGoldDetails = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
     try {
       // Güncel altın fiyatını al
       const priceData = await goldService.getCurrentGoldPrices();
       const currentPrice = priceData.gramPrice || priceData.buyPrice;
       setCurrentGoldPrice(currentPrice);
+      setPriceSource(priceData.source || 'Bilinmeyen Kaynak');
+      setLastUpdate(priceData.lastUpdate);
 
       // Altın hesap detaylarını hesapla
       const details = calculateGoldDetails(account, currentPrice);
@@ -62,8 +72,18 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
       console.error('Altın detayları yüklenirken hata:', error);
       Alert.alert('Hata', 'Altın detayları yüklenirken bir hata oluştu');
     } finally {
-      setLoading(false);
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
+  };
+
+  const handleRefresh = () => {
+    // Cache'i temizle ve yeniden yükle
+    goldService.clearCache();
+    loadGoldDetails(true);
   };
 
   const calculateGoldDetails = (acc: Account, currentPrice: number): GoldAccountDetails => {
@@ -218,12 +238,21 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
           <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{goldDetails.accountName}</Text>
-        <TouchableOpacity
-          style={styles.addGramsButton}
-          onPress={() => setAddGramsModalVisible(true)}
-        >
-          <Ionicons name="add" size={24} color="#FFD700" />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={[styles.headerButton, refreshing && styles.headerButtonDisabled]}
+            onPress={handleRefresh}
+            disabled={refreshing}
+          >
+            <Ionicons name={refreshing ? "hourglass-outline" : "refresh"} size={20} color="#FFD700" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setAddGramsModalVisible(true)}
+          >
+            <Ionicons name="add" size={20} color="#FFD700" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -262,6 +291,18 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
                 {formatCurrency(goldDetails.currentGoldPrice)}/gram
               </Text>
             </View>
+          </View>
+          
+          {/* Fiyat Kaynağı ve Son Güncelleme */}
+          <View style={styles.priceInfo}>
+            <Text style={styles.priceSource}>
+              Kaynak: {priceSource}
+            </Text>
+            {lastUpdate && (
+              <Text style={styles.lastUpdate}>
+                Son güncelleme: {lastUpdate.toLocaleString('tr-TR')}
+              </Text>
+            )}
           </View>
         </Card>
 
@@ -340,6 +381,10 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
                 placeholder="0,00"
                 placeholderTextColor={COLORS.TEXT_SECONDARY}
                 keyboardType="decimal-pad"
+                autoFocus={true}
+                selectTextOnFocus={true}
+                returnKeyType="done"
+                blurOnSubmit={true}
               />
               <Text style={styles.inputUnit}>gram</Text>
             </View>
@@ -402,8 +447,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
   },
-  addGramsButton: {
-    padding: SPACING.xs,
+  headerButtons: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  headerButton: {
+    padding: SPACING.sm,
+    borderRadius: 8,
+    backgroundColor: COLORS.SURFACE,
+  },
+  headerButtonDisabled: {
+    opacity: 0.5,
   },
   content: {
     flex: 1,
@@ -472,6 +526,23 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
+    textAlign: 'center',
+  },
+  priceInfo: {
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
+  },
+  priceSource: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
+    marginBottom: SPACING.xs,
+  },
+  lastUpdate: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
   },
   valueGrid: {
@@ -550,43 +621,59 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: COLORS.WHITE,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: SPACING.lg,
     margin: SPACING.lg,
     width: '90%',
     maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: '700',
+    color: COLORS.BLACK,
     textAlign: 'center',
     marginBottom: SPACING.lg,
   },
   modalLabel: {
     fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_PRIMARY,
+    color: COLORS.BLACK,
+    fontWeight: '600',
     marginBottom: SPACING.sm,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.BORDER,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.sm,
+    backgroundColor: COLORS.WHITE,
+    minHeight: 56,
   },
   input: {
     flex: 1,
     paddingVertical: SPACING.sm,
-    fontSize: TYPOGRAPHY.sizes.lg,
-    color: COLORS.TEXT_PRIMARY,
+    fontSize: TYPOGRAPHY.sizes.xl,
+    color: COLORS.BLACK,
+    fontWeight: '600',
     textAlign: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    minHeight: 44,
   },
   inputUnit: {
     fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
+    color: COLORS.BLACK,
+    fontWeight: '600',
     marginLeft: SPACING.sm,
   },
   estimatedValue: {
@@ -610,7 +697,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.SURFACE,
   },
   cancelButtonText: {
-    color: COLORS.TEXT_PRIMARY,
+    color: COLORS.BLACK,
     fontWeight: '600',
   },
   addButton: {
