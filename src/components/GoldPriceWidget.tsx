@@ -32,7 +32,7 @@ const GoldPriceWidget: React.FC<GoldPriceWidgetProps> = ({
         onPriceUpdate(prices);
       }
       
-      console.log('Altın fiyatları güncellendi:', prices);
+
     } catch (err) {
       const errorMessage = 'Altın fiyatları alınamadı';
       setError(errorMessage);

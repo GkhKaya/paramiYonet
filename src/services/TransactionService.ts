@@ -20,10 +20,10 @@ export class TransactionService {
   // Get all transactions for a user
   static async getUserTransactions(userId: string): Promise<Transaction[]> {
     try {
+      // Simplified query without orderBy to avoid index requirement
       const q = query(
         collection(db, this.COLLECTION_NAME),
-        where('userId', '==', userId),
-        orderBy('date', 'desc')
+        where('userId', '==', userId)
       );
       
       const querySnapshot = await getDocs(q);
@@ -45,6 +45,9 @@ export class TransactionService {
           updatedAt: data.updatedAt.toDate(),
         });
       });
+
+      // Sort client-side to avoid index requirement
+      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
       return transactions;
     } catch (error) {
@@ -56,11 +59,10 @@ export class TransactionService {
   // Get recent transactions (last 10)
   static async getRecentTransactions(userId: string): Promise<Transaction[]> {
     try {
+      // Simplified query without orderBy to avoid index requirement
       const q = query(
         collection(db, this.COLLECTION_NAME),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc'),
-        limit(10)
+        where('userId', '==', userId)
       );
       
       const querySnapshot = await getDocs(q);
@@ -83,7 +85,10 @@ export class TransactionService {
         });
       });
 
-      return transactions;
+      // Sort client-side and limit to 10 most recent
+      transactions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      return transactions.slice(0, 10);
     } catch (error) {
       console.error('Error getting recent transactions:', error);
       throw new Error('Son işlemler yüklenemedi');
@@ -96,12 +101,12 @@ export class TransactionService {
       const startDate = new Date(year, month, 1);
       const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
+      // Simplified query without orderBy to avoid composite index requirement
       const q = query(
         collection(db, this.COLLECTION_NAME),
         where('userId', '==', userId),
         where('date', '>=', Timestamp.fromDate(startDate)),
-        where('date', '<=', Timestamp.fromDate(endDate)),
-        orderBy('date', 'desc')
+        where('date', '<=', Timestamp.fromDate(endDate))
       );
       
       const querySnapshot = await getDocs(q);
@@ -123,6 +128,9 @@ export class TransactionService {
           updatedAt: data.updatedAt.toDate(),
         });
       });
+
+      // Sort client-side to avoid index requirement
+      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
       return transactions;
     } catch (error) {

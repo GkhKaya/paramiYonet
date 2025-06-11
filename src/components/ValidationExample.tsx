@@ -56,9 +56,9 @@ export const ValidationExample: React.FC = () => {
     setErrors(validation.errors);
     
     if (validation.isValid) {
-      console.log('Form is valid!', formData);
+
     } else {
-      console.log('Form has errors:', validation.errors);
+      
     }
   };
 

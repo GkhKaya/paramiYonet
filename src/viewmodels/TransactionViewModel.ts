@@ -240,8 +240,7 @@ export class TransactionViewModel {
       // Simplified query - only filter by userId to avoid index requirement
       const q = query(
         collection(db, 'transactions'),
-        where('userId', '==', this.userId),
-        orderBy('date', 'desc')
+        where('userId', '==', this.userId)
       );
 
       const querySnapshot = await getDocs(q);
@@ -263,6 +262,9 @@ export class TransactionViewModel {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         });
       });
+
+      // Sort client-side to avoid index requirement
+      allTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
       // Client-side filtering by current month
       const monthStart = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);

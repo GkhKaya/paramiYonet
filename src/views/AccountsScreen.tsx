@@ -59,7 +59,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = observer(({ navigation }) 
       [
         {
           text: 'Düzenle',
-          onPress: () => console.log('Edit account:', account.id)
+                        onPress: () => {}
         },
         {
           text: 'Sil',

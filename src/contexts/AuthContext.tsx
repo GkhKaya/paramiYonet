@@ -67,14 +67,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Sadece ilk yüklemede auto-login dene
         if (isInitialLoad) {
           try {
-            console.log('Initial load: checking for saved credentials...');
             const rememberMe = await AsyncStorage.getItem(REMEMBER_ME_KEY);
             if (rememberMe === 'true') {
               const email = await AsyncStorage.getItem(SAVED_EMAIL_KEY);
               const password = await AsyncStorage.getItem(SAVED_PASSWORD_KEY);
               
               if (email && password) {
-                console.log('Attempting auto-login with saved credentials...');
                 // Firebase auth state dinleyici içinde signIn çağırmayalım, 
                 // bunun yerine direkt Firebase signIn yapalım
                 await signInWithEmailAndPassword(auth, email, password);
@@ -89,8 +87,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
             await AsyncStorage.removeItem(SAVED_PASSWORD_KEY);
           }
-        } else {
-          console.log('Not initial load, skipping auto-login');
         }
         
         setLoading(false);
@@ -234,20 +230,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async (): Promise<void> => {
     try {
-      console.log('Starting signOut process...'); // Debug log
       setLoading(true);
-      console.log('Calling firebaseSignOut...'); // Debug log
       await firebaseSignOut(auth);
-      console.log('Firebase signOut successful, clearing credentials...'); // Debug log
       // Çıkış yaparken kaydedilmiş bilgileri temizle
       await clearSavedCredentials();
-      console.log('Credentials cleared successfully'); // Debug log
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
     } finally {
       setLoading(false);
-      console.log('signOut process completed'); // Debug log
     }
   };
 
@@ -271,14 +262,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const clearSavedCredentials = async (): Promise<void> => {
     try {
-      console.log('Clearing saved credentials..., Platform:', Platform.OS); // Debug log
       await AsyncStorage.removeItem(REMEMBER_ME_KEY);
-      console.log('REMEMBER_ME_KEY removed'); // Debug log
       await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
-      console.log('SAVED_EMAIL_KEY removed'); // Debug log
       await AsyncStorage.removeItem(SAVED_PASSWORD_KEY);
-      console.log('SAVED_PASSWORD_KEY removed'); // Debug log
-      console.log('All saved credentials cleared'); // Debug log
     } catch (error) {
       console.error('Error clearing saved credentials:', error);
     }
@@ -288,7 +274,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const savedCredentials = await getSavedCredentials();
       if (savedCredentials) {
-        console.log('Saved credentials found, attempting auto-login...');
         // Otomatik giriş için direkt Firebase sign in kullanıyoruz,
         // signIn fonksiyonumuzu çağırmayız çünkü o kayıtlı bilgileri silebilir
         await signInWithEmailAndPassword(auth, savedCredentials.email, savedCredentials.password);

@@ -35,22 +35,22 @@ export class DashboardViewModel extends BaseViewModel {
 
   // Quick actions
   navigateToAddIncome = () => {
-    console.log('Navigate to Add Income');
+
     // Navigation logic will be handled by the screen
   };
 
   navigateToAddExpense = () => {
-    console.log('Navigate to Add Expense');
+
     // Navigation logic will be handled by the screen
   };
 
   navigateToTransactions = () => {
-    console.log('Navigate to Transactions');
+
     // Navigation logic will be handled by the screen
   };
 
   navigateToReports = () => {
-    console.log('Navigate to Reports');
+
     // Navigation logic will be handled by the screen
   };
 
@@ -70,28 +70,28 @@ export class DashboardViewModel extends BaseViewModel {
   loadAccounts = async () => {
     return this.handleAsync(async () => {
       // TODO: Implement with AccountService
-      console.log('Loading accounts...');
+
     });
   };
 
   loadRecentTransactions = async () => {
     return this.handleAsync(async () => {
       // TODO: Implement with TransactionService
-      console.log('Loading recent transactions...');
+
     });
   };
 
   loadMonthlyStats = async () => {
     return this.handleAsync(async () => {
       // TODO: Calculate monthly income/expense from transactions
-      console.log('Loading monthly stats...');
+
     });
   };
 
   loadUserProfile = async () => {
     return this.handleAsync(async () => {
       // TODO: Implement with UserService
-      console.log('Loading user profile...');
+
     });
   };
 
@@ -104,7 +104,7 @@ export class DashboardViewModel extends BaseViewModel {
   selectAccount = (accountId: string) => {
     const account = this.state.accounts.find((acc: Account) => acc.id === accountId);
     if (account) {
-      console.log('Selected account:', account.name);
+  
       // Handle account selection logic
     }
   };

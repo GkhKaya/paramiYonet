@@ -195,20 +195,20 @@ export class TransactionService {
 
   static async getTransactions(userId: string, monthStart?: Date, monthEnd?: Date): Promise<Transaction[]> {
     try {
-      let q = query(
-        collection(db, COLLECTIONS.TRANSACTIONS),
-        where('userId', '==', userId),
-        orderBy('date', 'desc')
-      );
-
-      // If month range is provided, filter by date
+      let q;
+      
+      // If month range is provided, filter by date (without orderBy to avoid index requirement)
       if (monthStart && monthEnd) {
         q = query(
           collection(db, COLLECTIONS.TRANSACTIONS),
           where('userId', '==', userId),
           where('date', '>=', Timestamp.fromDate(monthStart)),
-          where('date', '<=', Timestamp.fromDate(monthEnd)),
-          orderBy('date', 'desc')
+          where('date', '<=', Timestamp.fromDate(monthEnd))
+        );
+      } else {
+        q = query(
+          collection(db, COLLECTIONS.TRANSACTIONS),
+          where('userId', '==', userId)
         );
       }
 
@@ -231,6 +231,9 @@ export class TransactionService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         });
       });
+
+      // Sort client-side to avoid index requirement
+      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
       return transactions;
     } catch (error) {
@@ -274,12 +277,11 @@ export class TransactionService {
 
   static async getTransactionsByType(userId: string, type: TransactionType, limitCount: number = 10): Promise<Transaction[]> {
     try {
+      // Simplified query without orderBy to avoid index requirement
       const q = query(
         collection(db, COLLECTIONS.TRANSACTIONS),
         where('userId', '==', userId),
-        where('type', '==', type),
-        orderBy('date', 'desc'),
-        limit(limitCount)
+        where('type', '==', type)
       );
 
       const querySnapshot = await getDocs(q);
@@ -302,7 +304,10 @@ export class TransactionService {
         });
       });
 
-      return transactions;
+      // Sort client-side and apply limit to avoid index requirement
+      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+      
+      return transactions.slice(0, limitCount);
     } catch (error) {
       console.error('Error getting transactions by type:', error);
       throw error;

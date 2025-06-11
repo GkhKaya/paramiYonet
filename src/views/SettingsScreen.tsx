@@ -99,7 +99,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   const handleBackup = () => {
     Alert.alert('Yedekleme', 'Verileriniz yedekleniyor...', [
-      { text: 'Tamam', onPress: () => console.log('Backup started') }
+                  { text: 'Tamam', onPress: () => {} }
     ]);
   };
 
@@ -182,15 +182,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         { 
           text: 'Sil', 
           style: 'destructive',
-          onPress: () => console.log('Delete account')
+          onPress: () => {}
         }
       ]
     );
   };
 
   const handleLogout = () => {
-    console.log('Logout button pressed'); // Debug log
-    
     // Web'de Alert.alert problemli olabileceği için platform kontrolü yapalım
     if (isWeb) {
       // Web'de browser'ın native confirm'ini kullan
@@ -216,11 +214,9 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
   const performLogout = async () => {
     try {
-      console.log('Attempting to sign out...'); // Debug log
       await signOut();
-      console.log('Sign out successful'); // Debug log
     } catch (error) {
-      console.error('Sign out error:', error); // Debug log
+      console.error('Sign out error:', error);
       if (isWeb) {
         window.alert('Çıkış yapılırken bir hata oluştu.');
       } else {

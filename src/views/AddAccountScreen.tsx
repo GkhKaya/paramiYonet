@@ -426,7 +426,11 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
             <TextInput
               style={styles.balanceInput}
               value={initialBalance}
-              onChangeText={(value) => setInitialBalance(formatBalanceInput(value))}
+              onChangeText={(value) => {
+                // Sadece sayı, virgül ve nokta karakterlerini al
+                const clean = value.replace(/[^0-9.,]/g, '');
+                setInitialBalance(clean);
+              }}
               placeholder="0,00"
               placeholderTextColor={COLORS.TEXT_SECONDARY}
               keyboardType="decimal-pad"

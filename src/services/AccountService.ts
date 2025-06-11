@@ -50,20 +50,25 @@ export class AccountService {
     const userId = UserService.getCurrentUserId();
     if (!userId) throw new Error('User not authenticated');
 
+    // Simplified query without orderBy to avoid index requirement
     const q = query(
       collection(db, this.COLLECTION_NAME),
       where('userId', '==', userId),
-      where('isActive', '==', true),
-      orderBy('createdAt', 'desc')
+      where('isActive', '==', true)
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
+    const accounts = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate() || new Date(),
       updatedAt: doc.data().updatedAt?.toDate() || new Date(),
     })) as Account[];
+
+    // Sort client-side to avoid index requirement
+    accounts.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
+    return accounts;
   }
 
   async getAccount(accountId: string): Promise<Account | null> {
@@ -141,11 +146,11 @@ export class AccountService {
 
   static async getUserAccounts(userId: string): Promise<Account[]> {
     try {
+      // Simplified query without orderBy to avoid index requirement
       const q = query(
         collection(db, AccountService.COLLECTION_NAME),
         where('userId', '==', userId),
-        where('isActive', '==', true),
-        orderBy('createdAt', 'asc')
+        where('isActive', '==', true)
       );
       
       const querySnapshot = await getDocs(q);
@@ -166,6 +171,9 @@ export class AccountService {
           updatedAt: data.updatedAt.toDate(),
         });
       });
+
+      // Sort client-side to avoid index requirement (ascending by createdAt)
+      accounts.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
       return accounts;
     } catch (error) {

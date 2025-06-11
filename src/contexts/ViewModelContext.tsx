@@ -29,8 +29,6 @@ export const ViewModelProvider: React.FC<ViewModelProviderProps> = ({ children }
     let cleanup: (() => void) | undefined;
 
     if (user?.id) {
-      console.log('ViewModelProvider: Initializing ViewModels for user:', user.id);
-      
       // ViewModels'leri oluştur
       const transactionVm = new TransactionViewModel(user.id);
       const accountVm = new AccountViewModel(user.id);
@@ -51,13 +49,11 @@ export const ViewModelProvider: React.FC<ViewModelProviderProps> = ({ children }
       
       // Cleanup function
       cleanup = () => {
-        console.log('ViewModelProvider: Cleaning up ViewModels');
         if (accountVm.dispose) {
           accountVm.dispose();
         }
       };
     } else {
-      console.log('ViewModelProvider: No user, clearing ViewModels');
       // Kullanıcı oturumu kapandıysa ViewModels'leri temizle
       setTransactionViewModel(null);
       setAccountViewModel(null);

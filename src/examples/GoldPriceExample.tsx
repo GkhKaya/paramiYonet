@@ -6,7 +6,7 @@ import { GoldPriceData } from '../types';
 const GoldPriceExample: React.FC = () => {
   
   const handlePriceUpdate = (priceData: GoldPriceData) => {
-    console.log('Yeni altın fiyatı alındı:', priceData);
+
     
     // Burada istediğiniz işlemleri yapabilirsiniz:
     // - Firebase'e kaydetme

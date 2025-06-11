@@ -67,10 +67,8 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
       return;
     }
 
-    console.log('Login attempt with rememberMe:', rememberMe);
     const result = await signIn(email, password, rememberMe);
     if (result) {
-      console.log('Login successful, rememberMe was:', rememberMe);
       onLoginSuccess();
     }
   };
@@ -149,7 +147,6 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                 <TouchableOpacity 
                   style={styles.rememberMeContainer}
                   onPress={() => {
-                    console.log('Checkbox pressed, current rememberMe:', rememberMe);
                     setRememberMe(!rememberMe);
                   }}
                   activeOpacity={0.7}

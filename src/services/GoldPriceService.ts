@@ -34,8 +34,6 @@ class GoldPriceService {
     }
 
     try {
-      console.log('Fetching current gold prices from Truncgil API...');
-      
       const response = await fetch(this.TRUNCGIL_GOLD_URL, {
         method: 'GET',
         headers: {
@@ -73,7 +71,6 @@ class GoldPriceService {
 
       this.currentPrices = goldPrices;
       this.lastFetchTime = new Date();
-      console.log('Truncgil API success:', goldPrices);
       
       return goldPrices;
     } catch (error) {

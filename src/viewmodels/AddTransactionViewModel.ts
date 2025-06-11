@@ -138,14 +138,14 @@ export class AddTransactionViewModel extends BaseViewModel {
   loadAccounts = async () => {
     return this.handleAsync(async () => {
       // TODO: Implement with AccountService
-      console.log('Loading accounts...');
+  
     });
   };
 
   loadCategories = async (type: TransactionType) => {
     return this.handleAsync(async () => {
       // TODO: Implement with CategoryService
-      console.log('Loading categories for type:', type);
+  
     });
   };
 
@@ -167,7 +167,7 @@ export class AddTransactionViewModel extends BaseViewModel {
         date: this.state.selectedDate,
       };
 
-      console.log('Saving transaction:', transactionData);
+
       
       // TODO: Implement with TransactionService
       // const result = await TransactionService.createTransaction(transactionData);

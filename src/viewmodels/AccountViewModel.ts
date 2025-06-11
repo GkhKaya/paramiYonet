@@ -306,7 +306,7 @@ export class AccountViewModel extends BaseViewModel {
   // Utility function to recalculate balances from transactions
   recalculateBalancesFromTransactions = async (): Promise<boolean> => {
     try {
-      console.log('Starting balance recalculation...');
+  
       
       // Get all transactions for this user
       const transactionsQuery = query(
@@ -334,7 +334,7 @@ export class AccountViewModel extends BaseViewModel {
         });
       });
       
-      console.log('Found transactions:', transactions.length);
+      
       
       // Calculate balance for each account
       const accountBalances: { [accountId: string]: number } = {};
@@ -355,7 +355,7 @@ export class AccountViewModel extends BaseViewModel {
         }
       });
       
-      console.log('Calculated balances:', accountBalances);
+      
       
       // Update each account's balance in Firebase
       const updatePromises = Object.entries(accountBalances).map(async ([accountId, balance]) => {
@@ -364,12 +364,12 @@ export class AccountViewModel extends BaseViewModel {
           balance: balance,
           updatedAt: Timestamp.fromDate(new Date())
         });
-        console.log(`Updated account ${accountId} balance to ${balance}`);
+        
       });
       
       await Promise.all(updatePromises);
       
-      console.log('Balance recalculation completed');
+      
       return true;
     } catch (error) {
       console.error('Error recalculating balances:', error);
