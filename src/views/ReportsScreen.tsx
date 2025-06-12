@@ -344,6 +344,16 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
     }
   };
 
+  const handleCreditCardPayment = (account: Account) => {
+    if (Platform.OS === 'web') {
+      navigation.navigate('ReportsCreditCardPayment', { creditCard: account }, {
+        animation: 'none'
+      });
+    } else {
+      navigation.navigate('ReportsCreditCardPayment', { creditCard: account });
+    }
+  };
+
   // Loading state
   if (!user) {
     return (
@@ -1037,13 +1047,35 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
                   </View>
                   
                   <View style={styles.accountRight}>
-                    <Text style={[
-                      styles.accountBalance,
-                      { color: account.balance < 0 ? '#F44336' : '#FFFFFF' }
-                    ]}>
-                      {formatCurrency(account.balance)}
-                    </Text>
+                    {account.type === AccountType.CREDIT_CARD ? (
+                      <View style={styles.creditCardInfo}>
+                        <Text style={styles.creditCardDebt}>
+                          Borç: {formatCurrency(account.currentDebt || 0)}
+                        </Text>
+                        <Text style={styles.creditCardLimit}>
+                          Limit: {formatCurrency(account.limit || 0)}
+                        </Text>
+                        <Text style={styles.creditCardAvailable}>
+                          Kullanılabilir: {formatCurrency((account.limit || 0) - (account.currentDebt || 0))}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={[
+                        styles.accountBalance,
+                        { color: account.balance < 0 ? '#F44336' : '#FFFFFF' }
+                      ]}>
+                        {formatCurrency(account.balance)}
+                      </Text>
+                    )}
                     <View style={styles.accountActions}>
+                      {account.type === AccountType.CREDIT_CARD && (
+                        <TouchableOpacity
+                          style={[styles.accountActionButton, styles.paymentButton]}
+                          onPress={() => handleCreditCardPayment(account)}
+                        >
+                          <Ionicons name="card-outline" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity
                         style={[styles.accountActionButton, styles.editButton]}
                         onPress={() => handleEditAccount(account)}
@@ -1115,7 +1147,19 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
                   </View>
                   
                   <View style={styles.accountRight}>
-                    {account.type === AccountType.GOLD && account.goldGrams ? (
+                    {account.type === AccountType.CREDIT_CARD ? (
+                      <View style={styles.creditCardInfo}>
+                        <Text style={styles.creditCardDebt}>
+                          Borç: {formatCurrency(account.currentDebt || 0)}
+                        </Text>
+                        <Text style={styles.creditCardLimit}>
+                          Limit: {formatCurrency(account.limit || 0)}
+                        </Text>
+                        <Text style={styles.creditCardAvailable}>
+                          Kullanılabilir: {formatCurrency((account.limit || 0) - (account.currentDebt || 0))}
+                        </Text>
+                      </View>
+                    ) : account.type === AccountType.GOLD && account.goldGrams ? (
                       <View>
                         <Text style={[
                           styles.accountBalance,
@@ -1136,6 +1180,14 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
                       </Text>
                     )}
                     <View style={styles.accountActions}>
+                      {account.type === AccountType.CREDIT_CARD && (
+                        <TouchableOpacity
+                          style={[styles.accountActionButton, styles.paymentButton]}
+                          onPress={() => handleCreditCardPayment(account)}
+                        >
+                          <Ionicons name="card-outline" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      )}
                       {account.type === AccountType.GOLD && (
                         <TouchableOpacity
                           style={[styles.accountActionButton, styles.goldDetailButton]}
@@ -2195,228 +2247,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
-  accountsSection: {
-    backgroundColor: '#111111', // Dark card background
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
-    padding: 16,
-    marginBottom: 16,
-  },
-  accountsSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  accountsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF', // White text
-    marginLeft: 8,
-  },
-  addAccountButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#2196F3',
-  },
-  addAccountText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  totalBalanceContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalBalanceLabel: {
-    fontSize: 14,
-    color: '#666666', // Gray text
-    fontWeight: '600',
-  },
-  totalBalanceAmount: {
-    fontSize: 14,
-    color: '#FFFFFF', // White text
-    fontWeight: '600',
-  },
-  excludedBalanceInfo: {
-    marginTop: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
-    borderRadius: 8,
-  },
-  excludedBalanceLabel: {
-    fontSize: 14,
-    color: '#666666', // Gray text
-    marginBottom: 4,
-  },
-  excludedBalanceAmount: {
-    fontSize: 14,
-    color: '#FFFFFF', // White text
-    fontWeight: '600',
-  },
-  goldAccountsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF', // White text
-  },
-  excludedAccountsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF', // White text
-  },
-  accountsList: {
-    gap: 16,
-  },
-  accountItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-  },
-  accountLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  accountIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accountInfo: {
-    marginLeft: 12,
-  },
-  accountName: {
-    fontSize: 14,
-    color: '#FFFFFF', // White text
-    fontWeight: '500',
-  },
-  accountType: {
-    fontSize: 12,
-    color: '#666666', // Gray text
-  },
-  accountRight: {
-    alignItems: 'flex-end',
-    minWidth: 100,
-  },
-  accountBalance: {
-    fontSize: 14,
-    color: '#FFFFFF', // White text
-    fontWeight: '600',
-  },
-  accountActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  accountActionButton: {
-    padding: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 32,
-    height: 32,
-  },
-  editButton: {
-    backgroundColor: '#2196F3',
-  },
-  goldDetailButton: {
-    backgroundColor: '#FFD700',
-  },
-  deleteButton: {
-    backgroundColor: '#F44336',
-  },
-  emptyAccounts: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyAccountsText: {
-    fontSize: 14,
-    color: '#666666', // Gray text
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  addFirstAccountButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  addFirstAccountText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  lastAccountItem: {
-    borderBottomWidth: 0,
-  },
-  goldGrams: {
-    fontSize: 12,
-    color: '#666666', // Gray text
-    marginTop: 4,
-  },
-  accountSummaryCard: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  budgetsSection: {
-    backgroundColor: '#111111', // Dark card background
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333333',
-    padding: 16,
-    marginBottom: 16,
-  },
-  budgetsSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  budgetsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF', // White text
-    marginLeft: 8,
-  },
-  // Budget Styles
-  addBudgetButton: {
-    padding: 4,
-  },
-  addBudgetText: {
-    color: '#2196F3',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  emptyBudgets: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyBudgetsText: {
-    fontSize: 14,
-    color: '#666666', // Gray text
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  emptyBudgetsSubtext: {
-    fontSize: 14,
-    color: '#666666', // Gray text
-    textAlign: 'center',
-    marginTop: 4,
-  },
+
   tabContentContainer: {
     padding: 16,
     paddingBottom: 100, // Make space for floating action button if any
@@ -2468,6 +2299,68 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  creditCardInfo: {
+    alignItems: 'flex-end',
+  },
+  creditCardDebt: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B6B',
+    marginBottom: 2,
+  },
+  creditCardLimit: {
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 2,
+  },
+  creditCardAvailable: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#4ECDC4',
+  },
+  paymentButton: {
+    backgroundColor: '#00BCD4',
+  },
+  accountsSection: {
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+    padding: 16,
+    marginBottom: 16,
+  },
+  accountsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  accountsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  budgetsSection: {
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+    padding: 16,
+    marginBottom: 16,
+  },
+  budgetsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  budgetsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
   },
 });
 

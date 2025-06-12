@@ -23,6 +23,9 @@ import SecurityScreen from '../views/SecurityScreen';
 import ProfileScreen from '../views/ProfileScreen';
 import RecurringPaymentsScreen from '../views/RecurringPaymentsScreen';
 import AnalyticsScreen from '../views/AnalyticsScreen';
+import CreditCardTransactionScreen from '../views/CreditCardTransactionScreen';
+import CreditCardPaymentScreen from '../views/CreditCardPaymentScreen';
+import ReportsCreditCardPaymentScreen from '../views/ReportsCreditCardPaymentScreen';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -398,6 +401,87 @@ const MainNavigator: React.FC = () => {
                 animation: 'timing',
                 config: {
                   duration: 250,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="CreditCardTransaction" 
+          component={CreditCardTransactionScreen}
+          options={{
+            presentation: 'modal',
+            animationTypeForReplace: 'push',
+            cardStyleInterpolator: ({ current }) => ({
+              cardStyle: {
+                opacity: current.progress,
+              },
+            }),
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 200,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 150,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="CreditCardPayment" 
+          component={CreditCardPaymentScreen}
+          options={{
+            presentation: 'modal',
+            animationTypeForReplace: 'push',
+            cardStyleInterpolator: ({ current }) => ({
+              cardStyle: {
+                opacity: current.progress,
+              },
+            }),
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 200,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 150,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="ReportsCreditCardPayment" 
+          component={ReportsCreditCardPaymentScreen}
+          options={{
+            presentation: 'modal',
+            animationTypeForReplace: 'push',
+            cardStyleInterpolator: ({ current }) => ({
+              cardStyle: {
+                opacity: current.progress,
+              },
+            }),
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 200,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 150,
                 },
               },
             },

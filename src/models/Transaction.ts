@@ -10,6 +10,9 @@ export interface Transaction {
   date: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Kredi kartı işlemleri için ek alanlar
+  isCreditCardTransaction?: boolean;
+  creditCardPaymentType?: 'minimum' | 'full' | 'custom';
 }
 
 export enum TransactionType {
@@ -25,6 +28,9 @@ export interface CreateTransactionRequest {
   type: TransactionType;
   accountId: string;
   date: Date;
+  // Kredi kartı işlemleri için ek alanlar
+  isCreditCardTransaction?: boolean;
+  creditCardPaymentType?: 'minimum' | 'full' | 'custom';
 }
 
 export interface UpdateTransactionRequest extends Partial<CreateTransactionRequest> {

@@ -12,6 +12,15 @@ export interface Account {
   goldGrams?: number;
   initialGoldPrice?: number;
   includeInTotalBalance: boolean;
+  // Kredi kartı alanları
+  limit?: number;
+  currentDebt?: number;
+  statementDay?: number;
+  dueDay?: number;
+  interestRate?: number;
+  minPaymentRate?: number;
+  creditCardTransactions?: CreditCardTransaction[];
+  creditCardPayments?: CreditCardPayment[];
 }
 
 export enum AccountType {
@@ -32,6 +41,13 @@ export interface CreateAccountRequest {
   goldGrams?: number;
   initialGoldPrice?: number;
   includeInTotalBalance?: boolean;
+  // Kredi kartı alanları
+  limit?: number;
+  currentDebt?: number;
+  statementDay?: number;
+  dueDay?: number;
+  interestRate?: number;
+  minPaymentRate?: number;
 }
 
 export interface UpdateAccountRequest {
@@ -43,6 +59,13 @@ export interface UpdateAccountRequest {
   goldGrams?: number;
   initialGoldPrice?: number;
   includeInTotalBalance?: boolean;
+  // Kredi kartı alanları
+  limit?: number;
+  currentDebt?: number;
+  statementDay?: number;
+  dueDay?: number;
+  interestRate?: number;
+  minPaymentRate?: number;
 }
 
 export interface AccountSummary {
@@ -68,4 +91,26 @@ export interface GoldAccountDetails {
   profitLoss: number;
   profitLossPercentage: number;
   daysSinceCreation: number;
+}
+
+export interface CreditCardTransaction {
+  id: string;
+  creditCardId: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: Date;
+  isInstallment?: boolean;
+  installmentCount?: number;
+  installmentNumber?: number;
+}
+
+export interface CreditCardPayment {
+  id: string;
+  creditCardId: string;
+  fromAccountId: string;
+  amount: number;
+  paymentType: 'minimum' | 'full' | 'custom';
+  date: Date;
+  description?: string;
 } 

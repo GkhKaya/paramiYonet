@@ -77,6 +77,9 @@ export type MainStackParamList = {
   Analytics: undefined;
   HelpAndSupport: undefined;
   Security: undefined;
+  CreditCardTransaction: { selectedCreditCard?: Account } | undefined;
+  CreditCardPayment: { creditCard: Account };
+  ReportsCreditCardPayment: { creditCard: Account };
 };
 
 export type MainTabParamList = {

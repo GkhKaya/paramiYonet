@@ -179,24 +179,43 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
   }, [parentNavigation]);
 
   /**
+   * Kredi kartı harcama sayfasına yönlendirir
+   */
+  const navigateToCreditCardTransaction = useCallback(() => {
+    parentNavigation.navigate('CreditCardTransaction');
+  }, [parentNavigation]);
+
+  /**
+   * Kredi kartı ödeme sayfasına yönlendirir
+   */
+  const navigateToCreditCardPayment = useCallback(() => {
+    // İlk kredi kartını bul ve ona yönlendir
+    const creditCards = accountViewModel?.accounts.filter(acc => 
+      acc.type === AccountType.CREDIT_CARD && acc.isActive
+    );
+    
+    if (creditCards && creditCards.length > 0) {
+      parentNavigation.navigate('CreditCardPayment', { creditCard: creditCards[0] });
+    } else {
+      Alert.alert('Bilgi', 'Önce bir kredi kartı hesabı oluşturmanız gerekiyor', [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Hesap Ekle', onPress: navigateToAddAccount }
+      ]);
+    }
+  }, [parentNavigation, accountViewModel?.accounts, navigateToAddAccount]);
+
+  /**
    * Hesap düzenleme sayfasına yönlendirir
    */
   const handleEditAccount = useCallback((account: AccountItem) => {
-    const editAccount: Account = {
-      id: account.id,
-      name: account.name,
-      type: account.type as AccountType,
-      balance: account.balance,
-      isActive: account.isActive,
-      color: account.color,
-      userId: user?.id || '',
-      icon: 'wallet',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      includeInTotalBalance: true,
-    };
-    parentNavigation.navigate('AddAccount', { editAccount });
-  }, [parentNavigation, user]);
+    // Gerçek Account objesini AccountViewModel'den bul
+    const realAccount = accountViewModel?.accounts.find(acc => acc.id === account.id);
+    if (realAccount) {
+      parentNavigation.navigate('AddAccount', { editAccount: realAccount });
+    } else {
+      Alert.alert('Hata', 'Hesap bilgileri bulunamadı');
+    }
+  }, [parentNavigation, accountViewModel?.accounts]);
 
   /**
    * Hesap silme işlemini gerçekleştirir
@@ -243,7 +262,9 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
     navigateToReports,
     navigateToTransactions,
     undefined,
-    navigateToAnalytics
+    navigateToAnalytics,
+    navigateToCreditCardTransaction,  // Kredi kartı harcama
+    navigateToCreditCardPayment       // Kredi kartı ödeme
   );
 
   // Content component for both web and mobile
@@ -278,6 +299,24 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
         onEditAccount={handleEditAccount}
         onDeleteAccount={handleDeleteAccount}
         onAddAccount={navigateToAddAccount}
+        onCreditCardPayment={(account) => {
+          // Gerçek Account objesini AccountViewModel'den bul
+          const realAccount = accountViewModel?.accounts.find(acc => acc.id === account.id);
+          if (realAccount) {
+            parentNavigation.navigate('CreditCardPayment', { creditCard: realAccount });
+          } else {
+            Alert.alert('Hata', 'Kredi kartı bilgileri bulunamadı');
+          }
+        }}
+        onCreditCardTransaction={(account) => {
+          // Gerçek Account objesini AccountViewModel'den bul
+          const realAccount = accountViewModel?.accounts.find(acc => acc.id === account.id);
+          if (realAccount) {
+            parentNavigation.navigate('CreditCardTransaction', { selectedCreditCard: realAccount });
+          } else {
+            Alert.alert('Hata', 'Kredi kartı bilgileri bulunamadı');
+          }
+        }}
         loading={!accountViewModel}
       />
     </>

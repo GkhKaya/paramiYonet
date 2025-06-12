@@ -115,7 +115,9 @@ export const createCommonQuickActions = (
   onViewReports: () => void,
   onViewTransactions: () => void,
   onRecalculateBalances?: () => void,
-  onViewAnalytics?: () => void
+  onViewAnalytics?: () => void,
+  onCreditCardTransaction?: () => void,
+  onCreditCardPayment?: () => void
 ): QuickAction[] => {
   const commonActions: QuickAction[] = [
     {
@@ -149,6 +151,25 @@ export const createCommonQuickActions = (
       onPress: onViewTransactions,
     },
   ];
+
+  // Kredi kartı butonları
+  if (onCreditCardTransaction) {
+    commonActions.push({
+      icon: 'card',
+      title: 'Kredi Kartı Harcama',
+      color: '#E91E63',
+      onPress: onCreditCardTransaction,
+    });
+  }
+
+  if (onCreditCardPayment) {
+    commonActions.push({
+      icon: 'cash',
+      title: 'Kredi Kartı Ödeme',
+      color: '#00BCD4',
+      onPress: onCreditCardPayment,
+    });
+  }
 
   // Analytics butonu
   if (onViewAnalytics) {

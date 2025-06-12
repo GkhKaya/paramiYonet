@@ -21,6 +21,7 @@ import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import GoldPriceService from '../services/GoldPriceService';
 import { useCurrency } from '../hooks';
+import { getCreditCardInterestRates, getCreditCardInterestRatesByLimit, getMinPaymentRate, validateAndAdjustCreditCardDay, getDayValidationMessage, getInterestRateDescription } from '../utils/creditCard';
 
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
@@ -116,6 +117,14 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   const [includeInTotalBalance, setIncludeInTotalBalance] = useState(
     editAccount?.includeInTotalBalance !== undefined ? editAccount.includeInTotalBalance : true
   );
+  const [creditLimit, setCreditLimit] = useState(editAccount?.limit?.toString() || '');
+  const [currentDebt, setCurrentDebt] = useState(editAccount?.currentDebt?.toString() || '0');
+  const [statementDay, setStatementDay] = useState(editAccount?.statementDay?.toString() || '1');
+  const [dueDay, setDueDay] = useState(editAccount?.dueDay?.toString() || '10');
+  const [interestRate, setInterestRate] = useState(
+    editAccount?.interestRate?.toString() || (selectedType === AccountType.CREDIT_CARD ? '' : '')
+  );
+  const [minPaymentRate, setMinPaymentRate] = useState(editAccount?.minPaymentRate ? (editAccount.minPaymentRate * 100).toString() : '');
 
   // Custom hooks
   const { currencySymbol, formatInput } = useCurrency();
@@ -143,8 +152,29 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
     // For new accounts (not editing), auto-set credit cards to negative
     if (!isEditMode && selectedType === AccountType.CREDIT_CARD) {
       setIsPositiveBalance(false);
+      setInterestRate(''); // Faiz oranını temizle, limit girilince hesaplanacak
     }
   }, [selectedType, isEditMode]);
+
+  // Kredi kartı limiti değişince faiz ve asgari ödeme oranını güncelle
+  useEffect(() => {
+    if (selectedType === AccountType.CREDIT_CARD && creditLimit) {
+      const limitNum = parseFloat(creditLimit.replace(',', '.'));
+      if (!isNaN(limitNum)) {
+        // Limite göre faiz oranı belirle
+        const rates = getCreditCardInterestRatesByLimit(limitNum);
+        setInterestRate(rates.regular.toString());
+        setMinPaymentRate((getMinPaymentRate() * 100).toString());
+      }
+    } else if (selectedType === AccountType.CREDIT_CARD && !creditLimit) {
+      // Kredi kartı seçilmiş ama limit girilmemişse faiz oranını temizle
+      setInterestRate('');
+    } else if (selectedType !== AccountType.CREDIT_CARD) {
+      // Kredi kartı değilse faiz oranını temizle
+      setInterestRate('');
+      setMinPaymentRate('');
+    }
+  }, [creditLimit, selectedType]);
 
   // Helper function to format balance input
   const formatBalanceInput = (value: string) => {
@@ -212,20 +242,69 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         return;
       }
     } else {
-    if (!initialBalance.trim()) {
-      Alert.alert('Hata', 'Başlangıç bakiyesi gereklidir');
-      return;
+      if (!initialBalance.trim()) {
+        Alert.alert('Hata', 'Başlangıç bakiyesi gereklidir');
+        return;
+      }
+      const balance = parseFloat(initialBalance.replace(',', '.'));
+      if (isNaN(balance)) {
+        Alert.alert('Hata', 'Geçerli bir bakiye giriniz');
+        return;
+      }
     }
-    const balance = parseFloat(initialBalance.replace(',', '.'));
-    if (isNaN(balance)) {
-      Alert.alert('Hata', 'Geçerli bir bakiye giriniz');
-      return;
-    }
+
+    if (selectedType === AccountType.CREDIT_CARD) {
+      if (!creditLimit.trim()) {
+        Alert.alert('Hata', 'Kart limiti gereklidir');
+        return;
+      }
+      if (!statementDay.trim() || !dueDay.trim()) {
+        Alert.alert('Hata', 'Ekstre ve son ödeme günü gereklidir');
+        return;
+      }
+      
+      // Gün validasyonu
+      const statementDayNum = parseInt(statementDay);
+      const dueDayNum = parseInt(dueDay);
+      
+      if (isNaN(statementDayNum) || statementDayNum < 1 || statementDayNum > 30) {
+        Alert.alert('Hata', 'Ekstre kesim günü 1-30 arasında olmalıdır');
+        return;
+      }
+      
+      if (isNaN(dueDayNum) || dueDayNum < 1 || dueDayNum > 30) {
+        Alert.alert('Hata', 'Son ödeme günü 1-30 arasında olmalıdır');
+        return;
+      }
+      
+      if (!interestRate.trim()) {
+        Alert.alert('Hata', 'Faiz oranı otomatik atanamadı');
+        return;
+      }
     }
 
     if (!viewModel) {
       Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
       return;
+    }
+
+    // Şubat ayında 30 seçildiyse kullanıcıyı bilgilendir
+    if (selectedType === AccountType.CREDIT_CARD) {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      
+      if (currentMonth === 1) { // Şubat ayı
+        const originalStatementDay = parseInt(statementDay);
+        const originalDueDay = parseInt(dueDay);
+        
+        if (originalStatementDay === 30 || originalDueDay === 30) {
+          Alert.alert(
+            'Bilgi', 
+            'Şubat ayında 30. gün bulunmadığı için 30 seçilen günler otomatik olarak 28 olarak ayarlandı.',
+            [{ text: 'Tamam' }]
+          );
+        }
+      }
     }
 
     setLoading(true);
@@ -257,6 +336,12 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         goldGrams: selectedType === AccountType.GOLD ? goldGramsValue : undefined,
         initialGoldPrice: selectedType === AccountType.GOLD ? currentGoldPrice : undefined,
         includeInTotalBalance,
+        limit: selectedType === AccountType.CREDIT_CARD ? parseFloat(creditLimit.replace(',', '.')) : undefined,
+        currentDebt: selectedType === AccountType.CREDIT_CARD ? (isNaN(parseFloat(currentDebt.replace(',', '.'))) ? 0 : parseFloat(currentDebt.replace(',', '.'))) : undefined,
+        statementDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(statementDay)) : undefined,
+        dueDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(dueDay)) : undefined,
+        interestRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(interestRate) : undefined,
+        minPaymentRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(minPaymentRate) / 100 : undefined,
       };
 
       success = await viewModel.updateAccountInfo(updateData);
@@ -276,6 +361,12 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         goldGrams: selectedType === AccountType.GOLD ? goldGramsValue : undefined,
         initialGoldPrice: selectedType === AccountType.GOLD ? currentGoldPrice : undefined,
         includeInTotalBalance,
+        limit: selectedType === AccountType.CREDIT_CARD ? parseFloat(creditLimit.replace(',', '.')) : undefined,
+        currentDebt: selectedType === AccountType.CREDIT_CARD ? (isNaN(parseFloat(currentDebt.replace(',', '.'))) ? 0 : parseFloat(currentDebt.replace(',', '.'))) : undefined,
+        statementDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(statementDay)) : undefined,
+        dueDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(dueDay)) : undefined,
+        interestRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(interestRate) : undefined,
+        minPaymentRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(minPaymentRate) / 100 : undefined,
       };
 
       success = await viewModel.createAccount(accountData);
@@ -489,6 +580,154 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
           </View>
         </Card>
 
+        {/* Kredi kartı için ek alanlar */}
+        {selectedType === AccountType.CREDIT_CARD && (
+          <>
+            <Card style={styles.section}>
+              <Text style={styles.sectionTitle}>Kredi Kartı Bilgileri</Text>
+              
+              {/* Kart Limiti */}
+              <View style={styles.creditCardField}>
+                <View style={styles.fieldHeader}>
+                  <Ionicons name="card" size={20} color={COLORS.PRIMARY} />
+                  <Text style={styles.fieldTitle}>Kart Limiti</Text>
+                </View>
+                <Text style={styles.fieldDescription}>
+                  Bankanızın size verdiği maksimum harcama limiti (faiz oranı buna göre belirlenir)
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.modernInput}
+                    value={creditLimit}
+                    onChangeText={setCreditLimit}
+                    placeholder="Örnek: 50000"
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.inputSuffix}>₺</Text>
+                </View>
+              </View>
+
+              {/* Mevcut Borç */}
+              <View style={styles.creditCardField}>
+                <View style={styles.fieldHeader}>
+                  <Ionicons name="wallet" size={20} color={COLORS.ERROR} />
+                  <Text style={styles.fieldTitle}>Mevcut Borç</Text>
+                </View>
+                <Text style={styles.fieldDescription}>
+                  Şu anda kredi kartınızda ödenecek borç tutarı
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.modernInput}
+                    value={currentDebt}
+                    onChangeText={(value) => {
+                      const clean = value.replace(/[^0-9.,]/g, '');
+                      setCurrentDebt(clean);
+                    }}
+                    placeholder="Örnek: 5000"
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                    keyboardType="decimal-pad"
+                  />
+                  <Text style={styles.inputSuffix}>₺</Text>
+                </View>
+              </View>
+
+              {/* Ekstre Günü */}
+              <View style={styles.creditCardField}>
+                <View style={styles.fieldHeader}>
+                  <Ionicons name="calendar" size={20} color={COLORS.WARNING} />
+                  <Text style={styles.fieldTitle}>Ekstre Kesim Günü</Text>
+                </View>
+                <Text style={styles.fieldDescription}>
+                  Her ay hangi gün ekstreniz kesiliyor? (1-30 arası)
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.modernInput}
+                    value={statementDay}
+                    onChangeText={setStatementDay}
+                    placeholder="Örnek: 15"
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.inputSuffix}>. gün</Text>
+                </View>
+              </View>
+
+              {/* Son Ödeme Günü */}
+              <View style={styles.creditCardField}>
+                <View style={styles.fieldHeader}>
+                  <Ionicons name="alarm" size={20} color={COLORS.ERROR} />
+                  <Text style={styles.fieldTitle}>Son Ödeme Günü</Text>
+                </View>
+                <Text style={styles.fieldDescription}>
+                  Her ay hangi güne kadar borcunuzu ödemeniz gerek? (1-30 arası)
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.modernInput}
+                    value={dueDay}
+                    onChangeText={setDueDay}
+                    placeholder="Örnek: 10"
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                    keyboardType="numeric"
+                  />
+                  <Text style={styles.inputSuffix}>. gün</Text>
+                </View>
+              </View>
+
+              {/* Faiz Oranı - Otomatik */}
+              <View style={styles.creditCardField}>
+                <View style={styles.fieldHeader}>
+                  <Ionicons name="trending-up" size={20} color={COLORS.SUCCESS} />
+                  <Text style={styles.fieldTitle}>Aylık Faiz Oranı</Text>
+                  <View style={styles.autoTag}>
+                    <Text style={styles.autoTagText}>Otomatik</Text>
+                  </View>
+                </View>
+                <Text style={styles.fieldDescription}>
+                  {getInterestRateDescription()}
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={[styles.modernInput, styles.disabledInput]}
+                    value={interestRate}
+                    editable={false}
+                    placeholder={creditLimit ? `${interestRate || 'Hesaplanıyor...'}` : 'Önce limit girin'}
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                  />
+                  <Text style={styles.inputSuffix}>%</Text>
+                </View>
+              </View>
+
+              {/* Asgari Ödeme Oranı - Otomatik */}
+              <View style={styles.creditCardField}>
+                <View style={styles.fieldHeader}>
+                  <Ionicons name="shield-checkmark" size={20} color={COLORS.SUCCESS} />
+                  <Text style={styles.fieldTitle}>Asgari Ödeme Oranı</Text>
+                  <View style={styles.autoTag}>
+                    <Text style={styles.autoTagText}>Sabit</Text>
+                  </View>
+                </View>
+                <Text style={styles.fieldDescription}>
+                  Yasal olarak minimum %20 (değiştirilemez)
+                </Text>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={[styles.modernInput, styles.disabledInput]}
+                    value={minPaymentRate}
+                    editable={false}
+                    placeholder="20"
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                  />
+                  <Text style={styles.inputSuffix}>%</Text>
+                </View>
+              </View>
+            </Card>
+          </>
+        )}
+
         {/* Preview */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Önizleme</Text>
@@ -619,6 +858,82 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.sizes.md,
     color: COLORS.TEXT_PRIMARY,
     fontWeight: '500',
+  },
+  creditCardInput: {
+    backgroundColor: COLORS.SURFACE,
+    borderWidth: 0,
+    borderRadius: 16,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+    marginBottom: SPACING.md,
+  },
+  creditCardField: {
+    marginBottom: SPACING.xl,
+    padding: SPACING.md,
+    backgroundColor: COLORS.SURFACE + '80',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  fieldTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginLeft: SPACING.sm,
+    flex: 1,
+  },
+  fieldDescription: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.sm,
+    lineHeight: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444444',
+  },
+  modernInput: {
+    flex: 1,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '500',
+  },
+  inputSuffix: {
+    paddingHorizontal: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    fontWeight: '600',
+  },
+  autoTag: {
+    backgroundColor: COLORS.SUCCESS + '20',
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: COLORS.SUCCESS,
+  },
+  autoTagText: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.SUCCESS,
+    fontWeight: '600',
+  },
+  disabledInput: {
+    backgroundColor: '#2A2A2A',
+    color: COLORS.TEXT_SECONDARY,
   },
   typeCard: {
     flexDirection: 'row',

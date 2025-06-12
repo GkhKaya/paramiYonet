@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from './Card';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../../constants';
-import { Account } from '../../models';
+import { Account, AccountType } from '../../models';
 import { useCurrency } from '../../hooks';
+import { calculateAvailableLimit } from '../../utils/creditCard';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -14,12 +15,16 @@ interface AccountCardProps {
   account: Account;
   onPress?: () => void;
   showBalance?: boolean;
+  onCreditCardPayment?: (account: Account) => void;
+  onCreditCardTransaction?: (account: Account) => void;
 }
 
 export const AccountCard: React.FC<AccountCardProps> = ({
   account,
   onPress,
   showBalance = true,
+  onCreditCardPayment,
+  onCreditCardTransaction,
 }) => {
   const { formatCurrency: formatBalance } = useCurrency();
 
@@ -67,7 +72,40 @@ export const AccountCard: React.FC<AccountCardProps> = ({
         
         {showBalance && (
           <View style={styles.balanceContainer}>
-            <Text style={styles.balance}>{formatBalance(account.balance)}</Text>
+            {account.type === AccountType.CREDIT_CARD ? (
+              <View style={styles.creditCardInfo}>
+                <Text style={styles.debtText}>
+                  Borç: {formatBalance(account.currentDebt || 0)}
+                </Text>
+                <Text style={styles.limitText}>
+                  Limit: {formatBalance(account.limit || 0)}
+                </Text>
+                <Text style={styles.availableText}>
+                  Kullanılabilir: {formatBalance(calculateAvailableLimit(account.limit || 0, account.currentDebt || 0))}
+                </Text>
+                
+                {/* Kredi kartı için hızlı eylem butonları */}
+                <View style={styles.creditCardActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.expenseButton]}
+                    onPress={() => onCreditCardTransaction?.(account)}
+                  >
+                    <Ionicons name="card" size={14} color="white" />
+                    <Text style={styles.actionButtonText}>Harcama</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.paymentButton]}
+                    onPress={() => onCreditCardPayment?.(account)}
+                  >
+                    <Ionicons name="cash" size={14} color="white" />
+                    <Text style={styles.actionButtonText}>Ödeme</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.balance}>{formatBalance(account.balance)}</Text>
+            )}
           </View>
         )}
       </Card>
@@ -120,5 +158,57 @@ const styles = StyleSheet.create({
     fontSize: isSmallDevice ? TYPOGRAPHY.sizes.md : TYPOGRAPHY.sizes.lg,
     fontWeight: '700',
     color: COLORS.WHITE,
+  },
+
+  creditCardInfo: {
+    alignItems: 'flex-end',
+  },
+
+  debtText: {
+    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.sm : TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
+    color: '#FF6B6B',
+    marginBottom: 2,
+  },
+
+  limitText: {
+    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.xs : TYPOGRAPHY.sizes.sm,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 2,
+  },
+
+  availableText: {
+    fontSize: isSmallDevice ? TYPOGRAPHY.sizes.xs : TYPOGRAPHY.sizes.sm,
+    fontWeight: '500',
+    color: '#4ECDC4',
+  },
+
+  creditCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+
+  expenseButton: {
+    backgroundColor: 'rgba(233, 30, 99, 0.8)',
+  },
+
+  paymentButton: {
+    backgroundColor: 'rgba(0, 188, 212, 0.8)',
+  },
+
+  actionButtonText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'white',
   },
 }); 

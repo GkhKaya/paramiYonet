@@ -34,6 +34,10 @@ interface AccountsListProps {
   onDeleteAccount: (account: AccountItem) => void;
   /** Yeni hesap ekleme fonksiyonu */
   onAddAccount: () => void;
+  /** Kredi kartı ödeme fonksiyonu */
+  onCreditCardPayment?: (account: AccountItem) => void;
+  /** Kredi kartı harcama fonksiyonu */
+  onCreditCardTransaction?: (account: AccountItem) => void;
   /** Yükleniyor durumu */
   loading?: boolean;
 }
@@ -43,6 +47,8 @@ export const AccountsList: React.FC<AccountsListProps> = ({
   onEditAccount,
   onDeleteAccount,
   onAddAccount,
+  onCreditCardPayment,
+  onCreditCardTransaction,
   loading = false,
 }) => {
   /**
@@ -150,6 +156,33 @@ export const AccountsList: React.FC<AccountsListProps> = ({
             </Text>
             
             <View style={styles.actionButtons}>
+              {/* Kredi kartı için özel butonlar */}
+              {account.type === 'credit_card' && (
+                <>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.creditButton]}
+                    onPress={() => onCreditCardTransaction?.(account)}
+                  >
+                    <Ionicons
+                      name="card"
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.paymentButton]}
+                    onPress={() => onCreditCardPayment?.(account)}
+                  >
+                    <Ionicons
+                      name="cash"
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                  </TouchableOpacity>
+                </>
+              )}
+              
               {/* Düzenle Butonu */}
               <TouchableOpacity
                 style={styles.actionButton}
@@ -378,6 +411,12 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 6,
     backgroundColor: '#1A1A1A',
+  },
+  creditButton: {
+    backgroundColor: 'rgba(233, 30, 99, 0.8)',
+  },
+  paymentButton: {
+    backgroundColor: 'rgba(0, 188, 212, 0.8)',
   },
 
   // Loading State

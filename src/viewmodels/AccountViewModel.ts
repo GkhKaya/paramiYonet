@@ -207,6 +207,15 @@ export class AccountViewModel extends BaseViewModel {
         // Altın hesapları için özel alanlar
         ...(accountData.goldGrams && { goldGrams: accountData.goldGrams }),
         ...(accountData.initialGoldPrice && { initialGoldPrice: accountData.initialGoldPrice }),
+        // Kredi kartı için özel alanlar
+        ...(accountData.type === AccountType.CREDIT_CARD && {
+          limit: accountData.limit || 0,
+          currentDebt: accountData.currentDebt || 0,
+          statementDay: accountData.statementDay || 1,
+          dueDay: accountData.dueDay || 10,
+          interestRate: accountData.interestRate || 0,
+          minPaymentRate: accountData.minPaymentRate || 0.20,
+        }),
       };
 
       const docRef = await addDoc(collection(db, 'accounts'), newAccount);
@@ -301,6 +310,123 @@ export class AccountViewModel extends BaseViewModel {
 
   getAccountsByType = (type: AccountType): Account[] => {
     return this.accounts.filter(account => account.type === type);
+  };
+
+  /**
+   * Kredi kartı harcaması ekler - bakiyeyi değiştirmez, sadece borcu arttırır
+   */
+  addCreditCardTransaction = async (
+    creditCardId: string, 
+    amount: number, 
+    description: string, 
+    category: string
+  ): Promise<boolean> => {
+    try {
+      this.setLoading(true);
+
+      const creditCard = this.getAccountById(creditCardId);
+      if (!creditCard || creditCard.type !== AccountType.CREDIT_CARD) {
+        throw new Error('Geçersiz kredi kartı');
+      }
+
+      // Kredi kartının borçunu artır
+      const newDebt = (creditCard.currentDebt || 0) + amount;
+      
+      await updateDoc(doc(db, 'accounts', creditCardId), {
+        currentDebt: newDebt,
+        updatedAt: Timestamp.now()
+      });
+
+      // Transaction kaydı da ekle (görünürlük için)
+      await addDoc(collection(db, 'transactions'), {
+        userId: this.userId,
+        accountId: creditCardId,
+        amount: -amount, // Kredi kartında harcama negatif
+        type: TransactionType.EXPENSE,
+        description,
+        category,
+        categoryIcon: 'card',
+        date: Timestamp.now(),
+        createdAt: Timestamp.now(),
+        isCreditCardTransaction: true,
+      });
+
+      // Real-time listener otomatik güncelleyecek, manual reload gerekmiyor
+
+      this.setLoading(false);
+      return true;
+    } catch (error) {
+      console.error('Kredi kartı harcaması eklenirken hata:', error);
+      this.setError('Harcama eklenirken hata oluştu');
+      this.setLoading(false);
+      return false;
+    }
+  };
+
+  /**
+   * Kredi kartı borç ödemesi - seçilen hesaptan para alır, kredi kartı borcunu azaltır
+   */
+  addCreditCardPayment = async (
+    creditCardId: string,
+    fromAccountId: string,
+    amount: number,
+    paymentType: 'minimum' | 'full' | 'custom',
+    description?: string
+  ): Promise<boolean> => {
+    try {
+      this.setLoading(true);
+
+      const creditCard = this.getAccountById(creditCardId);
+      const fromAccount = this.getAccountById(fromAccountId);
+
+      if (!creditCard || creditCard.type !== AccountType.CREDIT_CARD) {
+        throw new Error('Geçersiz kredi kartı');
+      }
+
+      if (!fromAccount) {
+        throw new Error('Geçersiz ödeme hesabı');
+      }
+
+      if (fromAccount.balance < amount) {
+        throw new Error('Yetersiz bakiye');
+      }
+
+      // Ödeme hesabından para çıkar
+      await updateDoc(doc(db, 'accounts', fromAccountId), {
+        balance: fromAccount.balance - amount,
+        updatedAt: Timestamp.now()
+      });
+
+      // Kredi kartı borcunu azalt
+      const newDebt = Math.max((creditCard.currentDebt || 0) - amount, 0);
+      await updateDoc(doc(db, 'accounts', creditCardId), {
+        currentDebt: newDebt,
+        updatedAt: Timestamp.now()
+      });
+
+      // Kredi kartı ödeme işlemi olarak kaydet
+      await addDoc(collection(db, 'transactions'), {
+        userId: this.userId,
+        accountId: fromAccountId,
+        amount: -amount,
+        type: TransactionType.EXPENSE,
+        description: description || `Kredi kartı ödeme (${creditCard.name})`,
+        category: 'Kredi Kartı Ödeme',
+        categoryIcon: 'card',
+        date: Timestamp.now(),
+        createdAt: Timestamp.now(),
+      });
+
+      // Real-time listener otomatik güncelleyecek
+
+      this.setLoading(false);
+      return true;
+    } catch (error) {
+      console.error('Kredi kartı ödemesi yapılırken hata:', error);
+      this.setError('Ödeme yapılırken hata oluştu');
+      this.setLoading(false);
+      return false;
+    }
   };
 
   // Utility function to recalculate balances from transactions
