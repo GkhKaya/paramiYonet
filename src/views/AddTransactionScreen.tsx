@@ -19,12 +19,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { observer } from 'mobx-react-lite';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { TransactionType } from '../models/Transaction';
+import { Account, AccountType } from '../models/Account';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { useCurrency, useCategory, useDate } from '../hooks';
 
 const { width, height } = Dimensions.get('window');
-const CATEGORY_ITEM_SIZE = (width - 60) / 4; // 4 columns with padding
 
 interface AddTransactionScreenProps {
   route?: {
@@ -35,90 +35,23 @@ interface AddTransactionScreenProps {
   navigation: any;
 }
 
-interface WebDatePickerModalProps {
-  visible: boolean;
-  onClose: () => void;
-  value: Date;
-  onChange: (event: any, date?: Date) => void;
-}
-
-const WebDatePickerModal: React.FC<WebDatePickerModalProps> = ({ visible, onClose, value, onChange }) => {
-  const [tempDate, setTempDate] = useState(value.toISOString().split('T')[0]);
-
-  const handleDateChange = (dateString: string) => {
-    setTempDate(dateString);
-  };
-
-  const handleConfirm = () => {
-    const selectedDate = new Date(tempDate);
-    onChange({ type: 'set' } as any, selectedDate);
-    onClose();
-  };
-
-  if (!visible) return null;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-    <Pressable style={styles.webDatePickerBackdrop} onPress={onClose}>
-        <Pressable style={styles.webDatePickerContainer} onPress={(e) => e.stopPropagation()}>
-          <View style={styles.webDatePickerHeader}>
-            <Text style={styles.webDatePickerTitle}>Tarih Seç</Text>
-            <TouchableOpacity onPress={onClose} style={styles.webDatePickerClose}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.webDatePickerContent}>
-            <input
-              type="date"
-              value={tempDate}
-              onChange={(e) => handleDateChange(e.target.value)}
-              style={{
-                backgroundColor: '#333333',
-                border: '1px solid #555555',
-                borderRadius: '8px',
-                padding: '12px',
-                color: '#FFFFFF',
-                fontSize: '16px',
-                width: '100%',
-                fontFamily: 'inherit',
-              }}
-            />
-            <View style={styles.webDatePickerButtons}>
-              <TouchableOpacity style={styles.webDatePickerCancelButton} onPress={onClose}>
-                <Text style={styles.webDatePickerCancelButtonText}>İptal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.webDatePickerConfirmButton} onPress={handleConfirm}>
-                <Text style={styles.webDatePickerConfirmButtonText}>Tamam</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-      </Pressable>
-    </Pressable>
-    </Modal>
-  );
-};
-
 const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ route, navigation }) => {
   const { user } = useAuth();
   const { accountViewModel, transactionViewModel } = useViewModels();
   
-  const isWeb = Platform.OS === 'web';
-
   // States
   const [selectedType, setSelectedType] = useState<TransactionType>(
     route?.params?.defaultType === 'income' ? TransactionType.INCOME : TransactionType.EXPENSE
   );
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [amount, setAmount] = useState('0');
+  const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
 
   // Hooks
   const { formatCurrency, currencySymbol } = useCurrency();
@@ -126,64 +59,90 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const { formatShort } = useDate();
 
   const availableCategories = getAllCategories();
+  const availableAccounts = accountViewModel?.accounts.filter(acc => 
+    acc.isActive && acc.type !== AccountType.GOLD
+  ) || [];
 
-  // Web amount input handler
+  // Sık kullanılan kategoriler (tip bazında)
+  const getFrequentCategories = () => {
+    if (selectedType === TransactionType.EXPENSE) {
+      return availableCategories.filter(cat => 
+        ['Yemek', 'Ulaşım', 'Market', 'Yakıt', 'Kafe'].includes(cat.name)
+      ).slice(0, 4);
+    } else {
+      return availableCategories.filter(cat => 
+        ['Maaş', 'Freelance', 'Yatırım', 'Diğer'].includes(cat.name)
+      ).slice(0, 4);
+    }
+  };
+
+  const frequentCategories = getFrequentCategories();
+
+  // İlk hesabı otomatik seç (kullanıcı deneyimi için)
+  useEffect(() => {
+    if (availableAccounts.length > 0 && !selectedCard) {
+      setSelectedCard(availableAccounts[0]);
+    }
+  }, [availableAccounts, selectedCard]);
+
+  // Hesap tipi için Türkçe isimleri
+  const getAccountTypeName = (type: AccountType): string => {
+    switch (type) {
+      case AccountType.CASH:
+        return 'Nakit';
+      case AccountType.DEBIT_CARD:
+        return 'Banka Kartı';
+      case AccountType.CREDIT_CARD:
+        return 'Kredi Kartı';
+      case AccountType.SAVINGS:
+        return 'Tasarruf Hesabı';
+      case AccountType.INVESTMENT:
+        return 'Yatırım Hesabı';
+      default:
+        return 'Hesap';
+    }
+  };
+
+  // Amount formatting
   const handleAmountChange = (text: string) => {
-    if (text.length > 15) return;
-
-    let filteredText = text.replace(/[^0-9,]/g, '');
-    const parts = filteredText.split(',');
-    if (parts.length > 2) {
-      filteredText = parts[0] + ',' + parts.slice(1).join('');
+    // Sadece sayı ve virgül kabul et
+    let filtered = text.replace(/[^0-9,]/g, '');
+    
+    // Çoklu virgülü engelle
+    const commaCount = (filtered.match(/,/g) || []).length;
+    if (commaCount > 1) {
+      const firstCommaIndex = filtered.indexOf(',');
+      filtered = filtered.substring(0, firstCommaIndex + 1) + filtered.substring(firstCommaIndex + 1).replace(/,/g, '');
     }
     
-    if (filteredText.length > 1 && filteredText.startsWith('0') && !filteredText.startsWith('0,')) {
-      filteredText = filteredText.substring(1);
+    // Virgülden sonra max 2 basamak
+    if (filtered.includes(',')) {
+      const parts = filtered.split(',');
+      if (parts[1] && parts[1].length > 2) {
+        parts[1] = parts[1].substring(0, 2);
+      }
+      filtered = parts[0] + ',' + (parts[1] || '');
     }
     
-    if (filteredText === '') {
-        setAmount('0');
-    } else {
-        setAmount(filteredText);
-    }
+    setAmount(filtered);
   };
 
-  // Numpad handlers
-  const handleNumberPress = (num: string) => {
-    if (amount === '0') {
-      setAmount(num);
-    } else {
-      setAmount(amount + num);
-    }
+  const getNumericAmount = (): number => {
+    if (!amount || amount.trim() === '') return 0;
+    const numericValue = parseFloat(amount.replace(',', '.'));
+    return isNaN(numericValue) ? 0 : numericValue;
   };
 
-  const handleDecimalPress = () => {
-    if (!amount.includes(',')) {
-      setAmount(amount + ',');
-    }
-  };
-
-  const handleDeletePress = () => {
-    if (amount.length > 1) {
-      setAmount(amount.slice(0, -1));
-    } else {
-      setAmount('0');
-    }
-  };
-
-  const handleClearPress = () => {
-    setAmount('0');
-  };
-
-  // Transaction save
   const handleSave = async () => {
+    const numericAmount = getNumericAmount();
+    
     if (!selectedCategory) {
       Alert.alert('Hata', 'Lütfen kategori seçin');
       return;
     }
 
-    if (amount === '0' || !amount) {
-      Alert.alert('Hata', 'Lütfen tutar girin');
+    if (numericAmount <= 0) {
+      Alert.alert('Hata', 'Lütfen geçerli bir tutar girin');
       return;
     }
 
@@ -192,19 +151,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       return;
     }
 
-    const numericAmount = parseFloat(amount.replace(',', '.'));
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Hata', 'Geçerli bir tutar girin');
-      return;
-    }
-
     setLoading(true);
 
     const categoryDetails = availableCategories.find(cat => cat.name === selectedCategory);
-    const defaultAccount = accountViewModel?.accounts?.[0];
-
-    if (!defaultAccount) {
-      Alert.alert('Hata', 'Varsayılan hesap bulunamadı');
+    
+    if (!selectedCard) {
+      Alert.alert('Hata', 'Lütfen hesap seçin');
       setLoading(false);
       return;
     }
@@ -216,7 +168,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       type: selectedType,
       category: selectedCategory,
       categoryIcon: categoryDetails?.icon || 'help-circle-outline',
-      accountId: defaultAccount.id,
+      accountId: selectedCard.id,
       date: selectedDate,
     };
 
@@ -225,12 +177,6 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     setLoading(false);
 
     if (success) {
-      // Reset form
-      setAmount('0');
-      setSelectedCategory('');
-      setDescription('');
-      setSelectedDate(new Date());
-      
       Alert.alert('Başarılı', 'İşlem kaydedildi', [
         { text: 'Tamam', onPress: () => navigation.goBack() }
       ]);
@@ -239,40 +185,68 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     }
   };
 
-  // Transaction Type Tabs
-  const TransactionTypeTabs = () => (
-    <View style={styles.tabContainer}>
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>
+        {selectedType === TransactionType.INCOME ? 'Gelir Ekle' : 'Gider Ekle'}
+      </Text>
+      <TouchableOpacity onPress={handleSave} style={styles.headerButton} disabled={loading}>
+        <Text style={[styles.saveButtonText, loading && styles.saveButtonDisabled]}>
+          {loading ? 'Kaydediliyor...' : 'Kaydet'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderTypeSelector = () => (
+    <View style={styles.typeSelectorContainer}>
       <TouchableOpacity
         style={[
-          styles.tab,
-          selectedType === TransactionType.EXPENSE && styles.activeTab
+          styles.typeButton,
+          selectedType === TransactionType.EXPENSE && styles.typeButtonActive,
+          { backgroundColor: selectedType === TransactionType.EXPENSE ? '#2196F3' : '#2A2A2A' }
         ]}
         onPress={() => {
           setSelectedType(TransactionType.EXPENSE);
-          setSelectedCategory(''); // Kategori seçimini resetle
+          setSelectedCategory('');
         }}
       >
+        <Ionicons 
+          name="remove-circle" 
+          size={24} 
+          color={selectedType === TransactionType.EXPENSE ? '#FFFFFF' : '#888888'} 
+        />
         <Text style={[
-          styles.tabText,
-          selectedType === TransactionType.EXPENSE && styles.activeTabText
+          styles.typeButtonText,
+          { color: selectedType === TransactionType.EXPENSE ? '#FFFFFF' : '#888888' }
         ]}>
           Gider
         </Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity
         style={[
-          styles.tab,
-          selectedType === TransactionType.INCOME && styles.activeTab
+          styles.typeButton,
+          selectedType === TransactionType.INCOME && styles.typeButtonActive,
+          { backgroundColor: selectedType === TransactionType.INCOME ? '#2196F3' : '#2A2A2A' }
         ]}
         onPress={() => {
           setSelectedType(TransactionType.INCOME);
-          setSelectedCategory(''); // Kategori seçimini resetle
+          setSelectedCategory('');
+          setSelectedCard(null);
         }}
       >
+        <Ionicons 
+          name="add-circle" 
+          size={24} 
+          color={selectedType === TransactionType.INCOME ? '#FFFFFF' : '#888888'} 
+        />
         <Text style={[
-          styles.tabText,
-          selectedType === TransactionType.INCOME && styles.activeTabText
+          styles.typeButtonText,
+          { color: selectedType === TransactionType.INCOME ? '#FFFFFF' : '#888888' }
         ]}>
           Gelir
         </Text>
@@ -280,236 +254,125 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     </View>
   );
 
-  // Category grid
-  const CategoryGrid = () => (
-    <View style={styles.categoryContainer}>
-      <ScrollView 
-        style={styles.categoryScrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.categoryScrollContent}
-      >
-        <View style={styles.categoryGrid}>
-          {availableCategories.map((category) => (
-            <TouchableOpacity
-              key={category.name}
-              style={[
-                styles.categoryItem,
-                selectedCategory === category.name && styles.selectedCategoryItem
-              ]}
-              onPress={() => setSelectedCategory(category.name)}
-            >
-              <View style={[
-                styles.categoryIcon,
-                { backgroundColor: category.color },
-                selectedCategory === category.name && styles.selectedCategoryIcon
-              ]}>
-                <Ionicons 
-                  name={category.icon as any} 
-                  size={24} 
-                  color="#FFFFFF" 
-                />
-              </View>
-              <Text style={[
-                styles.categoryText,
-                selectedCategory === category.name && styles.selectedCategoryText
-              ]}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-
-  // Amount Display
-  const AmountDisplay = () => (
-    <View style={styles.amountContainer}>
-      <Text style={styles.amountText}>
-        {formatCurrency(parseFloat(amount.replace(',', '.')) || 0)}
-      </Text>
-    </View>
-  );
-
-  // Numpad
-  const Numpad = () => (
-    <View style={styles.numpadContainer}>
-      {/* Description Input */}
-      <View style={styles.descriptionContainer}>
+  const renderAmountInput = () => (
+    <View style={styles.amountMainSection}>
+      <View style={styles.amountInputContainer}>
+        <Text style={styles.currencySymbol}>{currencySymbol}</Text>
         <TextInput
-          style={styles.descriptionInput}
-          placeholder="Açıklama (isteğe bağlı)"
+          style={styles.amountInput}
+          value={amount}
+          onChangeText={handleAmountChange}
+          placeholder="0,00"
           placeholderTextColor="#666666"
-          value={description}
-          onChangeText={setDescription}
-          multiline={false}
+          keyboardType="numeric"
+          maxLength={15}
+          selectTextOnFocus={true}
+          autoFocus={true}
         />
       </View>
+    </View>
+  );
 
-      {/* Numpad Grid */}
-      <View style={styles.numpadGrid}>
-        <View style={styles.numpadRow}>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('1')}>
-            <Text style={styles.numpadButtonText}>1</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('2')}>
-            <Text style={styles.numpadButtonText}>2</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('3')}>
-            <Text style={styles.numpadButtonText}>3</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={handleDeletePress}>
-            <Ionicons name="backspace-outline" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
+  const renderQuickAmountButtons = () => {
+    const quickAmounts = selectedType === TransactionType.EXPENSE 
+      ? ['10', '25', '50', '100', '200', '500']
+      : ['100', '500', '1000', '2000', '5000', '10000'];
+    
+    return (
+      <View style={styles.quickAmountSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmountContainer}>
+          {quickAmounts.map((quickAmount) => (
+            <TouchableOpacity
+              key={quickAmount}
+              style={styles.quickAmountButton}
+              onPress={() => setAmount(quickAmount)}
+            >
+              <Text style={styles.quickAmountText}>{quickAmount}₺</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
 
-        <View style={styles.numpadRow}>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('4')}>
-            <Text style={styles.numpadButtonText}>4</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('5')}>
-            <Text style={styles.numpadButtonText}>5</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('6')}>
-            <Text style={styles.numpadButtonText}>6</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={handleClearPress}>
-            <Text style={styles.numpadOperatorText}>C</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.numpadRow}>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('7')}>
-            <Text style={styles.numpadButtonText}>7</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('8')}>
-            <Text style={styles.numpadButtonText}>8</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('9')}>
-            <Text style={styles.numpadButtonText}>9</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={handleDecimalPress}>
-            <Text style={styles.numpadOperatorText}>,</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.numpadRow}>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => setShowDatePicker(true)}>
-            <View style={styles.todayButton}>
-              <Ionicons name="calendar-outline" size={12} color="#2196F3" />
-              <Text style={styles.todayButtonText}>{formatShort(selectedDate)}</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.numpadButton} onPress={() => handleNumberPress('0')}>
-            <Text style={styles.numpadButtonText}>0</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.numpadButton, styles.saveButton]} 
-            onPress={handleSave}
-            disabled={loading}
+  const renderCategorySelector = () => (
+    <View style={styles.categoryFrequentSection}>
+      <Text style={styles.sectionTitle}>Kategori</Text>
+      
+      {/* Sık Kullanılan Kategoriler */}
+      <View style={styles.frequentCategoriesContainer}>
+        {frequentCategories.map((category) => (
+          <TouchableOpacity
+            key={category.name}
+            style={styles.frequentCategoryItem}
+            onPress={() => setSelectedCategory(category.name)}
           >
-            <Ionicons 
-              name={loading ? "hourglass-outline" : "checkmark-outline"} 
-              size={20} 
-              color="#FFFFFF" 
-            />
+            <View style={[
+              styles.frequentCategoryIcon,
+              { backgroundColor: category.color },
+              selectedCategory === category.name && styles.selectedCategoryIcon
+            ]}>
+              <Ionicons 
+                name={category.icon as any} 
+                size={24} 
+                color="#FFFFFF" 
+              />
+            </View>
+            <Text style={[
+              styles.frequentCategoryText,
+              selectedCategory === category.name && styles.selectedCategoryText
+            ]}>
+              {category.name}
+            </Text>
           </TouchableOpacity>
-        </View>
+        ))}
+        
+        {/* Tümünü Gör Butonu */}
+        <TouchableOpacity
+          style={styles.showAllCategoriesButton}
+          onPress={() => setShowAllCategories(true)}
+        >
+          <View style={styles.showAllCategoriesIcon}>
+            <Ionicons name="grid-outline" size={24} color="#888888" />
+          </View>
+          <Text style={styles.showAllCategoriesText}>Tümü</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 
-  const WebLayout = () => (
-    <View style={styles.webContent}>
-      <View style={styles.webCategoriesContainer}>
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScrollContent}
-        >
-          <View style={[styles.categoryGrid, styles.webCategoryGrid]}>
-            {availableCategories.map((category) => (
-              <TouchableOpacity
-                key={category.name}
-                style={[
-                  styles.categoryItem,
-                  styles.webCategoryItem,
-                  selectedCategory === category.name && styles.selectedCategoryItem
-                ]}
-                onPress={() => setSelectedCategory(category.name)}
-              >
-                <View style={[
-                  styles.categoryIcon,
-                  { backgroundColor: category.color },
-                  selectedCategory === category.name && styles.selectedCategoryIcon
-                ]}>
-                  <Ionicons 
-                    name={category.icon as any} 
-                    size={24} 
-                    color="#FFFFFF" 
-                  />
-                </View>
-                <Text style={[
-                  styles.categoryText,
-                  selectedCategory === category.name && styles.selectedCategoryText
-                ]}>
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+  const renderDetailsSection = () => (
+    <View style={styles.detailsCompactSection}>
+      <Text style={styles.sectionTitle}>Detaylar</Text>
+      
+      <View style={styles.detailsRow}>
+        <TouchableOpacity style={styles.detailButton} onPress={() => setShowDatePicker(true)}>
+          <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.detailButtonText}>{formatShort(selectedDate)}</Text>
+        </TouchableOpacity>
+        
+        {availableAccounts.length > 0 && (
+          <TouchableOpacity 
+            style={styles.detailButton}
+            onPress={() => setShowAccountPicker(true)}
+          >
+            <Ionicons name="wallet-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.detailButtonText}>
+              {selectedCard ? selectedCard.name : 'Hesap Seç'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#888888" />
+          </TouchableOpacity>
+        )}
       </View>
-      <View style={styles.webFormSection}>
-        <ScrollView>
-            <View style={styles.webFormContainer}>
-            <View style={styles.webInputGroup}>
-                <Text style={styles.webLabel}>Tutar</Text>
-                <View style={styles.webAmountInputContainer}>
-                <TextInput
-                    style={styles.webAmountInput}
-                    value={amount === '0' ? '' : amount}
-                    onChangeText={handleAmountChange}
-                    placeholder="0,00 ₺"
-                    placeholderTextColor="#666"
-                    keyboardType="numeric"
-                    maxLength={15}
-                />
-                </View>
-            </View>
 
-            <View style={styles.webInputGroup}>
-                <Text style={styles.webLabel}>Açıklama</Text>
-                <TextInput
-                style={styles.webDescriptionInput}
-                placeholder="Açıklama ekle"
-                placeholderTextColor="#666"
-                value={description}
-                onChangeText={setDescription}
-                maxLength={100}
-                multiline
-                />
-            </View>
-
-            <View style={styles.webInputGroup}>
-                <Text style={styles.webLabel}>Tarih</Text>
-                <TouchableOpacity style={styles.webDateButton} onPress={() => setShowDatePicker(true)}>
-                    <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
-                    <Text style={styles.webDateButtonText}>{formatShort(selectedDate)}</Text>
-                </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity 
-                style={[styles.webSaveButton, (loading || amount === '0' || !selectedCategory) && styles.webSaveButtonDisabled]} 
-                onPress={handleSave}
-                disabled={loading || amount === '0' || !selectedCategory}
-            >
-                <Text style={styles.webSaveButtonText}>
-                {loading ? "Kaydediliyor..." : "Kaydet"}
-                </Text>
-            </TouchableOpacity>
-            </View>
-        </ScrollView>
-      </View>
+      <TextInput
+        style={styles.descriptionCompactInput}
+        value={description}
+        onChangeText={setDescription}
+        placeholder="Açıklama (opsiyonel)"
+        placeholderTextColor="#666666"
+        maxLength={100}
+      />
     </View>
   );
 
@@ -517,52 +380,186 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>İptal</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ekle</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      {/* Transaction Type Tabs */}
-      <TransactionTypeTabs />
-
-      {isWeb ? (
-        <WebLayout />
-      ) : (
-        <>
-          <CategoryGrid />
-          <AmountDisplay />
-          <Numpad />
-        </>
-      )}
-
-      {/* Date Picker for Native */}
-      {showDatePicker && !isWeb && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          onChange={(event, date) => {
-            setShowDatePicker(false);
-            if (date) setSelectedDate(date);
-          }}
-        />
-      )}
+      {renderHeader()}
       
-      {/* Date Picker for Web */}
-      {isWeb &&
-        <WebDatePickerModal
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {renderTypeSelector()}
+        
+        {/* Ana tutar girişi - En üstte ve büyük */}
+        {renderAmountInput()}
+        
+        {/* Hızlı tutar butonları */}
+        {renderQuickAmountButtons()}
+        
+        {/* Kategori seçimi - Kompakt */}
+        {renderCategorySelector()}
+        
+        {/* Detaylar - Kompakt */}
+        {renderDetailsSection()}
+      </ScrollView>
+
+      {/* All Categories Modal */}
+      <Modal
+        visible={showAllCategories}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAllCategories(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowAllCategories(false)}>
+          <Pressable style={styles.categoriesModalContainer} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Tüm Kategoriler</Text>
+              <TouchableOpacity onPress={() => setShowAllCategories(false)}>
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.categoriesModalContent}>
+              <View style={styles.categoriesModalGrid}>
+                {availableCategories.map((category) => (
+                  <TouchableOpacity
+                    key={category.name}
+                    style={[
+                      styles.categoryModalItem,
+                      selectedCategory === category.name && styles.categoryModalItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedCategory(category.name);
+                      setShowAllCategories(false);
+                    }}
+                  >
+                    <View style={[
+                      styles.categoryModalIcon,
+                      { backgroundColor: category.color },
+                      selectedCategory === category.name && styles.selectedCategoryIcon
+                    ]}>
+                      <Ionicons 
+                        name={category.icon as any} 
+                        size={28} 
+                        color="#FFFFFF" 
+                      />
+                    </View>
+                    <Text style={[
+                      styles.categoryModalText,
+                      selectedCategory === category.name && styles.selectedCategoryText
+                    ]}>
+                      {category.name}
+                    </Text>
+                    {selectedCategory === category.name && (
+                      <Ionicons name="checkmark-circle" size={20} color="#4CAF50" style={styles.categoryCheckmark} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Account Picker Modal */}
+      <Modal
+        visible={showAccountPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAccountPicker(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowAccountPicker(false)}>
+          <Pressable style={styles.accountModalContainer} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Hesap Seç</Text>
+              <TouchableOpacity onPress={() => setShowAccountPicker(false)}>
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.accountModalContent}>
+              {/* Kullanıcı hesapları */}
+              {availableAccounts.map((account) => (
+                <TouchableOpacity
+                  key={account.id}
+                  style={[
+                    styles.accountModalItem,
+                    selectedCard?.id === account.id && styles.accountModalItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedCard(account);
+                    setShowAccountPicker(false);
+                  }}
+                >
+                  <View style={styles.accountModalIcon}>
+                    <Ionicons 
+                      name={account.type === AccountType.CREDIT_CARD ? "card" : 
+                            account.type === AccountType.SAVINGS ? "cash" : 
+                            account.type === AccountType.CASH ? "wallet" :
+                            account.type === AccountType.INVESTMENT ? "trending-up" :
+                            "card-outline"} 
+                      size={24} 
+                      color="#FFFFFF" 
+                    />
+                  </View>
+                  <View style={styles.accountModalTextContainer}>
+                    <Text style={styles.accountModalName}>{account.name}</Text>
+                    <Text style={styles.accountModalType}>{getAccountTypeName(account.type)}</Text>
+                  </View>
+                  {selectedCard?.id === account.id && (
+                    <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Date Picker */}
+      {showDatePicker && (
+        Platform.OS === 'web' ? (
+          <Modal
             visible={showDatePicker}
-            onClose={() => setShowDatePicker(false)}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <Pressable style={styles.modalBackdrop} onPress={() => setShowDatePicker(false)}>
+              <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Tarih Seç</Text>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                    <Ionicons name="close" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalContent}>
+                  <input
+                    type="date"
+                    value={selectedDate.toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      setSelectedDate(new Date(e.target.value));
+                      setShowDatePicker(false);
+                    }}
+                    style={{
+                      backgroundColor: '#2A2A2A',
+                      border: '1px solid #444444',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: '#FFFFFF',
+                      fontSize: '16px',
+                      width: '100%',
+                    }}
+                  />
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        ) : (
+          <DateTimePicker
             value={selectedDate}
+            mode="date"
+            display="default"
             onChange={(event, date) => {
+              setShowDatePicker(false);
               if (date) setSelectedDate(date);
             }}
-        />
-      }
+          />
+        )
+      )}
     </SafeAreaView>
   );
 });
@@ -578,52 +575,168 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1A1A1A',
   },
-  cancelText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+  headerButton: {
+    minWidth: 60,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  categoryContainer: {
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4CAF50',
+    textAlign: 'right',
+  },
+  saveButtonDisabled: {
+    color: '#666666',
+  },
+  content: {
     flex: 1,
-    backgroundColor: '#000000',
-    maxHeight: Platform.OS === 'web' ? undefined : height * 0.45,
-  },
-  categoryScrollView: {
-    flex: 1,
-  },
-  categoryScrollContent: {
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     paddingHorizontal: 20,
-    justifyContent: 'space-between',
   },
-  categoryItem: {
-    width: CATEGORY_ITEM_SIZE,
+  typeSelectorContainer: {
+    flexDirection: 'row',
+    marginTop: 20,
+    marginBottom: 30,
+    gap: 15,
+  },
+  typeButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 12,
+    gap: 8,
   },
-  selectedCategoryItem: {
-    // Seçili durumda ikon çevresinde ring efekti
+  typeButtonActive: {
+    // Renk dinamik olarak verilecek
   },
-  categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  typeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Ana tutar girişi - büyük ve öne çıkan
+  amountMainSection: {
+    marginTop: 20,
+    marginBottom: 25,
+    alignItems: 'center',
+  },
+  amountInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#2A2A2A',
+    paddingHorizontal: 25,
+    paddingVertical: 20,
+    minWidth: '80%',
+    justifyContent: 'center',
+  },
+  // Hızlı tutar butonları
+  quickAmountSection: {
+    marginBottom: 25,
+  },
+  quickAmountContainer: {
+    paddingHorizontal: 10,
+    gap: 10,
+  },
+  quickAmountButton: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  quickAmountText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 15,
+  },
+  currencySymbol: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginRight: 10,
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  amountPreview: {
+    fontSize: 14,
+    color: '#888888',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  // Sık kullanılan kategoriler + Tümü butonu
+  categoryFrequentSection: {
+    marginBottom: 25,
+  },
+  frequentCategoriesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 5,
+  },
+  frequentCategoryItem: {
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  frequentCategoryIcon: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
   },
-  selectedCategoryIcon: {
+  frequentCategoryText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  showAllCategoriesButton: {
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  showAllCategoriesIcon: {
+    width: 55,
+    height: 55,
+    borderRadius: 27.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    backgroundColor: '#2A2A2A',
     borderWidth: 2,
+    borderColor: '#333333',
+    borderStyle: 'dashed',
+  },
+  showAllCategoriesText: {
+    fontSize: 12,
+    color: '#888888',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  selectedCategoryIcon: {
+    borderWidth: 3,
     borderColor: '#FFFFFF',
   },
   categoryText: {
@@ -636,263 +749,211 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  amountContainer: {
-    alignItems: 'center',
-    paddingVertical: 15,
-    backgroundColor: '#000000',
+  // Kompakt detaylar kısmı
+  detailsCompactSection: {
+    marginBottom: 30,
   },
-  amountText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  numpadContainer: {
-    backgroundColor: '#000000',
-    paddingBottom: 15,
-    maxHeight: height * 0.35,
-  },
-  descriptionContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-  },
-  descriptionInput: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  numpadGrid: {
-    paddingHorizontal: 20,
-  },
-  numpadRow: {
+  detailsRow: {
     flexDirection: 'row',
-    marginBottom: 8,
+    gap: 10,
+    marginBottom: 15,
   },
-  numpadButton: {
+  detailButton: {
     flex: 1,
-    height: 42,
-    backgroundColor: '#1A1A1A',
-    marginHorizontal: 4,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  numpadButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  numpadOperatorText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  todayButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  todayButtonText: {
-    fontSize: 10,
-    color: '#2196F3',
-    fontWeight: '500',
-    marginLeft: 3,
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 20,
     backgroundColor: '#1A1A1A',
     borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingHorizontal: 15,
     paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
+    gap: 8,
   },
-  activeTab: {
-    backgroundColor: '#2196F3',
-  },
-  tabText: {
-    fontSize: 16,
+  detailButtonText: {
+    fontSize: 14,
+    color: '#FFFFFF',
     fontWeight: '500',
-    color: '#FFFFFF',
   },
-  activeTabText: {
-    color: '#FFFFFF',
-  },
-  // Web Layout Styles
-  webContent: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  webCategoriesContainer: {
-    flex: 2,
-    borderRightWidth: 1,
-    borderColor: '#1A1A1A',
-  },
-  webFormSection: {
-    flex: 1,
-  },
-  webFormContainer: {
-    padding: 20,
-  },
-  webInputGroup: {
-    marginBottom: 20,
-  },
-  webLabel: {
-    color: '#CCCCCC',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  webAmountInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  descriptionCompactInput: {
     backgroundColor: '#1A1A1A',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333333',
-  },
-  webAmountInput: {
-    flex: 1,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  webCurrencySymbol: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-  },
-  webDescriptionInput: {
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#333333',
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  webDateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    padding: 12,
-    justifyContent: 'center',
-  },
-  webDateButtonText: {
-    color: '#FFFFFF',
+    borderColor: '#2A2A2A',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     fontSize: 16,
-    marginLeft: 10,
+    color: '#FFFFFF',
   },
-  webSaveButton: {
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    gap: 10,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  accountChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginRight: 10,
+    gap: 5,
+  },
+  accountChipWide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginRight: 10,
+    gap: 8,
+    minWidth: 120,
+  },
+  accountChipSelected: {
     backgroundColor: '#4CAF50',
-    borderRadius: 8,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
   },
-  webSaveButtonDisabled: {
-    backgroundColor: '#4A5568',
-  },
-  webSaveButtonText: {
+  accountChipText: {
+    fontSize: 14,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
-  webCategoryGrid: {
-    justifyContent: 'flex-start',
+  accountChipTextContainer: {
+    flex: 1,
   },
-  webCategoryItem: {
-    width: '14%',
+  accountChipType: {
+    fontSize: 11,
+    color: '#CCCCCC',
+    marginTop: 2,
   },
-  webDatePickerBackdrop: {
+  modalBackdrop: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
-  webDatePickerContainer: {
+  modalContainer: {
     backgroundColor: '#1A1A1A',
     borderRadius: 12,
-    width: 350,
+    width: 300,
     maxWidth: '90%',
-    borderWidth: 1,
-    borderColor: '#333333',
   },
-  webDatePickerHeader: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    borderBottomColor: '#2A2A2A',
   },
-  webDatePickerTitle: {
+  modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  webDatePickerClose: {
-    padding: 4,
-  },
-  webDatePicker: {
-    backgroundColor: '#1A1A1A',
-  },
-  webDatePickerContent: {
+  modalContent: {
     padding: 20,
   },
-  webDatePickerButtons: {
+  // Account Modal Styles
+  accountModalContainer: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '70%',
+  },
+  accountModalContent: {
+    maxHeight: 400,
+  },
+  accountModalItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    gap: 10,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
   },
-  webDatePickerCancelButton: {
-    flex: 1,
+  accountModalItemSelected: {
+    backgroundColor: '#2A2A2A',
+  },
+  accountModalIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#333333',
-    borderRadius: 8,
-    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
   },
-  webDatePickerCancelButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  webDatePickerConfirmButton: {
+  accountModalTextContainer: {
     flex: 1,
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
   },
-  webDatePickerConfirmButtonText: {
-    color: '#FFFFFF',
+  accountModalName: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  accountModalType: {
+    fontSize: 14,
+    color: '#888888',
+  },
+  // Categories Modal Styles
+  categoriesModalContainer: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 16,
+    width: '95%',
+    maxWidth: 500,
+    maxHeight: '80%',
+  },
+  categoriesModalContent: {
+    maxHeight: 500,
+    paddingHorizontal: 10,
+  },
+  categoriesModalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  categoryModalItem: {
+    width: '22%',
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  categoryModalItemSelected: {
+    // Seçili item için ek stil
+  },
+  categoryModalIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  categoryModalText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  categoryCheckmark: {
+    position: 'absolute',
+    top: -5,
+    right: 5,
   },
 });
 

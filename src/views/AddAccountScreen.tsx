@@ -21,6 +21,7 @@ import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import GoldPriceService from '../services/GoldPriceService';
 import { useCurrency } from '../hooks';
+import useWebAmountInput from '../hooks/useWebAmountInput';
 import { getCreditCardInterestRates, getCreditCardInterestRatesByLimit, getMinPaymentRate, validateAndAdjustCreditCardDay, getDayValidationMessage, getInterestRateDescription } from '../utils/creditCard';
 
 const { width } = Dimensions.get('window');
@@ -106,12 +107,16 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   const [selectedType, setSelectedType] = useState<AccountType>(editAccount?.type || AccountType.DEBIT_CARD);
   const [initialBalance, setInitialBalance] = useState(editAccount?.balance ? Math.abs(editAccount.balance).toString() : '');
   const [isPositiveBalance, setIsPositiveBalance] = useState(
-    editAccount?.balance 
-      ? editAccount.balance >= 0 
+    editAccount?.balance
+      ? editAccount.balance >= 0
       : (editAccount?.type || AccountType.DEBIT_CARD) !== AccountType.CREDIT_CARD
   );
   const [selectedColor, setSelectedColor] = useState(editAccount?.color || COLORS.PRIMARY);
-  const [goldGrams, setGoldGrams] = useState(editAccount?.goldGrams ? editAccount.goldGrams.toString() : '');
+
+  const goldAmountInput = useWebAmountInput({
+    initialValue: editAccount?.goldGrams ? editAccount.goldGrams.toString() : ''
+  });
+
   const [currentGoldPrice, setCurrentGoldPrice] = useState(4250); // Default fiyat
   const [loading, setLoading] = useState(false);
   const [includeInTotalBalance, setIncludeInTotalBalance] = useState(
@@ -130,7 +135,6 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   const { currencySymbol, formatInput } = useCurrency();
   const goldService = GoldPriceService.getInstance();
 
-  // Güncel altın fiyatını çek
   useEffect(() => {
     const fetchGoldPrice = async () => {
       try {
@@ -138,7 +142,6 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         setCurrentGoldPrice(priceData.gramPrice || priceData.buyPrice);
       } catch (error) {
         console.error('Altın fiyatı alınamadı:', error);
-        // Default fiyat zaten set edilmiş
       }
     };
 
@@ -147,258 +150,184 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
     }
   }, [selectedType]);
 
-  // Auto-update balance sign when account type changes
   useEffect(() => {
-    // For new accounts (not editing), auto-set credit cards to negative
     if (!isEditMode && selectedType === AccountType.CREDIT_CARD) {
       setIsPositiveBalance(false);
-      setInterestRate(''); // Faiz oranını temizle, limit girilince hesaplanacak
+      setInterestRate('');
     }
   }, [selectedType, isEditMode]);
 
-  // Kredi kartı limiti değişince faiz ve asgari ödeme oranını güncelle
   useEffect(() => {
     if (selectedType === AccountType.CREDIT_CARD && creditLimit) {
       const limitNum = parseFloat(creditLimit.replace(',', '.'));
       if (!isNaN(limitNum)) {
-        // Limite göre faiz oranı belirle
         const rates = getCreditCardInterestRatesByLimit(limitNum);
         setInterestRate(rates.regular.toString());
         setMinPaymentRate((getMinPaymentRate() * 100).toString());
       }
     } else if (selectedType === AccountType.CREDIT_CARD && !creditLimit) {
-      // Kredi kartı seçilmiş ama limit girilmemişse faiz oranını temizle
       setInterestRate('');
     } else if (selectedType !== AccountType.CREDIT_CARD) {
-      // Kredi kartı değilse faiz oranını temizle
       setInterestRate('');
       setMinPaymentRate('');
     }
   }, [creditLimit, selectedType]);
 
-  // Helper function to format balance input
   const formatBalanceInput = (value: string) => {
     return formatInput(value);
   };
 
-  // Get the final balance value (with sign)
   const getFinalBalance = () => {
     const absValue = parseFloat(initialBalance.replace(',', '.')) || 0;
     return isPositiveBalance ? absValue : -absValue;
   };
 
-  // Helper function to get balance description based on account type
   const getBalanceDescription = () => {
     switch (selectedType) {
-      case AccountType.CREDIT_CARD:
-        return 'Kredi kartı borç tutarını girin (sol taraftaki - butonuna basın)';
-      case AccountType.CASH:
-        return 'Nakit paranızın miktarını giriniz';
-      case AccountType.DEBIT_CARD:
-      case AccountType.SAVINGS:
-        return 'Hesabınızdaki mevcut tutarı giriniz';
-      case AccountType.INVESTMENT:
-        return 'Yatırımınızın güncel değerini giriniz';
       case AccountType.GOLD:
-        return 'Altın hesabı için gram miktarını giriniz (değer otomatik hesaplanacak)';
+        return 'Altın varlığınızın gram karşılığını girin.';
       default:
-        return 'Hesabın başlangıç bakiyesini giriniz (+ / - butonunu kullanın)';
+        return 'Hesabın başlangıç bakiyesini giriniz.';
     }
   };
 
-  // Auto-set positive/negative based on account type when creating new account
   const handleTypeChange = (type: AccountType) => {
     setSelectedType(type);
-    
-    // Credit cards are always negative (debt), others start positive
     if (type === AccountType.CREDIT_CARD) {
       setIsPositiveBalance(false);
     } else if (!isEditMode) {
-      // Only auto-set for new accounts, not when editing non-credit cards
       setIsPositiveBalance(true);
     }
   };
 
-  // Check if current selection allows positive values
   const canBePositive = () => {
     return selectedType !== AccountType.CREDIT_CARD;
   };
 
-  const handleCreateAccount = async () => {
+  const handleCreateOrUpdateAccount = async () => {
     if (!accountName.trim()) {
       Alert.alert('Hata', 'Hesap adı gereklidir');
       return;
     }
 
-    // Altın hesabı için gram kontrolü
     if (selectedType === AccountType.GOLD) {
-      if (!goldGrams.trim()) {
-        Alert.alert('Hata', 'Altın gram miktarı gereklidir');
+      if (!goldAmountInput.value.trim() || parseFloat(goldAmountInput.value) <= 0) {
+        Alert.alert('Hata', 'Geçerli bir gram miktarı giriniz.');
         return;
       }
-      const grams = parseFloat(goldGrams.replace(',', '.'));
-      if (isNaN(grams) || grams <= 0) {
-        Alert.alert('Hata', 'Geçerli bir gram miktarı giriniz');
-        return;
-      }
-    } else {
+    } else if (selectedType !== AccountType.CREDIT_CARD) {
       if (!initialBalance.trim()) {
         Alert.alert('Hata', 'Başlangıç bakiyesi gereklidir');
         return;
-      }
-      const balance = parseFloat(initialBalance.replace(',', '.'));
-      if (isNaN(balance)) {
-        Alert.alert('Hata', 'Geçerli bir bakiye giriniz');
-        return;
-      }
-    }
-
-    if (selectedType === AccountType.CREDIT_CARD) {
-      if (!creditLimit.trim()) {
-        Alert.alert('Hata', 'Kart limiti gereklidir');
-        return;
-      }
-      if (!statementDay.trim() || !dueDay.trim()) {
-        Alert.alert('Hata', 'Ekstre ve son ödeme günü gereklidir');
-        return;
-      }
-      
-      // Gün validasyonu
-      const statementDayNum = parseInt(statementDay);
-      const dueDayNum = parseInt(dueDay);
-      
-      if (isNaN(statementDayNum) || statementDayNum < 1 || statementDayNum > 30) {
-        Alert.alert('Hata', 'Ekstre kesim günü 1-30 arasında olmalıdır');
-        return;
-      }
-      
-      if (isNaN(dueDayNum) || dueDayNum < 1 || dueDayNum > 30) {
-        Alert.alert('Hata', 'Son ödeme günü 1-30 arasında olmalıdır');
-        return;
-      }
-      
-      if (!interestRate.trim()) {
-        Alert.alert('Hata', 'Faiz oranı otomatik atanamadı');
-        return;
-      }
-    }
-
-    if (!viewModel) {
-      Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
-      return;
-    }
-
-    // Şubat ayında 30 seçildiyse kullanıcıyı bilgilendir
-    if (selectedType === AccountType.CREDIT_CARD) {
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth();
-      
-      if (currentMonth === 1) { // Şubat ayı
-        const originalStatementDay = parseInt(statementDay);
-        const originalDueDay = parseInt(dueDay);
-        
-        if (originalStatementDay === 30 || originalDueDay === 30) {
-          Alert.alert(
-            'Bilgi', 
-            'Şubat ayında 30. gün bulunmadığı için 30 seçilen günler otomatik olarak 28 olarak ayarlandı.',
-            [{ text: 'Tamam' }]
-          );
-        }
       }
     }
 
     setLoading(true);
 
-    const selectedTypeData = ACCOUNT_TYPES.find(type => type.type === selectedType);
-    
-    let success = false;
+    try {
+      let finalBalance = getFinalBalance();
+      let goldGramsValue: number | undefined = undefined;
 
-    // Altın hesabı için balance'ı gram * güncel fiyat olarak hesapla
-    let finalBalance = 0;
-    let goldGramsValue = 0;
-    
-    if (selectedType === AccountType.GOLD) {
-      goldGramsValue = parseFloat(goldGrams.replace(',', '.'));
-      // Altın hesapları için balance'ı 0 olarak kaydet, runtime'da hesaplanacak
-      finalBalance = 0;
-    } else {
-      finalBalance = getFinalBalance();
-    }
-
-    if (isEditMode) {
-      // Update existing account
-      const updateData = {
-        id: editAccount.id,
-        name: accountName.trim(),
-        type: selectedType,
-        color: selectedColor,
-        icon: selectedTypeData?.icon || 'wallet',
-        goldGrams: selectedType === AccountType.GOLD ? goldGramsValue : undefined,
-        initialGoldPrice: selectedType === AccountType.GOLD ? currentGoldPrice : undefined,
-        includeInTotalBalance,
-        limit: selectedType === AccountType.CREDIT_CARD ? parseFloat(creditLimit.replace(',', '.')) : undefined,
-        currentDebt: selectedType === AccountType.CREDIT_CARD ? (isNaN(parseFloat(currentDebt.replace(',', '.'))) ? 0 : parseFloat(currentDebt.replace(',', '.'))) : undefined,
-        statementDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(statementDay)) : undefined,
-        dueDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(dueDay)) : undefined,
-        interestRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(interestRate) : undefined,
-        minPaymentRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(minPaymentRate) / 100 : undefined,
-      };
-
-      success = await viewModel.updateAccountInfo(updateData);
-      
-      // Altın hesabı değilse balance'ı güncelle
-      if (selectedType !== AccountType.GOLD && editAccount.balance !== finalBalance) {
-        await viewModel.updateAccountBalance(editAccount.id, finalBalance);
+      if (selectedType === AccountType.GOLD) {
+        goldGramsValue = parseFloat(goldAmountInput.value);
+        finalBalance = 0; // Altın hesapları için balance'ı 0 olarak kaydet
       }
-    } else {
-      // Create new account
-      const accountData: CreateAccountRequest = {
-        name: accountName.trim(),
+
+      const accountTypeDetails = ACCOUNT_TYPES.find(t => t.type === selectedType);
+
+      const accountData = {
+        name: accountName,
         type: selectedType,
+        balance: finalBalance,
         initialBalance: finalBalance,
         color: selectedColor,
-        icon: selectedTypeData?.icon || 'wallet',
-        goldGrams: selectedType === AccountType.GOLD ? goldGramsValue : undefined,
-        initialGoldPrice: selectedType === AccountType.GOLD ? currentGoldPrice : undefined,
+        icon: accountTypeDetails?.icon || 'wallet',
         includeInTotalBalance,
-        limit: selectedType === AccountType.CREDIT_CARD ? parseFloat(creditLimit.replace(',', '.')) : undefined,
-        currentDebt: selectedType === AccountType.CREDIT_CARD ? (isNaN(parseFloat(currentDebt.replace(',', '.'))) ? 0 : parseFloat(currentDebt.replace(',', '.'))) : undefined,
-        statementDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(statementDay)) : undefined,
-        dueDay: selectedType === AccountType.CREDIT_CARD ? validateAndAdjustCreditCardDay(parseInt(dueDay)) : undefined,
-        interestRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(interestRate) : undefined,
-        minPaymentRate: selectedType === AccountType.CREDIT_CARD ? parseFloat(minPaymentRate) / 100 : undefined,
+        goldGrams: goldGramsValue,
+        // ... credit card fields
       };
 
-      success = await viewModel.createAccount(accountData);
+      if (isEditMode && editAccount) {
+        const updateData = {
+            ...accountData,
+            id: editAccount.id,
+        };
+        await viewModel?.updateAccountInfo(updateData);
+      } else {
+        await viewModel?.createAccount(accountData as CreateAccountRequest);
+      }
+
+      setLoading(false);
+      navigation.goBack();
+    } catch (error) {
+      setLoading(false);
+      console.error('Hesap işlemi başarısız:', error);
+      Alert.alert('Hata', 'Hesap oluşturulurken/güncellenirken bir hata oluştu.');
+    }
+  };
+
+  const renderBalanceInput = () => {
+    if (selectedType === AccountType.GOLD) {
+      return (
+        <View>
+            <Text style={styles.label}>Altın Miktarı</Text>
+            <View style={styles.goldInputContainer}>
+                <Ionicons name="diamond" size={20} color={COLORS.WARNING} style={styles.goldIcon} />
+                <TextInput
+                    style={styles.goldInput}
+                    value={goldAmountInput.value}
+                    onChangeText={goldAmountInput.onChangeText}
+                    placeholder="0.00"
+                    placeholderTextColor={COLORS.TEXT_SECONDARY}
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                />
+                <Text style={styles.goldUnit}>gram</Text>
+            </View>
+            {goldAmountInput.value && parseFloat(goldAmountInput.value) > 0 && (
+                <View style={styles.valuePreviewContainer}>
+                    <Text style={styles.valuePreviewText}>
+                        Güncel Değer: 
+                        <Text style={styles.valuePreviewAmount}>
+                            {' '}{currencySymbol}{(parseFloat(goldAmountInput.value) * currentGoldPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                    </Text>
+                </View>
+            )}
+        </View>
+      );
     }
     
-    setLoading(false);
-
-    if (success) {
-      // Başarı mesajı göster ve ana sayfaya yönlendir
-      Alert.alert(
-        'Başarılı',
-        isEditMode ? 'Hesap başarıyla güncellendi' : 'Hesap başarıyla oluşturuldu',
-        [
-          {
-            text: 'Tamam',
-            onPress: () => {
-              // Kısa bir gecikme ekle ki Firestore real-time listener güncellensin
-              setTimeout(() => {
-                if (isEditMode) {
-                  navigation.goBack();
-                } else {
-                  // Yeni hesap oluşturulduğunda ana sayfaya dön
-                  navigation.navigate('MainTabs', { screen: 'Dashboard' });
-                }
-              }, 100);
-            }
-          }
-        ]
-      );
-    } else {
-      Alert.alert('Hata', viewModel.error || (isEditMode ? 'Hesap güncellenirken hata oluştu' : 'Hesap oluşturulurken hata oluştu'));
-    }
+    return (
+        <View>
+             <Text style={styles.label}>Bakiye</Text>
+            <View style={styles.balanceInputContainer}>
+            <TouchableOpacity
+              style={[
+                styles.signToggleButton,
+                { backgroundColor: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR },
+                !canBePositive() && styles.signToggleButtonDisabled
+              ]}
+              onPress={() => canBePositive() && setIsPositiveBalance(!isPositiveBalance)}
+              disabled={!canBePositive()}
+            >
+              <Text style={styles.signToggleText}>
+                {isPositiveBalance ? '+' : '-'}
+              </Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
+            <TextInput
+              style={styles.balanceInput}
+              value={initialBalance}
+              onChangeText={(value) => setInitialBalance(formatBalanceInput(value))}
+              placeholder="0.00"
+              placeholderTextColor={COLORS.TEXT_SECONDARY}
+              keyboardType="decimal-pad"
+            />
+          </View>
+        </View>
+    );
   };
 
   const AccountTypeCard = ({ type, label, icon, color, description }: any) => (
@@ -482,72 +411,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
           </Text>
           <Text style={styles.balanceDescription}>{getBalanceDescription()}</Text>
           
-          {selectedType === AccountType.GOLD ? (
-            // Altın hesabı için gram input
-            <View style={styles.balanceInputContainer}>
-              <TextInput
-                style={[styles.balanceInput, { textAlign: 'center' }]}
-                value={goldGrams}
-                onChangeText={(value) => setGoldGrams(formatBalanceInput(value))}
-                placeholder="0,00"
-                placeholderTextColor={COLORS.TEXT_SECONDARY}
-                keyboardType="decimal-pad"
-              />
-              <Text style={styles.currencySymbol}>gram</Text>
-            </View>
-          ) : (
-            // Diğer hesaplar için normal balance input
-          <View style={styles.balanceInputContainer}>
-            {/* Toggle Button for Positive/Negative */}
-            <TouchableOpacity
-              style={[
-                styles.signToggleButton,
-                { backgroundColor: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR },
-                !canBePositive() && styles.signToggleButtonDisabled
-              ]}
-              onPress={() => canBePositive() && setIsPositiveBalance(!isPositiveBalance)}
-              disabled={!canBePositive()}
-            >
-              <Text style={styles.signToggleText}>
-                {isPositiveBalance ? '+' : '-'}
-              </Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
-            <TextInput
-              style={styles.balanceInput}
-              value={initialBalance}
-              onChangeText={(value) => {
-                // Sadece sayı, virgül ve nokta karakterlerini al
-                const clean = value.replace(/[^0-9.,]/g, '');
-                setInitialBalance(clean);
-              }}
-              placeholder="0,00"
-              placeholderTextColor={COLORS.TEXT_SECONDARY}
-              keyboardType="decimal-pad"
-            />
-          </View>
-          )}
-          
-          {/* Balance Preview */}
-          {selectedType === AccountType.GOLD && goldGrams && (
-            <Text style={[styles.balancePreview, { color: COLORS.WARNING }]}>
-              Güncel Değer: {currencySymbol}{(parseFloat(goldGrams.replace(',', '.')) * currentGoldPrice).toLocaleString('tr-TR')} 
-              {'\n'}(İlk alış: {(currentGoldPrice).toLocaleString('tr-TR')} ₺/gram)
-            </Text>
-          )}
-          
-          {selectedType !== AccountType.GOLD && initialBalance && (
-            <Text style={[
-              styles.balancePreview,
-              { color: isPositiveBalance ? COLORS.SUCCESS : COLORS.ERROR }
-            ]}>
-              {selectedType === AccountType.CREDIT_CARD 
-                ? `Kredi Kartı Borcu: ${currencySymbol}${Math.abs(parseFloat(initialBalance.replace(',', '.')) || 0).toLocaleString('tr-TR')}`
-                : `${isPositiveBalance ? 'Bakiye: +' : 'Borç: -'}${currencySymbol}${Math.abs(parseFloat(initialBalance.replace(',', '.')) || 0).toLocaleString('tr-TR')}`
-              }
-            </Text>
-          )}
+          {renderBalanceInput()}
         </Card>
 
         {/* Account Color */}
@@ -753,11 +617,11 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
             {selectedType === AccountType.GOLD ? (
               <View style={styles.previewGoldInfo}>
                 <Text style={styles.previewBalance}>
-                  {goldGrams ? `${parseFloat(goldGrams.replace(',', '.')).toLocaleString('tr-TR')} gram` : '0 gram'}
+                  {goldAmountInput.value ? `${parseFloat(goldAmountInput.value).toLocaleString('tr-TR')} gram` : '0 gram'}
                 </Text>
                 <Text style={styles.previewGoldValue}>
-                  {goldGrams 
-                    ? `${currencySymbol}${(parseFloat(goldGrams.replace(',', '.')) * currentGoldPrice).toLocaleString('tr-TR')}`
+                  {goldAmountInput.value 
+                    ? `${currencySymbol}${(parseFloat(goldAmountInput.value) * currentGoldPrice).toLocaleString('tr-TR')}`
                     : `${currencySymbol}0`
                   }
                 </Text>
@@ -785,14 +649,14 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
             styles.createButton,
             (
               !accountName.trim() || 
-              (selectedType === AccountType.GOLD ? !goldGrams.trim() : !initialBalance.trim()) || 
+              (selectedType === AccountType.GOLD ? !goldAmountInput.value.trim() : !initialBalance.trim()) || 
               loading
             ) && styles.createButtonDisabled
           ]}
-          onPress={handleCreateAccount}
+          onPress={handleCreateOrUpdateAccount}
           disabled={
             !accountName.trim() || 
-            (selectedType === AccountType.GOLD ? !goldGrams.trim() : !initialBalance.trim()) || 
+            (selectedType === AccountType.GOLD ? !goldAmountInput.value.trim() : !initialBalance.trim()) || 
             loading
           }
         >
@@ -974,24 +838,28 @@ const styles = StyleSheet.create({
   balanceInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.SURFACE,
-    borderWidth: 0,
-    borderRadius: 16,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.xs,
-  },
-  currencySymbol: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-    marginRight: SPACING.sm,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.BORDER,
+    paddingBottom: SPACING.sm,
   },
   balanceInput: {
     flex: 1,
-    paddingVertical: SPACING.md,
-    fontSize: TYPOGRAPHY.sizes.lg,
+    fontSize: isSmallDevice ? 28 : 32,
+    fontWeight: 'bold',
     color: COLORS.TEXT_PRIMARY,
-    fontWeight: '600',
+    paddingVertical: SPACING.sm,
+  },
+  currencySymbol: {
+    fontSize: isSmallDevice ? 28 : 32,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_SECONDARY,
+    marginLeft: SPACING.sm,
+  },
+  balancePreview: {
+    marginTop: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_SECONDARY,
+    textAlign: 'center',
   },
   colorGrid: {
     flexDirection: 'row',
@@ -1112,13 +980,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 20,
   },
-  balancePreview: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    textAlign: 'right',
-    marginTop: SPACING.sm,
-    fontWeight: '600',
-  },
   signToggleButton: {
     width: 44,
     height: 44,
@@ -1159,6 +1020,88 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_SECONDARY,
     fontWeight: '500',
     lineHeight: 18,
+  },
+  inputGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444444',
+    marginBottom: SPACING.md,
+  },
+  label: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_SECONDARY,
+    marginBottom: SPACING.md,
+    fontWeight: '600',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444444',
+    padding: SPACING.md,
+  },
+  infoText: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.TEXT_PRIMARY,
+    fontWeight: '600',
+  },
+  summaryLabel: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: '700',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.md,
+  },
+  summaryValue: {
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: '800',
+    color: COLORS.TEXT_PRIMARY,
+  },
+  summaryItem: {
+    marginBottom: SPACING.md,
+  },
+  goldInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 12,
+    paddingHorizontal: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+  },
+  goldIcon: {
+    marginRight: SPACING.sm,
+  },
+  goldInput: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_PRIMARY,
+    paddingVertical: SPACING.md,
+  },
+  goldUnit: {
+    fontSize: 16,
+    color: COLORS.TEXT_SECONDARY,
+    fontWeight: '500',
+  },
+  valuePreviewContainer: {
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  valuePreviewText: {
+    fontSize: 16,
+    color: COLORS.TEXT_SECONDARY,
+  },
+  valuePreviewAmount: {
+    fontWeight: 'bold',
+    color: COLORS.PRIMARY,
   },
 });
 

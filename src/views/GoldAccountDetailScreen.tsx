@@ -18,6 +18,7 @@ import { Account, GoldAccountDetails } from '../models/Account';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import GoldPriceService from '../services/GoldPriceService';
+import useWebAmountInput from '../hooks/useWebAmountInput';
 
 interface GoldAccountDetailScreenProps {
   navigation: any;
@@ -33,12 +34,12 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
   const { account } = route.params;
   const [viewModel] = useState(() => user?.id ? new AccountViewModel(user.id) : null);
 
+  const amountInput = useWebAmountInput();
   const [goldDetails, setGoldDetails] = useState<GoldAccountDetails | null>(null);
   const [currentGoldPrice, setCurrentGoldPrice] = useState(4250);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [addGramsModalVisible, setAddGramsModalVisible] = useState(false);
-  const [newGrams, setNewGrams] = useState('');
   const [addingGrams, setAddingGrams] = useState(false);
   const [priceSource, setPriceSource] = useState('');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -112,12 +113,12 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
   };
 
   const handleAddGrams = async () => {
-    if (!newGrams.trim()) {
+    if (!amountInput.value.trim()) {
       Alert.alert('Hata', 'Gram miktarı girin');
       return;
     }
 
-    const gramsToAdd = parseFloat(newGrams.replace(',', '.'));
+    const gramsToAdd = parseFloat(amountInput.value);
     if (isNaN(gramsToAdd) || gramsToAdd <= 0) {
       Alert.alert('Hata', 'Geçerli bir gram miktarı girin');
       return;
@@ -150,7 +151,7 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
         setGoldDetails(updatedDetails);
         
         setAddGramsModalVisible(false);
-        setNewGrams('');
+        amountInput.clear();
         
         Alert.alert('Başarılı', `${gramsToAdd} gram altın eklendi`);
       } else {
@@ -376,9 +377,9 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                value={newGrams}
-                onChangeText={setNewGrams}
-                placeholder="0,00"
+                value={amountInput.value}
+                onChangeText={amountInput.onChangeText}
+                placeholder="0.00"
                 placeholderTextColor={COLORS.TEXT_SECONDARY}
                 keyboardType="decimal-pad"
                 autoFocus={true}
@@ -389,9 +390,9 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
               <Text style={styles.inputUnit}>gram</Text>
             </View>
 
-            {newGrams && (
+            {amountInput.value && (
               <Text style={styles.estimatedValue}>
-                Tahmini değer: {formatCurrency(parseFloat(newGrams.replace(',', '.')) * currentGoldPrice)}
+                Tahmini değer: {formatCurrency(parseFloat(amountInput.value) * currentGoldPrice)}
               </Text>
             )}
 
@@ -400,7 +401,7 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
                 style={[styles.modalButton, styles.cancelButton]}
                 onPress={() => {
                   setAddGramsModalVisible(false);
-                  setNewGrams('');
+                  amountInput.clear();
                 }}
               >
                 <Text style={styles.cancelButtonText}>İptal</Text>
@@ -409,7 +410,7 @@ const GoldAccountDetailScreen: React.FC<GoldAccountDetailScreenProps> = observer
               <TouchableOpacity
                 style={[styles.modalButton, styles.addButton]}
                 onPress={handleAddGrams}
-                disabled={addingGrams || !newGrams.trim()}
+                disabled={addingGrams || !amountInput.value.trim()}
               >
                 {addingGrams ? (
                   <ActivityIndicator size="small" color={COLORS.WHITE} />
