@@ -69,6 +69,11 @@ export type MainStackParamList = {
   MainTabs: undefined;
   AddTransaction: { defaultType?: 'income' | 'expense' } | undefined;
   AddAccount: { editAccount?: Account } | undefined;
+  AddCategory: { 
+    defaultType?: 'income' | 'expense';
+    editCategory?: { id: string; name: string; icon: string; color: string; type: 'income' | 'expense' };
+  } | undefined;
+  ManageCategories: undefined;
   GoldAccountDetail: { account: Account };
   Accounts: undefined;
   EditAccount: { accountId: string };

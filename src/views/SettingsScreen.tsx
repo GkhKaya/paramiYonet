@@ -260,6 +260,20 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               }
             }}
           />
+          <SettingItem
+            icon="bookmark"
+            title="Kategoriler"
+            subtitle="Özel kategorileri yönet"
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                navigation.navigate('ManageCategories', undefined, {
+                  animation: 'none'
+                });
+              } else {
+                navigation.navigate('ManageCategories');
+              }
+            }}
+          />
         </View>
       </View>
 

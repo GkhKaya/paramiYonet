@@ -17,6 +17,8 @@ import ReportsScreen from '../views/ReportsScreen';
 import SettingsScreen from '../views/SettingsScreen';
 import AccountsScreen from '../views/AccountsScreen';
 import AddAccountScreen from '../views/AddAccountScreen';
+import AddCategoryScreen from '../views/AddCategoryScreen';
+import ManageCategoriesScreen from '../views/ManageCategoriesScreen';
 import GoldAccountDetailScreen from '../views/GoldAccountDetailScreen';
 import HelpAndSupportScreen from '../views/HelpAndSupportScreen';
 import SecurityScreen from '../views/SecurityScreen';
@@ -199,6 +201,34 @@ const MainNavigator: React.FC = () => {
           }}
         />
         <Stack.Screen name="AddAccount" component={AddAccountScreen} />
+        <Stack.Screen 
+          name="AddCategory" 
+          component={AddCategoryScreen}
+          options={{
+            presentation: 'modal',
+            animationTypeForReplace: 'push',
+            cardStyleInterpolator: ({ current }) => ({
+              cardStyle: {
+                opacity: current.progress,
+              },
+            }),
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 200,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 150,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
         <Stack.Screen name="GoldAccountDetail" component={GoldAccountDetailScreen} />
         <Stack.Screen 
           name="Profile" 

@@ -4,6 +4,7 @@ export { BaseViewModel } from './BaseViewModel';
 // ViewModels
 export { TransactionViewModel } from './TransactionViewModel';
 export { AccountViewModel } from './AccountViewModel';
+export { CategoryViewModel } from './CategoryViewModel';
 export { DashboardViewModel } from './DashboardViewModel';
 export { AddTransactionViewModel } from './AddTransactionViewModel';
 export { AuthViewModel } from './AuthViewModel';

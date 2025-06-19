@@ -1,18 +1,21 @@
 
-;import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
+import { CategoryViewModel } from '../viewmodels/CategoryViewModel';
 import { useAuth } from './AuthContext';
 
 interface ViewModelContextType {
   transactionViewModel: TransactionViewModel | null;
   accountViewModel: AccountViewModel | null;
+  categoryViewModel: CategoryViewModel | null;
   isLoading: boolean;
 }
 
 const ViewModelContext = createContext<ViewModelContextType>({
   transactionViewModel: null,
   accountViewModel: null,
+  categoryViewModel: null,
   isLoading: true,
 });
 
@@ -24,6 +27,7 @@ export const ViewModelProvider: React.FC<ViewModelProviderProps> = ({ children }
   const { user } = useAuth();
   const [transactionViewModel, setTransactionViewModel] = useState<TransactionViewModel | null>(null);
   const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
+  const [categoryViewModel, setCategoryViewModel] = useState<CategoryViewModel | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,14 +37,17 @@ export const ViewModelProvider: React.FC<ViewModelProviderProps> = ({ children }
       // ViewModels'leri oluştur
       const transactionVm = new TransactionViewModel(user.id);
       const accountVm = new AccountViewModel(user.id);
+      const categoryVm = new CategoryViewModel(user.id);
       
       setTransactionViewModel(transactionVm);
       setAccountViewModel(accountVm);
+      setCategoryViewModel(categoryVm);
       
       // İlk veri yüklemesi
       Promise.all([
         transactionVm.loadTransactions(),
-        accountVm.loadAccounts()
+        accountVm.loadAccounts(),
+        categoryVm.loadCustomCategories()
       ]).then(() => {
         setIsLoading(false);
       }).catch(error => {
@@ -58,6 +65,7 @@ export const ViewModelProvider: React.FC<ViewModelProviderProps> = ({ children }
       // Kullanıcı oturumu kapandıysa ViewModels'leri temizle
       setTransactionViewModel(null);
       setAccountViewModel(null);
+      setCategoryViewModel(null);
       setIsLoading(false);
     }
 
@@ -67,6 +75,7 @@ export const ViewModelProvider: React.FC<ViewModelProviderProps> = ({ children }
   const value: ViewModelContextType = {
     transactionViewModel,
     accountViewModel,
+    categoryViewModel,
     isLoading,
   };
 

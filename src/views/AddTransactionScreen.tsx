@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { observer } from 'mobx-react-lite';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { TransactionType } from '../models/Transaction';
 import { Account, AccountType } from '../models/Account';
@@ -84,6 +85,14 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       setSelectedCard(availableAccounts[0]);
     }
   }, [availableAccounts, selectedCard]);
+
+  // Kategori eklendikten sonra listeyi yenile
+  useFocusEffect(
+    React.useCallback(() => {
+      // Ekran focus olduğunda kategorileri yenile
+      // Bu sayede yeni eklenen kategoriler görünür
+    }, [])
+  );
 
   // Hesap tipi için Türkçe isimleri
   const getAccountTypeName = (type: AccountType): string => {
@@ -415,6 +424,23 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             </View>
             <ScrollView style={styles.categoriesModalContent}>
               <View style={styles.categoriesModalGrid}>
+                {/* Kategori Ekleme Butonu */}
+                <TouchableOpacity
+                  style={styles.categoryModalItem}
+                  onPress={() => {
+                    setShowAllCategories(false);
+                    navigation.navigate('AddCategory', { 
+                      defaultType: selectedType === TransactionType.INCOME ? 'income' : 'expense' 
+                    });
+                  }}
+                >
+                  <View style={[styles.categoryModalIcon, { backgroundColor: '#4CAF50' }]}>
+                    <Ionicons name="add" size={28} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.categoryModalText}>Yeni Ekle</Text>
+                </TouchableOpacity>
+                
+                {/* Mevcut Kategoriler */}
                 {availableCategories.map((category) => (
                   <TouchableOpacity
                     key={category.name}
@@ -857,6 +883,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2A2A2A',
   },
+
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',

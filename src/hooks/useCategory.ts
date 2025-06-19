@@ -15,6 +15,7 @@ import {
   getSuggestedCategories,
   getTopCategories
 } from '../utils/category';
+import { useViewModels } from '../contexts/ViewModelContext';
 
 export interface UseCategoryOptions {
   type?: TransactionType;
@@ -23,18 +24,38 @@ export interface UseCategoryOptions {
 
 export const useCategory = (options: UseCategoryOptions = {}) => {
   const { type, usageData } = options;
+  const { categoryViewModel } = useViewModels();
 
-  // Kategori detaylarını getir
+  // Kategori detaylarını getir (önce custom kategorilerde ara, sonra default'larda)
   const getDetails = useCallback((categoryName: string, categoryType?: TransactionType) => {
     const targetType = categoryType || type || TransactionType.EXPENSE;
+    
+    if (categoryViewModel) {
+      const category = categoryViewModel.getCategoryByName(categoryName);
+      if (category) {
+        return { icon: category.icon, color: category.color, name: category.name };
+      }
+    }
+    
+    // Fallback to default categories
     return getCategoryDetails(categoryName, targetType);
-  }, [type]);
+  }, [type, categoryViewModel]);
 
-  // Tüm kategorileri getir
+  // Tüm kategorileri getir (default + custom)
   const getAllCategories = useCallback((categoryType?: TransactionType) => {
     const targetType = categoryType || type || TransactionType.EXPENSE;
+    
+    if (categoryViewModel) {
+      if (targetType === TransactionType.EXPENSE) {
+        return categoryViewModel.expenseCategories;
+      } else {
+        return categoryViewModel.incomeCategories;
+      }
+    }
+    
+    // Fallback to default categories
     return getCategoriesByType(targetType);
-  }, [type]);
+  }, [type, categoryViewModel]);
 
   // Kategori ikonunu getir
   const getIcon = useCallback((categoryName: string, categoryType?: TransactionType) => {
@@ -73,15 +94,21 @@ export const useCategory = (options: UseCategoryOptions = {}) => {
     return getTopCategories(targetType, usageData, limit);
   }, [type, usageData, getAllCategories]);
 
-  // Gelir kategorileri
+  // Gelir kategorileri (default + custom)
   const incomeCategories = useMemo(() => {
+    if (categoryViewModel) {
+      return categoryViewModel.incomeCategories;
+    }
     return getCategoriesByType(TransactionType.INCOME);
-  }, []);
+  }, [categoryViewModel]);
 
-  // Gider kategorileri
+  // Gider kategorileri (default + custom)
   const expenseCategories = useMemo(() => {
+    if (categoryViewModel) {
+      return categoryViewModel.expenseCategories;
+    }
     return getCategoriesByType(TransactionType.EXPENSE);
-  }, []);
+  }, [categoryViewModel]);
 
   // Popüler kategoriler (varsa usage data'ya göre)
   const popularCategories = useMemo(() => {
