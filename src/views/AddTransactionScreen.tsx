@@ -12,6 +12,7 @@ import {
   ScrollView,
   Modal,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -202,11 +203,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       <Text style={styles.headerTitle}>
         {selectedType === TransactionType.INCOME ? 'Gelir Ekle' : 'Gider Ekle'}
       </Text>
-      <TouchableOpacity onPress={handleSave} style={styles.headerButton} disabled={loading}>
-        <Text style={[styles.saveButtonText, loading && styles.saveButtonDisabled]}>
-          {loading ? 'Kaydediliyor...' : 'Kaydet'}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.headerButton} />
     </View>
   );
 
@@ -391,7 +388,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       
       {renderHeader()}
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {renderTypeSelector()}
         
         {/* Ana tutar girişi - En üstte ve büyük */}
@@ -406,6 +403,28 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         {/* Detaylar - Kompakt */}
         {renderDetailsSection()}
       </ScrollView>
+
+      {/* Sabit Alt Buton */}
+      <View style={styles.bottomButtonContainer}>
+        <TouchableOpacity 
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+          onPress={handleSave} 
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading ? (
+            <>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.saveButtonText}>Kaydediliyor...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+              <Text style={styles.saveButtonText}>Kaydet</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* All Categories Modal */}
       <Modal
@@ -612,15 +631,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4CAF50',
-    textAlign: 'right',
-  },
-  saveButtonDisabled: {
-    color: '#666666',
-  },
+
   content: {
     flex: 1,
     paddingHorizontal: 20,
@@ -981,6 +992,50 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -5,
     right: 5,
+  },
+  // Bottom Button Styles
+  scrollContent: {
+    paddingBottom: 100, // Alt buton için alan bırak
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#121212',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    paddingBottom: Platform.OS === 'ios' ? 35 : 15,
+    borderTopWidth: 1,
+    borderTopColor: '#2A2A2A',
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#4CAF50',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#666666',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
