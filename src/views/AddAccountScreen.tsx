@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { Card } from '../components/common/Card';
+import CustomAlert from '../components/common/CustomAlert';
+import type { AlertType } from '../components/common/CustomAlert';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { AccountType, CreateAccountRequest, GoldType, GoldHoldings, GoldHolding } from '../models/Account';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
@@ -169,6 +171,12 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   );
   const [minPaymentRate, setMinPaymentRate] = useState(editAccount?.minPaymentRate ? (editAccount.minPaymentRate * 100).toString() : '');
 
+  // Custom Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<AlertType>('error');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+
   // Custom hooks
   const { currencySymbol, formatInput } = useCurrency();
   const goldService = GoldPriceService.getInstance();
@@ -279,33 +287,81 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
     );
   };
 
-  const handleCreateOrUpdateAccount = async () => {
+  // Validation helper functions
+  const showAlert = (type: AlertType, title: string, message: string) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
+
+  const getValidationError = (): { title: string; message: string } | null => {
+    // Hesap adı kontrolü
     if (!accountName.trim()) {
-      Alert.alert('Hata', 'Hesap adı gereklidir');
-      return;
+      return {
+        title: 'Hesap Adı Gerekli',
+        message: 'Lütfen hesabınız için bir ad giriniz. Bu isim hesaplarınız arasında ayırt etmenizi sağlayacak.'
+      };
     }
 
+    // Hesap türüne göre validasyon
     if (selectedType === AccountType.GOLD) {
       if (!hasValidGoldQuantities()) {
-        Alert.alert('Hata', 'En az bir altın türü için geçerli bir miktar giriniz.');
-        return;
+        return {
+          title: 'Altın Miktarı Gerekli',
+          message: 'En az bir altın türü için geçerli bir miktar giriniz. Gram altın, çeyrek, yarım veya tam altın miktarlarından birini belirtmelisiniz.'
+        };
       }
-    } else if (selectedType !== AccountType.CREDIT_CARD) {
+      if (!currentGoldPrices) {
+        return {
+          title: 'Altın Fiyatları Yükleniyor',
+          message: 'Altın fiyatları henüz yüklenmedi. Lütfen birkaç saniye bekleyip tekrar deneyiniz.'
+        };
+      }
+    } else if (selectedType === AccountType.CREDIT_CARD) {
+      if (!creditLimit.trim() || parseFloat(creditLimit) <= 0) {
+        return {
+          title: 'Kredi Kartı Limiti Gerekli',
+          message: 'Kredi kartınızın limitini giriniz. Bu limit bankanızın size verdiği maksimum harcama tutarıdır.'
+        };
+      }
+      const limit = parseFloat(creditLimit);
+      const debt = parseFloat(currentDebt) || 0;
+      if (debt > limit) {
+        return {
+          title: 'Borç Limitten Fazla',
+          message: `Mevcut borç (${currencySymbol}${debt.toLocaleString('tr-TR')}) kredi kartı limitinden (${currencySymbol}${limit.toLocaleString('tr-TR')}) fazla olamaz.`
+        };
+      }
+    } else {
+      // Diğer hesap türleri için bakiye kontrolü
       if (!initialBalance.trim()) {
-        Alert.alert('Hata', 'Başlangıç bakiyesi gereklidir');
-        return;
+        return {
+          title: 'Başlangıç Bakiyesi Gerekli',
+          message: 'Hesabınızın başlangıç bakiyesini giriniz. Bu tutarı daha sonra işlemler ekleyerek değiştirebilirsiniz.'
+        };
       }
     }
 
-    if (!currentGoldPrices && selectedType === AccountType.GOLD) {
-      Alert.alert('Hata', 'Altın fiyatları henüz yüklenmedi. Lütfen bekleyin.');
+    return null;
+  };
+
+  const isFormValid = (): boolean => {
+    return getValidationError() === null;
+  };
+
+  const handleCreateOrUpdateAccount = async () => {
+    // Validasyon kontrolü
+    const validationError = getValidationError();
+    if (validationError) {
+      showAlert('error', validationError.title, validationError.message);
       return;
     }
 
     setLoading(true);
 
     try {
-      let finalBalance = getFinalBalance();
+      let finalBalance = 0;
       let goldHoldings: GoldHoldings | undefined = undefined;
 
       if (selectedType === AccountType.GOLD && currentGoldPrices) {
@@ -327,6 +383,12 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         });
         
         finalBalance = getTotalGoldValue(); // Altın hesapları için toplam değer
+      } else if (selectedType === AccountType.CREDIT_CARD) {
+        // Kredi kartı için balance = -currentDebt (borç negatif bakiye olarak)
+        finalBalance = -(parseFloat(currentDebt) || 0);
+      } else {
+        // Diğer hesap türleri için normal balance calculation
+        finalBalance = getFinalBalance();
       }
 
       const accountTypeDetails = ACCOUNT_TYPES.find(t => t.type === selectedType);
@@ -335,7 +397,7 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         name: accountName,
         type: selectedType,
         balance: finalBalance,
-        initialBalance: finalBalance,
+        initialBalance: finalBalance, // Tüm hesap türleri için aynı olacak
         color: selectedColor,
         icon: accountTypeDetails?.icon || 'wallet',
         includeInTotalBalance,
@@ -362,11 +424,20 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
       }
 
       setLoading(false);
-      navigation.goBack();
+      showAlert('success', 
+        isEditMode ? 'Hesap Güncellendi' : 'Hesap Oluşturuldu', 
+        isEditMode ? 'Hesap bilgileri başarıyla güncellendi.' : 'Yeni hesap başarıyla oluşturuldu.'
+      );
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (error) {
       setLoading(false);
       console.error('Hesap işlemi başarısız:', error);
-      Alert.alert('Hata', 'Hesap oluşturulurken/güncellenirken bir hata oluştu.');
+      showAlert('error', 
+        'İşlem Başarısız', 
+        isEditMode ? 'Hesap güncellenirken bir hata oluştu. Lütfen tekrar deneyiniz.' : 'Hesap oluşturulurken bir hata oluştu. Lütfen tekrar deneyiniz.'
+      );
     }
   };
 
@@ -508,8 +579,9 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Header */}
+    <>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -545,15 +617,17 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
           ))}
         </Card>
 
-        {/* Initial Balance / Gold Grams */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {selectedType === AccountType.GOLD ? 'Altın Miktarı' : 'Başlangıç Bakiyesi'}
-          </Text>
-          <Text style={styles.balanceDescription}>{getBalanceDescription()}</Text>
-          
-          {renderBalanceInput()}
-        </Card>
+        {/* Initial Balance / Gold Grams - Kredi kartı için gösterilmez */}
+        {selectedType !== AccountType.CREDIT_CARD && (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {selectedType === AccountType.GOLD ? 'Altın Miktarı' : 'Başlangıç Bakiyesi'}
+            </Text>
+            <Text style={styles.balanceDescription}>{getBalanceDescription()}</Text>
+            
+            {renderBalanceInput()}
+          </Card>
+        )}
 
         {/* Account Color */}
         <Card style={styles.section}>
@@ -788,18 +862,18 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         <TouchableOpacity
           style={[
             styles.createButton,
-            (
-              !accountName.trim() || 
-              (selectedType === AccountType.GOLD ? !hasValidGoldQuantities() : !initialBalance.trim()) || 
-              loading
-            ) && styles.createButtonDisabled
+            (!isFormValid() || loading) && styles.createButtonDisabled
           ]}
-          onPress={handleCreateOrUpdateAccount}
-          disabled={
-            !accountName.trim() || 
-            (selectedType === AccountType.GOLD ? !hasValidGoldQuantities() : !initialBalance.trim()) || 
-            loading
-          }
+          onPress={() => {
+            // Validation kontrolü ve alert gösterimi
+            const validationError = getValidationError();
+            if (validationError) {
+              showAlert('warning', validationError.title, validationError.message);
+            } else {
+              handleCreateOrUpdateAccount();
+            }
+          }}
+          disabled={loading}
         >
           <Text style={styles.createButtonText}>
             {loading 
@@ -810,6 +884,17 @@ const AddAccountScreen: React.FC<AddAccountScreenProps> = observer(({ navigation
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+
+    {/* Custom Alert */}
+    <CustomAlert
+      visible={alertVisible}
+      type={alertType}
+      title={alertTitle}
+      message={alertMessage}
+      onPrimaryPress={() => setAlertVisible(false)}
+      onClose={() => setAlertVisible(false)}
+    />
+    </>
   );
 });
 
@@ -1104,9 +1189,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   createButtonDisabled: {
-    backgroundColor: COLORS.TEXT_SECONDARY,
+    backgroundColor: COLORS.TEXT_SECONDARY + '40',
     shadowOpacity: 0,
     elevation: 0,
+    opacity: 0.6,
   },
   createButtonText: {
     fontSize: TYPOGRAPHY.sizes.lg,
