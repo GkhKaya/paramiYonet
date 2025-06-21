@@ -158,7 +158,7 @@ export class AccountService {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        accounts.push({
+        const account: Account = {
           id: doc.id,
           userId: data.userId,
           name: data.name,
@@ -167,9 +167,27 @@ export class AccountService {
           color: data.color,
           icon: data.icon,
           isActive: data.isActive,
+          includeInTotalBalance: data.includeInTotalBalance ?? true,
           createdAt: data.createdAt.toDate(),
           updatedAt: data.updatedAt.toDate(),
-        });
+        };
+
+        // Altın hesabı alanları
+        if (data.goldHoldings) {
+          account.goldHoldings = data.goldHoldings;
+        }
+
+        // Kredi kartı alanları
+        if (data.limit) account.limit = data.limit;
+        if (data.currentDebt) account.currentDebt = data.currentDebt;
+        if (data.statementDay) account.statementDay = data.statementDay;
+        if (data.dueDay) account.dueDay = data.dueDay;
+        if (data.interestRate) account.interestRate = data.interestRate;
+        if (data.minPaymentRate) account.minPaymentRate = data.minPaymentRate;
+        if (data.creditCardTransactions) account.creditCardTransactions = data.creditCardTransactions;
+        if (data.creditCardPayments) account.creditCardPayments = data.creditCardPayments;
+
+        accounts.push(account);
       });
 
       // Sort client-side to avoid index requirement (ascending by createdAt)

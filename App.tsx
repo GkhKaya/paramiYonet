@@ -8,6 +8,7 @@ import * as SystemUI from 'expo-system-ui';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ViewModelProvider } from './src/contexts/ViewModelContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import WebApp from './src/web/WebApp';
 
 export default function App() {
   useEffect(() => {
@@ -17,6 +18,12 @@ export default function App() {
     }
   }, []);
 
+  // Web platformu için özel render
+  if (Platform.OS === 'web') {
+    return <WebApp />;
+  }
+
+  // Mobile platformlar için mevcut render
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
