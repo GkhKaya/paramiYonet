@@ -12,7 +12,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Account, AccountType, CreateAccountRequest, UpdateAccountRequest, AccountSummary } from '../models/Account';
+import { Account, AccountType, CreateAccountRequest, UpdateAccountRequest, AccountSummary, GoldSummary, GoldType, GoldHoldings } from '../models/Account';
 import { BaseViewModel } from './BaseViewModel';
 import { Transaction, TransactionType } from '../models/Transaction';
 import GoldPriceService from '../services/GoldPriceService';
@@ -41,7 +41,7 @@ const getDefaultColorForAccountType = (type: string): string => {
 export class AccountViewModel extends BaseViewModel {
   accounts: Account[] = [];
   selectedAccount: Account | null = null;
-  currentGoldPrice: number = 4250; // Default price
+  currentGoldPrices: any = null; // AllGoldPricesData türü olacak
   private goldPriceService = GoldPriceService.getInstance();
   private unsubscribeAccounts?: () => void; // Real-time listener cleanup
 
@@ -50,10 +50,10 @@ export class AccountViewModel extends BaseViewModel {
     makeObservable(this, {
       accounts: observable,
       selectedAccount: observable,
-      currentGoldPrice: observable,
+      currentGoldPrices: observable,
       setAccounts: action,
       setSelectedAccount: action,
-      setCurrentGoldPrice: action,
+      setCurrentGoldPrices: action,
       addAccount: action,
       updateAccount: action,
       removeAccount: action,
@@ -63,7 +63,7 @@ export class AccountViewModel extends BaseViewModel {
     });
     
     this.loadAccounts();
-    this.loadGoldPrice();
+    this.loadGoldPrices();
   }
 
   setAccounts = (accounts: Account[]) => {
@@ -92,10 +92,22 @@ export class AccountViewModel extends BaseViewModel {
   // Altın hesapları için real-time balance hesaplama
   get accountsWithRealTimeBalances(): Account[] {
     return this.accounts.map(account => {
-      if (account.type === AccountType.GOLD && account.goldGrams) {
+      if (account.type === AccountType.GOLD && account.goldHoldings && this.currentGoldPrices) {
+        // Altın hesabının anlık değerini hesapla
+        let totalValue = 0;
+        
+        Object.entries(account.goldHoldings).forEach(([goldType, holdings]) => {
+          if (holdings && holdings.length > 0) {
+            const currentPrice = this.currentGoldPrices.prices[goldType as GoldType];
+                         holdings.forEach((holding: any) => {
+               totalValue += holding.quantity * currentPrice;
+             });
+          }
+        });
+        
         return {
           ...account,
-          balance: account.goldGrams * this.currentGoldPrice
+          balance: totalValue
         };
       }
       return account;
@@ -117,13 +129,23 @@ export class AccountViewModel extends BaseViewModel {
       savingsBalance: 0,
       investmentBalance: 0,
       goldBalance: 0,
-      goldGrams: 0,
+      goldSummary: {
+        totalValue: 0,
+        totalProfitLoss: 0,
+        totalProfitLossPercentage: 0,
+        breakdown: {
+          [GoldType.GRAM]: { quantity: 0, value: 0 },
+          [GoldType.QUARTER]: { quantity: 0, value: 0 },
+          [GoldType.HALF]: { quantity: 0, value: 0 },
+          [GoldType.FULL]: { quantity: 0, value: 0 },
+        }
+      }
     };
 
     this.accountsWithRealTimeBalances.forEach(account => {
       // Sadece toplam bakiyeye dahil edilenler toplam bakiyeye eklenir
       if (account.includeInTotalBalance) {
-      summary.totalBalance += account.balance;
+        summary.totalBalance += account.balance;
       }
       
       // Fakat tüm hesaplar kendi kategorilerinde sayılır
@@ -145,10 +167,52 @@ export class AccountViewModel extends BaseViewModel {
           break;
         case AccountType.GOLD:
           summary.goldBalance += account.balance;
-          summary.goldGrams += account.goldGrams || 0;
+          
+          // Altın detaylarını hesapla
+          if (account.goldHoldings && this.currentGoldPrices) {
+            Object.entries(account.goldHoldings).forEach(([goldType, holdings]) => {
+              if (holdings && holdings.length > 0) {
+                const typeKey = goldType as GoldType;
+                const currentPrice = this.currentGoldPrices.prices[typeKey];
+                
+                let typeQuantity = 0;
+                let typeValue = 0;
+                
+                                 holdings.forEach((holding: any) => {
+                   typeQuantity += holding.quantity;
+                   typeValue += holding.quantity * currentPrice;
+                 });
+                
+                summary.goldSummary.breakdown[typeKey].quantity += typeQuantity;
+                summary.goldSummary.breakdown[typeKey].value += typeValue;
+              }
+            });
+          }
           break;
       }
     });
+
+    // Altın toplam kar/zarar hesaplama
+    summary.goldSummary.totalValue = summary.goldBalance;
+    
+    // Kar/zarar hesaplaması için initial değerleri bul
+    let totalInitialValue = 0;
+    this.accounts
+      .filter(acc => acc.type === AccountType.GOLD && acc.goldHoldings)
+      .forEach(account => {
+        Object.entries(account.goldHoldings!).forEach(([goldType, holdings]) => {
+          if (holdings) {
+                       holdings.forEach((holding: any) => {
+             totalInitialValue += holding.quantity * holding.initialPrice;
+           });
+          }
+        });
+      });
+    
+    summary.goldSummary.totalProfitLoss = summary.goldSummary.totalValue - totalInitialValue;
+    summary.goldSummary.totalProfitLossPercentage = totalInitialValue > 0 
+      ? (summary.goldSummary.totalProfitLoss / totalInitialValue) * 100 
+      : 0;
 
     return summary;
   }
@@ -176,6 +240,8 @@ export class AccountViewModel extends BaseViewModel {
             includeInTotalBalance: data.includeInTotalBalance !== undefined ? data.includeInTotalBalance : true,
             // Eğer color field'ı yoksa hesap tipine göre default renk ver
             color: data.color || getDefaultColorForAccountType(data.type),
+            // goldHoldings varsa date'leri dönüştür
+            goldHoldings: data.goldHoldings ? this.convertGoldHoldingsDates(data.goldHoldings) : undefined,
           } as Account;
         });
         
@@ -187,6 +253,22 @@ export class AccountViewModel extends BaseViewModel {
       this.setError('Hesaplar yüklenirken hata oluştu');
       this.setLoading(false);
     }
+  };
+
+  // Firebase'den gelen goldHoldings'deki date'leri dönüştür
+  convertGoldHoldingsDates = (goldHoldings: any): GoldHoldings => {
+    const converted: GoldHoldings = {};
+    
+    Object.entries(goldHoldings).forEach(([goldType, holdings]: [string, any]) => {
+      if (holdings && Array.isArray(holdings)) {
+                 converted[goldType as GoldType] = holdings.map((holding: any) => ({
+           ...holding,
+           purchaseDate: holding.purchaseDate?.toDate ? holding.purchaseDate.toDate() : new Date(holding.purchaseDate),
+         }));
+      }
+    });
+    
+    return converted;
   };
 
   createAccount = async (accountData: CreateAccountRequest): Promise<boolean> => {
@@ -205,8 +287,7 @@ export class AccountViewModel extends BaseViewModel {
         isActive: true,
         includeInTotalBalance: accountData.includeInTotalBalance ?? true, // Default true
         // Altın hesapları için özel alanlar
-        ...(accountData.goldGrams && { goldGrams: accountData.goldGrams }),
-        ...(accountData.initialGoldPrice && { initialGoldPrice: accountData.initialGoldPrice }),
+        ...(accountData.goldHoldings && { goldHoldings: this.convertGoldHoldingsForFirebase(accountData.goldHoldings) }),
         // Kredi kartı için özel alanlar
         ...(accountData.type === AccountType.CREDIT_CARD && {
           limit: accountData.limit || 0,
@@ -225,6 +306,7 @@ export class AccountViewModel extends BaseViewModel {
         ...newAccount,
         createdAt: new Date(),
         updatedAt: new Date(),
+        goldHoldings: accountData.goldHoldings,
       };
 
       this.addAccount(createdAccount);
@@ -238,6 +320,22 @@ export class AccountViewModel extends BaseViewModel {
     }
   };
 
+  // GoldHoldings'i Firebase'e uygun formata çevir
+  convertGoldHoldingsForFirebase = (goldHoldings: GoldHoldings): any => {
+    const converted: any = {};
+    
+    Object.entries(goldHoldings).forEach(([goldType, holdings]) => {
+      if (holdings && holdings.length > 0) {
+                 converted[goldType] = holdings.map((holding: any) => ({
+           ...holding,
+           purchaseDate: Timestamp.fromDate(holding.purchaseDate),
+         }));
+      }
+    });
+    
+    return converted;
+  };
+
   updateAccountInfo = async (accountData: UpdateAccountRequest): Promise<boolean> => {
     try {
       this.setLoading(true);
@@ -249,6 +347,11 @@ export class AccountViewModel extends BaseViewModel {
       const filteredUpdateData = Object.fromEntries(
         Object.entries(updateData).filter(([_, value]) => value !== undefined)
       );
+      
+             // goldHoldings varsa Firebase formatına çevir
+       if (filteredUpdateData.goldHoldings && typeof filteredUpdateData.goldHoldings === 'object') {
+         filteredUpdateData.goldHoldings = this.convertGoldHoldingsForFirebase(filteredUpdateData.goldHoldings as GoldHoldings);
+       }
       
       const finalUpdateData = {
         ...filteredUpdateData,
@@ -432,7 +535,6 @@ export class AccountViewModel extends BaseViewModel {
   // Utility function to recalculate balances from transactions
   recalculateBalancesFromTransactions = async (): Promise<boolean> => {
     try {
-  
       
       // Get all transactions for this user
       const transactionsQuery = query(
@@ -504,21 +606,19 @@ export class AccountViewModel extends BaseViewModel {
     }
   };
 
-  setCurrentGoldPrice = (price: number) => {
-    this.currentGoldPrice = price;
+  setCurrentGoldPrices = (prices: any) => {
+    this.currentGoldPrices = prices;
   };
 
-  loadGoldPrice = async () => {
+  loadGoldPrices = async () => {
     try {
-      const priceData = await this.goldPriceService.getCurrentGoldPrices();
-      this.setCurrentGoldPrice(priceData.gramPrice || priceData.buyPrice);
+      const pricesData = await this.goldPriceService.getAllGoldPrices();
+      this.setCurrentGoldPrices(pricesData);
     } catch (error) {
-      console.error('Altın fiyatı yüklenirken hata:', error);
-      // Default fiyat zaten set edilmiş
+      console.error('Error loading gold prices:', error);
     }
   };
 
-  // Cleanup method
   dispose = () => {
     if (this.unsubscribeAccounts) {
       this.unsubscribeAccounts();

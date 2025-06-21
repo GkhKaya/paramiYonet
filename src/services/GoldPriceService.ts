@@ -1,21 +1,62 @@
 import { GoldPriceData } from '../types';
+import { GoldType, GoldPrices } from '../models/Account';
 
 interface TruncgilGoldResponse {
-  GRA: {
-    Selling: number;
-    Type: string;
-    Name: string;
-    Change: number;
-    Buying: number;
+  Meta_Data: {
+    Minutes_Ago: number;
+    Current_Date: string;
+    Update_Date: string;
   };
+  Rates: {
+    GRA: {
+      Selling: number;
+      Type: string;
+      Name: string;
+      Change: number;
+      Buying: number;
+    };
+    CEYREKALTIN: {
+      Selling: number;
+      Type: string;
+      Name: string;
+      Change: number;
+      Buying: number;
+    };
+    YARIMALTIN: {
+      Selling: number;
+      Type: string;
+      Name: string;
+      Change: number;
+      Buying: number;
+    };
+    TAMALTIN: {
+      Selling: number;
+      Type: string;
+      Name: string;
+      Change: number;
+      Buying: number;
+    };
+  };
+}
+
+export interface AllGoldPricesData {
+  prices: GoldPrices;
+  changes: {
+    [GoldType.GRAM]: number;
+    [GoldType.QUARTER]: number;
+    [GoldType.HALF]: number;
+    [GoldType.FULL]: number;
+  };
+  lastUpdate: Date;
+  source: string;
 }
 
 class GoldPriceService {
   private static instance: GoldPriceService;
-  private currentPrices: GoldPriceData | null = null;
+  private currentPrices: AllGoldPricesData | null = null;
   private lastFetchTime: Date | null = null;
   private readonly CACHE_DURATION = 2 * 60 * 1000; // 2 dakika cache
-  private readonly TRUNCGIL_GOLD_URL = 'https://finance.truncgil.com/api/gold-rates/GRA';
+  private readonly TRUNCGIL_GOLD_URL = 'https://finance.truncgil.com/api/gold-rates/';
 
   static getInstance(): GoldPriceService {
     if (!GoldPriceService.instance) {
@@ -24,7 +65,7 @@ class GoldPriceService {
     return GoldPriceService.instance;
   }
 
-  async getCurrentGoldPrices(): Promise<GoldPriceData> {
+  async getAllGoldPrices(): Promise<AllGoldPricesData> {
     // Cache kontrolü
     if (this.currentPrices && this.lastFetchTime) {
       const timeSinceLastFetch = Date.now() - this.lastFetchTime.getTime();
@@ -48,56 +89,129 @@ class GoldPriceService {
 
       const data: TruncgilGoldResponse = await response.json();
       
-      if (!data.GRA) {
+      if (!data.Rates) {
         throw new Error('Invalid response from Truncgil API');
       }
 
-      const gramGold = data.GRA;
-      const buyPrice = gramGold.Buying;
-      const sellPrice = gramGold.Selling;
-      const gramPrice = (buyPrice + sellPrice) / 2; // Ortalama fiyat
-      const change = gramGold.Change;
-      const changeAmount = (gramPrice * change) / 100;
+      const rates = data.Rates;
+      
+      // Tüm altın türleri için fiyatları hesapla
+      const prices: GoldPrices = {
+        [GoldType.GRAM]: (rates.GRA.Buying + rates.GRA.Selling) / 2,
+        [GoldType.QUARTER]: (rates.CEYREKALTIN.Buying + rates.CEYREKALTIN.Selling) / 2,
+        [GoldType.HALF]: (rates.YARIMALTIN.Buying + rates.YARIMALTIN.Selling) / 2,
+        [GoldType.FULL]: (rates.TAMALTIN.Buying + rates.TAMALTIN.Selling) / 2,
+      };
 
-      const goldPrices: GoldPriceData = {
-        buyPrice: Math.round(buyPrice * 100) / 100,
-        sellPrice: Math.round(sellPrice * 100) / 100,
+      const changes = {
+        [GoldType.GRAM]: rates.GRA.Change,
+        [GoldType.QUARTER]: rates.CEYREKALTIN.Change,
+        [GoldType.HALF]: rates.YARIMALTIN.Change,
+        [GoldType.FULL]: rates.TAMALTIN.Change,
+      };
+
+      const allGoldPrices: AllGoldPricesData = {
+        prices: {
+          [GoldType.GRAM]: Math.round(prices[GoldType.GRAM] * 100) / 100,
+          [GoldType.QUARTER]: Math.round(prices[GoldType.QUARTER] * 100) / 100,
+          [GoldType.HALF]: Math.round(prices[GoldType.HALF] * 100) / 100,
+          [GoldType.FULL]: Math.round(prices[GoldType.FULL] * 100) / 100,
+        },
+        changes: {
+          [GoldType.GRAM]: Math.round(changes[GoldType.GRAM] * 100) / 100,
+          [GoldType.QUARTER]: Math.round(changes[GoldType.QUARTER] * 100) / 100,
+          [GoldType.HALF]: Math.round(changes[GoldType.HALF] * 100) / 100,
+          [GoldType.FULL]: Math.round(changes[GoldType.FULL] * 100) / 100,
+        },
         lastUpdate: new Date(),
-        change: Math.round(change * 100) / 100,
-        changeAmount: Math.round(changeAmount * 100) / 100,
-        gramPrice: Math.round(gramPrice * 100) / 100,
         source: 'Truncgil Finance API',
       };
 
-      this.currentPrices = goldPrices;
+      this.currentPrices = allGoldPrices;
       this.lastFetchTime = new Date();
       
-      return goldPrices;
+      return allGoldPrices;
     } catch (error) {
       console.error('Truncgil API error:', error);
       throw new Error('Altın fiyatları şu anda alınamıyor. Lütfen daha sonra tekrar deneyin.');
     }
   }
 
-  // Belirli bir süre aralığında fiyat geçmişini çekme
-  async getGoldPriceHistory(days: number = 7): Promise<GoldPriceData[]> {
-    // Truncgil API'sinde geçmiş veriler yok, mevcut fiyatı döndür
-    const currentPrice = await this.getCurrentGoldPrices();
-    return [currentPrice];
-  }
-
-  // Kar/zarar hesaplama
-  calculateHoldingProfitLoss(holding: { grams: number; purchasePrice: number }, currentPrice: number) {
-    const purchaseValue = holding.grams * holding.purchasePrice;
-    const currentValue = holding.grams * currentPrice;
-    const profitLoss = currentValue - purchaseValue;
-    const profitLossPercentage = purchaseValue > 0 ? (profitLoss / purchaseValue) * 100 : 0;
+  // Eski API uyumluluğu için
+  async getCurrentGoldPrices(): Promise<GoldPriceData> {
+    const allPrices = await this.getAllGoldPrices();
     
     return {
-      purchaseValue,
-      currentValue,
-      profitLoss,
-      profitLossPercentage: Math.round(profitLossPercentage * 100) / 100,
+      buyPrice: allPrices.prices[GoldType.GRAM],
+      sellPrice: allPrices.prices[GoldType.GRAM],
+      lastUpdate: allPrices.lastUpdate,
+      change: allPrices.changes[GoldType.GRAM],
+      changeAmount: (allPrices.prices[GoldType.GRAM] * allPrices.changes[GoldType.GRAM]) / 100,
+      gramPrice: allPrices.prices[GoldType.GRAM],
+      source: allPrices.source,
+    };
+  }
+
+  // Altın türü adlarını döndüren yardımcı fonksiyon
+  getGoldTypeName(type: GoldType): string {
+    switch (type) {
+      case GoldType.GRAM:
+        return 'Gram Altın';
+      case GoldType.QUARTER:
+        return 'Çeyrek Altın';
+      case GoldType.HALF:
+        return 'Yarım Altın';
+      case GoldType.FULL:
+        return 'Tam Altın';
+      default:
+        return 'Bilinmeyen Altın Türü';
+    }
+  }
+
+  // Belirli bir altın türü için fiyat geçmişini çekme
+  async getGoldPriceHistory(goldType: GoldType = GoldType.GRAM, days: number = 7): Promise<number[]> {
+    // Truncgil API'sinde geçmiş veriler yok, mevcut fiyatı döndür
+    const allPrices = await this.getAllGoldPrices();
+    return [allPrices.prices[goldType]];
+  }
+
+  // Kar/zarar hesaplama - güncellenmiş versiyon
+  calculateGoldHoldingProfitLoss(
+    holdings: { type: GoldType; quantity: number; purchasePrice: number }[],
+    currentPrices: GoldPrices
+  ) {
+    let totalPurchaseValue = 0;
+    let totalCurrentValue = 0;
+    
+    const breakdown = holdings.map(holding => {
+      const purchaseValue = holding.quantity * holding.purchasePrice;
+      const currentValue = holding.quantity * currentPrices[holding.type];
+      const profitLoss = currentValue - purchaseValue;
+      const profitLossPercentage = purchaseValue > 0 ? (profitLoss / purchaseValue) * 100 : 0;
+      
+      totalPurchaseValue += purchaseValue;
+      totalCurrentValue += currentValue;
+      
+      return {
+        type: holding.type,
+        typeName: this.getGoldTypeName(holding.type),
+        quantity: holding.quantity,
+        purchaseValue,
+        currentValue,
+        profitLoss,
+        profitLossPercentage: Math.round(profitLossPercentage * 100) / 100,
+      };
+    });
+    
+    const totalProfitLoss = totalCurrentValue - totalPurchaseValue;
+    const totalProfitLossPercentage = totalPurchaseValue > 0 ? (totalProfitLoss / totalPurchaseValue) * 100 : 0;
+    
+    return {
+      totalPurchaseValue,
+      totalCurrentValue,
+      totalProfitLoss,
+      totalProfitLossPercentage: Math.round(totalProfitLossPercentage * 100) / 100,
+      breakdown,
     };
   }
 
@@ -122,9 +236,9 @@ class GoldPriceService {
   }
 
   // Manuel refresh
-  async refreshPrices(): Promise<GoldPriceData> {
+  async refreshPrices(): Promise<AllGoldPricesData> {
     this.clearCache();
-    return await this.getCurrentGoldPrices();
+    return await this.getAllGoldPrices();
   }
 }
 

@@ -9,8 +9,8 @@ export interface Account {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
-  goldGrams?: number;
-  initialGoldPrice?: number;
+  // Altın türleri için yeni yapı
+  goldHoldings?: GoldHoldings;
   includeInTotalBalance: boolean;
   // Kredi kartı alanları
   limit?: number;
@@ -38,8 +38,7 @@ export interface CreateAccountRequest {
   initialBalance: number;
   color: string;
   icon: string;
-  goldGrams?: number;
-  initialGoldPrice?: number;
+  goldHoldings?: GoldHoldings;
   includeInTotalBalance?: boolean;
   // Kredi kartı alanları
   limit?: number;
@@ -56,8 +55,7 @@ export interface UpdateAccountRequest {
   type?: AccountType;
   color?: string;
   icon?: string;
-  goldGrams?: number;
-  initialGoldPrice?: number;
+  goldHoldings?: GoldHoldings;
   includeInTotalBalance?: boolean;
   // Kredi kartı alanları
   limit?: number;
@@ -76,21 +74,34 @@ export interface AccountSummary {
   savingsBalance: number;
   investmentBalance: number;
   goldBalance: number;
-  goldGrams: number;
+  goldSummary: GoldSummary;
+}
+
+export interface GoldSummary {
+  totalValue: number;
+  totalProfitLoss: number;
+  totalProfitLossPercentage: number;
+  breakdown: {
+    [GoldType.GRAM]: { quantity: number; value: number; };
+    [GoldType.QUARTER]: { quantity: number; value: number; };
+    [GoldType.HALF]: { quantity: number; value: number; };
+    [GoldType.FULL]: { quantity: number; value: number; };
+  };
 }
 
 export interface GoldAccountDetails {
   accountId: string;
   accountName: string;
-  totalGrams: number;
-  currentGoldPrice: number;
-  initialGoldPrice: number;
+  goldHoldings: GoldHoldings;
+  currentGoldPrices: GoldPrices;
+  initialGoldPrices: GoldPrices;
   createdDate: Date;
   currentValue: number;
   initialValue: number;
   profitLoss: number;
   profitLossPercentage: number;
   daysSinceCreation: number;
+  breakdown: GoldBreakdown[];
 }
 
 export interface CreditCardTransaction {
@@ -113,4 +124,44 @@ export interface CreditCardPayment {
   paymentType: 'minimum' | 'full' | 'custom';
   date: Date;
   description?: string;
+}
+
+// Yeni tipler
+export enum GoldType {
+  GRAM = 'GRA',           // Gram altın
+  QUARTER = 'CEYREKALTIN', // Çeyrek altın
+  HALF = 'YARIMALTIN',    // Yarım altın
+  FULL = 'TAMALTIN'       // Tam altın
+}
+
+export interface GoldHolding {
+  type: GoldType;
+  quantity: number;
+  initialPrice: number;
+  purchaseDate: Date;
+}
+
+export interface GoldHoldings {
+  [GoldType.GRAM]?: GoldHolding[];
+  [GoldType.QUARTER]?: GoldHolding[];
+  [GoldType.HALF]?: GoldHolding[];
+  [GoldType.FULL]?: GoldHolding[];
+}
+
+export interface GoldPrices {
+  [GoldType.GRAM]: number;
+  [GoldType.QUARTER]: number;
+  [GoldType.HALF]: number;
+  [GoldType.FULL]: number;
+}
+
+export interface GoldBreakdown {
+  type: GoldType;
+  typeName: string;
+  quantity: number;
+  currentPrice: number;
+  currentValue: number;
+  initialValue: number;
+  profitLoss: number;
+  profitLossPercentage: number;
 } 
