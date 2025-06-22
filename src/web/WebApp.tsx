@@ -15,7 +15,7 @@ import CategoryManagement from './pages/CategoryManagement';
 import HelpSupport from './pages/HelpSupport';
 import CreditCardsPage from './pages/CreditCards';
 import AddTransaction from './pages/AddTransaction';
-const RecurringPage = () => <div>Tekrarlayan Ödemeler Sayfası</div>;
+import RecurringPayments from './pages/RecurringPayments';
 
 type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
@@ -49,7 +49,7 @@ const AppContent: React.FC = () => {
       case 'credit-cards':
         return <CreditCardsPage />;
       case 'recurring':
-        return <RecurringPage />;
+        return <RecurringPayments />;
       case 'reports':
         return <Reports />;
       case 'settings':
