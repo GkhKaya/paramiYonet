@@ -217,7 +217,7 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
           >
             <Add />
             <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              Hızlı İşlem Ekle
+              İşlem Ekle
             </Typography>
           </Box>
         </motion.div>

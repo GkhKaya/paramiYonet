@@ -56,7 +56,11 @@ interface TransactionStats {
   transactionCount: number;
 }
 
-const TransactionsPage: React.FC = () => {
+interface TransactionsPageProps {
+  onNavigate: (page: 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction') => void;
+}
+
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
   const { currentUser } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
@@ -612,6 +616,7 @@ const TransactionsPage: React.FC = () => {
           right: 24,
           background: gradients.primary,
         }}
+        onClick={() => onNavigate('add-transaction')}
       >
         <Add />
       </Fab>

@@ -14,8 +14,8 @@ import Profile from './pages/Profile';
 import CategoryManagement from './pages/CategoryManagement';
 import HelpSupport from './pages/HelpSupport';
 import CreditCardsPage from './pages/CreditCards';
+import AddTransaction from './pages/AddTransaction';
 const RecurringPage = () => <div>Tekrarlayan Ödemeler Sayfası</div>;
-const AddTransactionPage = () => <div>İşlem Ekle Sayfası</div>;
 
 type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
@@ -45,7 +45,7 @@ const AppContent: React.FC = () => {
       case 'accounts':
         return <AccountsPage />;
       case 'transactions':
-        return <TransactionsPage />;
+        return <TransactionsPage onNavigate={setCurrentPage} />;
       case 'credit-cards':
         return <CreditCardsPage />;
       case 'recurring':
@@ -65,7 +65,7 @@ const AppContent: React.FC = () => {
       case 'help':
         return <HelpSupport />;
       case 'add-transaction':
-        return <AddTransactionPage />;
+        return <AddTransaction onClose={() => setCurrentPage('dashboard')} />;
       default:
         return <Dashboard />;
     }

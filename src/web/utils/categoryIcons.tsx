@@ -69,9 +69,11 @@ import {
 
 // Kategori adı -> Material-UI Icon JSX mapping
 const categoryIconMap: Record<string, React.ReactElement> = {
+  // === GIDER KATEGORİLERİ ===
   // Yemek & İçecek
-  'Gıda': <LocalGroceryStore fontSize="small" />,
   'Yemek': <Restaurant fontSize="small" />,
+  'İçecekler': <LocalCafe fontSize="small" />,
+  'Market': <LocalGroceryStore fontSize="small" />,
   'Restoran': <Restaurant fontSize="small" />,
   'Kafe': <LocalCafe fontSize="small" />,
   'İçki': <LocalBar fontSize="small" />,
@@ -79,7 +81,7 @@ const categoryIconMap: Record<string, React.ReactElement> = {
   'Dondurma': <Icecream fontSize="small" />,
   'Fast Food': <Fastfood fontSize="small" />,
   'Bira': <SportsBar fontSize="small" />,
-  'Market': <LocalGroceryStore fontSize="small" />,
+  'Gıda': <LocalGroceryStore fontSize="small" />,
   'Alışveriş': <ShoppingCart fontSize="small" />,
 
   // Ulaşım
@@ -88,12 +90,14 @@ const categoryIconMap: Record<string, React.ReactElement> = {
   'Otobüs': <DirectionsBus fontSize="small" />,
   'Tren': <Train fontSize="small" />,
   'Uçak': <Flight fontSize="small" />,
+  'Seyahat': <Flight fontSize="small" />,
   'Bisiklet': <DirectionsBike fontSize="small" />,
   'Benzin': <LocalGasStation fontSize="small" />,
   'Yakıt': <LocalGasStation fontSize="small" />,
 
-  // Ev & Yaşam
+  // Ev & Yaşam & Faturalar
   'Ev': <Home fontSize="small" />,
+  'Fatura': <Receipt fontSize="small" />,
   'Kira': <Home fontSize="small" />,
   'Elektrik': <Lightbulb fontSize="small" />,
   'Su': <Water fontSize="small" />,
@@ -101,20 +105,8 @@ const categoryIconMap: Record<string, React.ReactElement> = {
   'Temizlik': <CleaningServices fontSize="small" />,
   'Yatak Odası': <Bed fontSize="small" />,
 
-  // Finans & İş
-  'Gelir': <AttachMoney fontSize="small" />,
-  'Maaş': <AttachMoney fontSize="small" />,
-  'İş': <Work fontSize="small" />,
-  'Çalışma': <Work fontSize="small" />,
-  'Nakit': <AccountBalanceWallet fontSize="small" />,
-  'Banka': <AccountBalance fontSize="small" />,
-  'Kredi Kartı': <CreditCard fontSize="small" />,
-  'Kart': <CreditCard fontSize="small" />,
-  'Yatırım': <TrendingUp fontSize="small" />,
-  'Fatura': <Receipt fontSize="small" />,
-
-  // Eğlence
-  'Eğlence': <SportsEsports fontSize="small" />,
+  // Eğlence & Hobi
+  'Eğlence': <MusicNote fontSize="small" />,
   'Sinema': <Movie fontSize="small" />,
   'Film': <Movie fontSize="small" />,
   'Müzik': <MusicNote fontSize="small" />,
@@ -122,16 +114,17 @@ const categoryIconMap: Record<string, React.ReactElement> = {
   'Kitap': <MenuBook fontSize="small" />,
   'Fotoğraf': <PhotoCamera fontSize="small" />,
   'Televizyon': <Tv fontSize="small" />,
-  'Spor': <SportsSoccer fontSize="small" />,
 
-  // Sağlık
+  // Spor & Sağlık
+  'Spor': <SportsSoccer fontSize="small" />,
+  'Fitness': <FitnessCenter fontSize="small" />,
   'Sağlık': <LocalHospital fontSize="small" />,
   'Hastane': <LocalHospital fontSize="small" />,
   'Doktor': <LocalHospital fontSize="small" />,
-  'Fitness': <FitnessCenter fontSize="small" />,
   'Spor Salonu': <FitnessCenter fontSize="small" />,
 
-  // Teknoloji
+  // Teknoloji & Elektronik
+  'Elektronik': <Computer fontSize="small" />,
   'Teknoloji': <Computer fontSize="small" />,
   'Telefon': <Phone fontSize="small" />,
   'Laptop': <Laptop fontSize="small" />,
@@ -139,20 +132,48 @@ const categoryIconMap: Record<string, React.ReactElement> = {
   'Tablet': <Tablet fontSize="small" />,
   'Kulaklık': <Headphones fontSize="small" />,
 
-  // Alışveriş
+  // Giyim & Alışveriş
+  'Giyim': <Checkroom fontSize="small" />,
   'Mağaza': <Store fontSize="small" />,
   'Çanta': <ShoppingBag fontSize="small" />,
-  'Giyim': <Checkroom fontSize="small" />,
   'Hediye': <CardGiftcard fontSize="small" />,
   'Mücevher': <Diamond fontSize="small" />,
+
+  // Kişisel Bakım & Güzellik
+  'Kişisel Bakım': <Face fontSize="small" />,
+  'Güzellik': <Spa fontSize="small" />,
 
   // Eğitim
   'Eğitim': <School fontSize="small" />,
   'Okul': <School fontSize="small" />,
 
-  // Kişisel Bakım
-  'Kişisel Bakım': <Face fontSize="small" />,
-  'Güzellik': <Spa fontSize="small" />,
+  // === GELİR KATEGORİLERİ ===
+  // İş & Maaş
+  'Maaş': <AttachMoney fontSize="small" />,
+  'Yan İş': <Business fontSize="small" />,
+  'Freelance': <Laptop fontSize="small" />,
+  'İş': <Work fontSize="small" />,
+  'Çalışma': <Work fontSize="small" />,
+
+  // Eğitim & Burs
+  'Burs': <School fontSize="small" />,
+  'Harçlık': <AccountBalanceWallet fontSize="small" />,
+
+  // Yatırım & Finans
+  'Yatırım': <TrendingUp fontSize="small" />,
+  'Prim': <Star fontSize="small" />,
+  'Temettü': <Diamond fontSize="small" />,
+  'Satış': <Store fontSize="small" />,
+  'Kira Geliri': <Home fontSize="small" />,
+  'Borç İade': <AccountBalance fontSize="small" />,
+  'İkramiye': <Star fontSize="small" />,
+
+  // Finans & Bankacılık
+  'Gelir': <AttachMoney fontSize="small" />,
+  'Nakit': <AccountBalanceWallet fontSize="small" />,
+  'Banka': <AccountBalance fontSize="small" />,
+  'Kredi Kartı': <CreditCard fontSize="small" />,
+  'Kart': <CreditCard fontSize="small" />,
 
   // Genel
   'Diğer': <MoreHoriz fontSize="small" />,
