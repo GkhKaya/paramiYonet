@@ -34,50 +34,117 @@ import { AccountService } from '../../services/AccountService';
 import { Transaction, TransactionType } from '../../models/Transaction';
 import { Account } from '../../models/Account';
 import { formatCurrency } from '../../utils/formatters';
+import { getCategoryIcon } from '../utils/categoryIcons';
 
-// Mock data
-const balanceData = {
-  totalBalance: 45230,
-  monthlyChange: 12.5,
-  accounts: [
-    { name: 'Ana Hesap', balance: 25430, type: 'debit', color: '#10b981' },
-    { name: 'Kredi Kartı', balance: -8500, type: 'credit', color: '#ef4444' },
-    { name: 'Altın', balance: 18300, type: 'gold', color: '#fbbf24' },
-    { name: 'Tasarruf', balance: 10000, type: 'savings', color: '#6366f1' },
-  ]
+
+
+
+
+interface ChartDataItem {
+  name: string;
+  income: number;
+  expense: number;
+}
+
+interface CategoryDataItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
+// Kategori renkleri
+const categoryColors: Record<string, string> = {
+  'Gıda': '#ef4444',
+  'Market': '#ef4444',  // Market = Gıda
+  'Ulaşım': '#f59e0b', 
+  'Eğlence': '#6366f1',
+  'Faturalar': '#8b5cf6',
+  'Fatura': '#8b5cf6',  // Fatura = Faturalar
+  'Ev': '#10b981',
+  'Sağlık': '#06b6d4',
+  'Teknoloji': '#64748b',
+  'Elektronik': '#06b6d4',  // Elektronik = Sağlık rengi yerine mavi
+  'Yemek': '#f97316',
+  'Alışveriş': '#ec4899',
+  'Gelir': '#22c55e',
+  'Diğer': '#64748b'
 };
 
-const recentTransactions = [
-  { id: 1, description: 'Market Alışverişi', amount: -250, category: 'Gıda', date: '2024-01-15', icon: '🛒' },
-  { id: 2, description: 'Maaş', amount: 15000, category: 'Gelir', date: '2024-01-14', icon: '💰' },
-  { id: 3, description: 'Elektrik Faturası', amount: -180, category: 'Fatura', date: '2024-01-13', icon: '⚡' },
-  { id: 4, description: 'Restoran', amount: -420, category: 'Yemek', date: '2024-01-12', icon: '🍽️' },
-  { id: 5, description: 'Altın Alımı', amount: -2500, category: 'Yatırım', date: '2024-01-11', icon: '💎' },
-];
+// Son 6 ayın gelir-gider verilerini hesapla
+const calculateMonthlyData = (transactions: Transaction[]): ChartDataItem[] => {
+  const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+  const now = new Date();
+  const monthlyData: ChartDataItem[] = [];
 
-const chartData = [
-  { name: 'Ocak', income: 15000, expense: 8500 },
-  { name: 'Şubat', income: 16200, expense: 9200 },
-  { name: 'Mart', income: 14800, expense: 7800 },
-  { name: 'Nisan', income: 17500, expense: 10200 },
-  { name: 'Mayıs', income: 18200, expense: 9800 },
-  { name: 'Haziran', income: 19000, expense: 11200 },
-];
+  // Son 6 ay için veri hesapla
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthName = months[date.getMonth()];
+    
+    const monthTransactions = transactions.filter(transaction => {
+      const transactionDate = transaction.date;
+      return transactionDate.getMonth() === date.getMonth() && 
+             transactionDate.getFullYear() === date.getFullYear();
+    });
 
-const categoryData = [
-  { name: 'Gıda', value: 2500, color: '#ef4444' },
-  { name: 'Ulaşım', value: 800, color: '#f59e0b' },
-  { name: 'Eğlence', value: 1200, color: '#6366f1' },
-  { name: 'Faturalar', value: 1800, color: '#8b5cf6' },
-  { name: 'Diğer', value: 600, color: '#64748b' },
-];
+    const income = monthTransactions
+      .filter(t => t.type === TransactionType.INCOME)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const expense = monthTransactions
+      .filter(t => t.type === TransactionType.EXPENSE)
+      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+    monthlyData.push({
+      name: monthName,
+      income,
+      expense
+    });
+  }
+
+  return monthlyData;
+};
+
+// Bu ayın kategori dağılımını hesapla
+const calculateCategoryData = (transactions: Transaction[]): CategoryDataItem[] => {
+  const now = new Date();
+  const currentMonthTransactions = transactions.filter(transaction => {
+    const transactionDate = transaction.date;
+    return transactionDate.getMonth() === now.getMonth() && 
+           transactionDate.getFullYear() === now.getFullYear() &&
+           transaction.type === TransactionType.EXPENSE; // Sadece giderler
+  });
+
+  // Kategorilere göre grupla
+  const categoryTotals: Record<string, number> = {};
+  currentMonthTransactions.forEach(transaction => {
+    const category = transaction.category || 'Diğer';
+    categoryTotals[category] = (categoryTotals[category] || 0) + Math.abs(transaction.amount);
+  });
+
+  // Kategori verilerini oluştur
+  const categoryDataArray = Object.entries(categoryTotals)
+    .map(([name, value]) => ({
+      name,
+      value,
+      color: categoryColors[name] || categoryColors['Diğer']
+    }))
+    .sort((a, b) => b.value - a.value) // Büyükten küçüğe sırala
+    .slice(0, 5); // En büyük 5 kategori
+
+  return categoryDataArray;
+};
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalBalance, setTotalBalance] = useState(0);
+  const [monthlyChange, setMonthlyChange] = useState(0);
+  const [currentMonthExpense, setCurrentMonthExpense] = useState(0);
 
   useEffect(() => {
     const loadData = async () => {
@@ -98,6 +165,59 @@ const Dashboard: React.FC = () => {
         // Load recent transactions
         const transactionsData = await TransactionService.getUserTransactions(currentUser.uid);
         setTransactions(transactionsData.slice(0, 5)); // Get last 5 transactions
+
+        // Calculate chart data for last 6 months
+        const chartDataCalculated = calculateMonthlyData(transactionsData);
+        setChartData(chartDataCalculated);
+
+        // Calculate category breakdown for current month
+        const categoryDataCalculated = calculateCategoryData(transactionsData);
+        console.log('Category data calculated:', categoryDataCalculated);
+        
+        // Eğer veri yoksa dummy data ekle
+        if (categoryDataCalculated.length === 0) {
+          const dummyCategories: CategoryDataItem[] = [
+            { name: 'Gıda', value: 1500, color: '#ef4444' },
+            { name: 'Ulaşım', value: 800, color: '#f59e0b' },
+            { name: 'Eğlence', value: 600, color: '#6366f1' },
+          ];
+          setCategoryData(dummyCategories);
+        } else {
+          setCategoryData(categoryDataCalculated);
+        }
+
+        // Calculate current month expense
+        const now = new Date();
+        const currentMonthTransactions = transactionsData.filter(transaction => {
+          const transactionDate = transaction.date;
+          return transactionDate.getMonth() === now.getMonth() && 
+                 transactionDate.getFullYear() === now.getFullYear();
+        });
+        
+        const currentExpense = currentMonthTransactions
+          .filter(t => t.type === TransactionType.EXPENSE)
+          .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        setCurrentMonthExpense(currentExpense);
+
+        // Calculate monthly change (compare with previous month)
+        const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const previousMonthTransactions = transactionsData.filter(transaction => {
+          const transactionDate = transaction.date;
+          return transactionDate.getMonth() === previousMonth.getMonth() && 
+                 transactionDate.getFullYear() === previousMonth.getFullYear();
+        });
+        
+        const previousMonthBalance = previousMonthTransactions.reduce((sum, t) => {
+          return sum + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount));
+        }, 0);
+        
+        const currentMonthBalance = currentMonthTransactions.reduce((sum, t) => {
+          return sum + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount));
+        }, 0);
+        
+        const change = previousMonthBalance !== 0 ? 
+          ((currentMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100 : 0;
+        setMonthlyChange(change);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
         
@@ -178,6 +298,31 @@ const Dashboard: React.FC = () => {
           .filter(account => account.includeInTotalBalance)
           .reduce((sum, account) => sum + account.balance, 0));
         setTransactions(mockTransactions);
+
+        // Mock veriler için de grafik verilerini hesapla
+        const chartDataCalculated = calculateMonthlyData(mockTransactions);
+        setChartData(chartDataCalculated);
+
+        const categoryDataCalculated = calculateCategoryData(mockTransactions);
+        
+        // Mock veriler için dummy kategoriler ekle
+        if (categoryDataCalculated.length === 0) {
+          const dummyCategories: CategoryDataItem[] = [
+            { name: 'Gıda', value: 150, color: '#ef4444' },
+            { name: 'Ulaşım', value: 100, color: '#f59e0b' },
+            { name: 'Yemek', value: 80, color: '#f97316' },
+          ];
+          setCategoryData(dummyCategories);
+        } else {
+          setCategoryData(categoryDataCalculated);
+        }
+
+        // Mock veriler için bu ay harcama ve aylık değişim
+        const mockCurrentExpense = mockTransactions
+          .filter(t => t.type === TransactionType.EXPENSE)
+          .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        setCurrentMonthExpense(mockCurrentExpense);
+        setMonthlyChange(12.5); // Mock değer
       } finally {
         setLoading(false);
       }
@@ -241,7 +386,7 @@ const Dashboard: React.FC = () => {
                         </Typography>
                         <Chip
                           icon={<TrendingUp sx={{ fontSize: 16 }} />}
-                          label={`+${balanceData.monthlyChange}%`}
+                          label={`${monthlyChange >= 0 ? '+' : ''}${monthlyChange.toFixed(1)}%`}
                           size="small"
                           sx={{
                             backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -281,7 +426,7 @@ const Dashboard: React.FC = () => {
                           Bu Ay Harcama
                         </Typography>
                         <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
-                          {formatCurrency(6900)}
+                          {formatCurrency(currentMonthExpense)}
                         </Typography>
                         <LinearProgress
                           variant="determinate"
@@ -422,8 +567,8 @@ const Dashboard: React.FC = () => {
                     <React.Fragment key={transaction.id}>
                       <ListItem sx={{ px: 0 }}>
                         <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: 'background.paper' }}>
-                            {transaction.type === TransactionType.INCOME ? '💰' : '💸'}
+                          <Avatar sx={{ bgcolor: 'background.paper', color: 'white' }}>
+                            {getCategoryIcon(transaction.category)}
                           </Avatar>
                         </ListItemAvatar>
                         <ListItemText
@@ -462,53 +607,121 @@ const Dashboard: React.FC = () => {
                 <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
                   Kategori Dağılımı
                 </Typography>
-                <Box sx={{ height: 200, mb: 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </Box>
-                <Box>
-                  {categoryData.map((category) => (
-                    <Box
-                      key={category.name}
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        mb: 1,
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box
-                          sx={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            bgcolor: category.color,
+                {categoryData.length > 0 ? (
+                  <Box sx={{ height: 200, mb: 2 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: '#1e293b',
+                            border: '1px solid #334155',
+                            borderRadius: '8px',
+                            color: '#ffffff'
+                          }}
+                          labelStyle={{
+                            color: '#ffffff'
+                          }}
+                          itemStyle={{
+                            color: '#ffffff'
                           }}
                         />
-                        <Typography variant="body2">{category.name}</Typography>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Box>
+                ) : (
+                  <Box sx={{ height: 200, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Bu ay henüz gider kaydı bulunmuyor
+                    </Typography>
+                  </Box>
+                )}
+                <Box>
+                  {categoryData.length > 0 ? (
+                    categoryData.map((category) => (
+                      <Box
+                        key={category.name}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: 1.5,
+                          p: 1,
+                          borderRadius: 1,
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            '& .MuiTypography-root': {
+                              color: 'text.primary'
+                            }
+                          }
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              backgroundColor: category.color,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white'
+                            }}
+                          >
+                            {getCategoryIcon(category.name)}
+                          </Box>
+                          <Box>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                fontWeight: 500,
+                                color: 'text.primary',
+                                '&:hover': { color: 'text.primary' }
+                              }}
+                            >
+                              {category.name}
+                            </Typography>
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                color: 'text.secondary',
+                                '&:hover': { color: 'text.secondary' }
+                              }}
+                            >
+                              Bu ay
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            fontWeight: 600, 
+                            color: 'error.main',
+                            '&:hover': { color: 'error.main' }
+                          }}
+                        >
+                          {formatCurrency(category.value)}
+                        </Typography>
                       </Box>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {formatCurrency(category.value)}
-                      </Typography>
-                    </Box>
-                  ))}
+                    ))
+                  ) : (
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                      Kategori verisi bulunmuyor
+                    </Typography>
+                  )}
                 </Box>
               </CardContent>
             </Card>
