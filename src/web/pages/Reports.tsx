@@ -638,11 +638,12 @@ const Reports: React.FC = () => {
           scrollButtons="auto"
           sx={{ px: 3 }}
         >
-          <Tab icon={<Assessment />} label="Özet" />
-          <Tab icon={<Analytics />} label="Analizler" />
-          <Tab icon={<Timeline />} label="Eğilimler" />
-          <Tab icon={<Wallet />} label="Hesaplar" />
-          <Tab icon={<TrackChanges />} label="Bütçeler" />
+                      <Tab icon={<Assessment />} label="Özet" />
+            <Tab icon={<Analytics />} label="Analizler" />
+            <Tab icon={<Timeline />} label="Eğilimler" />
+            <Tab icon={<Wallet />} label="Hesaplar" />
+            <Tab icon={<CreditCard />} label="Kredi Kartları" />
+            <Tab icon={<TrackChanges />} label="Bütçeler" />
         </Tabs>
       </Box>
 
@@ -1257,8 +1258,276 @@ const Reports: React.FC = () => {
           </Box>
         </TabPanel>
 
-        {/* Budgets Tab */}
+        {/* Credit Cards Tab */}
         <TabPanel value={selectedTab} index={4}>
+          <Box>
+            {/* Credit Cards Summary */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 3, mb: 4 }}>
+              {accounts.filter(acc => acc.type === AccountType.CREDIT_CARD).map(card => {
+                const currentDebt = card.currentDebt || 0;
+                const limit = card.limit || 0;
+                const utilizationRate = limit > 0 ? (currentDebt / limit) * 100 : 0;
+                const minPayment = currentDebt * 0.20; // %20 asgari ödeme
+                const monthlyInterest = (currentDebt * (card.interestRate || 4.25)) / 100;
+
+                return (
+                  <motion.div
+                    key={card.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Card sx={{
+                      background: 'linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: 3,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: `0 8px 32px ${card.color || '#f44336'}40`,
+                        borderColor: card.color || '#f44336',
+                      }
+                    }}>
+                      <CardContent sx={{ p: 3 }}>
+                        {/* Card Header */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                          <Avatar sx={{ 
+                            bgcolor: card.color || '#f44336', 
+                            width: 56, 
+                            height: 56, 
+                            mr: 2 
+                          }}>
+                            <CreditCard />
+                          </Avatar>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+                              {card.name}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#bbb' }}>
+                              Kredi Kartı
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {/* Debt Status */}
+                        <Box sx={{ mb: 3 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" sx={{ color: '#bbb' }}>
+                              Mevcut Borç
+                            </Typography>
+                            {currentDebt === 0 ? (
+                              <Chip 
+                                icon={<CheckCircle />} 
+                                label="Borç Yok" 
+                                color="success" 
+                                size="small" 
+                              />
+                            ) : (
+                              <Chip 
+                                icon={<Warning />} 
+                                label="Ödeme Gerekli" 
+                                color="error" 
+                                size="small" 
+                              />
+                            )}
+                          </Box>
+                          <Typography 
+                            variant="h4" 
+                            sx={{ 
+                              color: currentDebt > 0 ? '#f44336' : '#4caf50',
+                              fontWeight: 700,
+                              mb: 2 
+                            }}
+                          >
+                            ₺{currentDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                          </Typography>
+
+                          {/* Credit Limit Progress */}
+                          <Box sx={{ mb: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                              <Typography variant="body2" sx={{ color: '#bbb' }}>
+                                Limit Kullanımı
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: '#bbb' }}>
+                                {utilizationRate.toFixed(1)}%
+                              </Typography>
+                            </Box>
+                            <LinearProgress
+                              variant="determinate"
+                              value={Math.min(utilizationRate, 100)}
+                              sx={{
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                '& .MuiLinearProgress-bar': {
+                                  backgroundColor: utilizationRate > 80 ? '#f44336' : 
+                                                  utilizationRate > 50 ? '#ff9800' : '#4caf50',
+                                  borderRadius: 4,
+                                },
+                              }}
+                            />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                              <Typography variant="caption" sx={{ color: '#bbb' }}>
+                                Kullanılabilir: ₺{Math.max(0, limit - currentDebt).toLocaleString('tr-TR')}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#bbb' }}>
+                                Limit: ₺{limit.toLocaleString('tr-TR')}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        {/* Payment Details */}
+                        {currentDebt > 0 && (
+                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                              borderRadius: 2 
+                            }}>
+                              <Typography variant="caption" sx={{ color: '#bbb' }}>
+                                Asgari Ödeme
+                              </Typography>
+                              <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                                ₺{minPayment.toFixed(2)}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                              borderRadius: 2 
+                            }}>
+                              <Typography variant="caption" sx={{ color: '#bbb' }}>
+                                Aylık Faiz
+                              </Typography>
+                              <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
+                                ₺{monthlyInterest.toFixed(2)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </Box>
+
+            {/* Credit Card Statistics */}
+            {accounts.filter(acc => acc.type === AccountType.CREDIT_CARD).length > 0 && (
+              <Box sx={{ mb: 4 }}>
+                <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, mb: 3 }}>
+                  📊 Kredi Kartı İstatistikleri
+                </Typography>
+                
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3 }}>
+                  {/* Total Debt */}
+                  <Card sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+                            Toplam Borç
+                          </Typography>
+                          <Typography variant="h4" sx={{ color: '#f44336', fontWeight: 700 }}>
+                            ₺{accounts
+                              .filter(acc => acc.type === AccountType.CREDIT_CARD)
+                              .reduce((sum, card) => sum + (card.currentDebt || 0), 0)
+                              .toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <CreditCard sx={{ color: '#f44336', fontSize: 32 }} />
+                      </Box>
+                    </CardContent>
+                  </Card>
+
+                  {/* Total Available Limit */}
+                  <Card sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+                            Kullanılabilir Limit
+                          </Typography>
+                          <Typography variant="h4" sx={{ color: '#4caf50', fontWeight: 700 }}>
+                            ₺{accounts
+                              .filter(acc => acc.type === AccountType.CREDIT_CARD)
+                              .reduce((sum, card) => sum + Math.max(0, (card.limit || 0) - (card.currentDebt || 0)), 0)
+                              .toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                          </Typography>
+                        </Box>
+                        <AttachMoney sx={{ color: '#4caf50', fontSize: 32 }} />
+                      </Box>
+                    </CardContent>
+                  </Card>
+
+                  {/* Average Utilization Rate */}
+                  <Card sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box>
+                          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+                            Ortalama Kullanım
+                          </Typography>
+                          <Typography variant="h4" sx={{ 
+                            color: (() => {
+                              const avgUtilization = accounts
+                                .filter(acc => acc.type === AccountType.CREDIT_CARD)
+                                .reduce((sum, card) => {
+                                  const utilization = (card.limit || 0) > 0 ? ((card.currentDebt || 0) / (card.limit || 0)) * 100 : 0;
+                                  return sum + utilization;
+                                }, 0) / Math.max(1, accounts.filter(acc => acc.type === AccountType.CREDIT_CARD).length);
+                              return avgUtilization > 70 ? '#f44336' : avgUtilization > 50 ? '#ff9800' : '#4caf50';
+                            })(),
+                            fontWeight: 700 
+                          }}>
+                            %{(() => {
+                              const creditCards = accounts.filter(acc => acc.type === AccountType.CREDIT_CARD);
+                              if (creditCards.length === 0) return '0.0';
+                              const avgUtilization = creditCards.reduce((sum, card) => {
+                                const utilization = (card.limit || 0) > 0 ? ((card.currentDebt || 0) / (card.limit || 0)) * 100 : 0;
+                                return sum + utilization;
+                              }, 0) / creditCards.length;
+                              return avgUtilization.toFixed(1);
+                            })()}
+                          </Typography>
+                        </Box>
+                        <TrendingUp sx={{ 
+                          color: (() => {
+                            const avgUtilization = accounts
+                              .filter(acc => acc.type === AccountType.CREDIT_CARD)
+                              .reduce((sum, card) => {
+                                const utilization = (card.limit || 0) > 0 ? ((card.currentDebt || 0) / (card.limit || 0)) * 100 : 0;
+                                return sum + utilization;
+                              }, 0) / Math.max(1, accounts.filter(acc => acc.type === AccountType.CREDIT_CARD).length);
+                            return avgUtilization > 70 ? '#f44336' : avgUtilization > 50 ? '#ff9800' : '#4caf50';
+                          })(),
+                          fontSize: 32 
+                        }} />
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </Box>
+            )}
+
+            {/* No Credit Cards Message */}
+            {accounts.filter(acc => acc.type === AccountType.CREDIT_CARD).length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 6 }}>
+                <CreditCard sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  Henüz kredi kartınız yok
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Kredi kartı hesabı oluşturmak için hesaplar sayfasını ziyaret edin
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Budgets Tab */}
+        <TabPanel value={selectedTab} index={5}>
           <Box sx={{ textAlign: 'center', py: 6 }}>
             <TrackChanges sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>

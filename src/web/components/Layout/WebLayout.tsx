@@ -42,7 +42,7 @@ import { gradients, animations } from '../../styles/theme';
 
 const drawerWidth = 280;
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'gold' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 interface WebLayoutProps {
   children: React.ReactNode;
@@ -74,12 +74,6 @@ const menuItems = [
     icon: CreditCard,
     page: 'credit-cards' as PageType,
     color: '#ef4444'
-  },
-  {
-    text: 'Altın',
-    icon: Diamond,
-    page: 'gold' as PageType,
-    color: '#fbbf24'
   },
   {
     text: 'Tekrarlayan',

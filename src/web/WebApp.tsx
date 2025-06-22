@@ -13,12 +13,11 @@ import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import CategoryManagement from './pages/CategoryManagement';
 import HelpSupport from './pages/HelpSupport';
-const CreditCardsPage = () => <div>Kredi Kartları Sayfası</div>;
-const GoldPage = () => <div>Altın Sayfası</div>;
+import CreditCardsPage from './pages/CreditCards';
 const RecurringPage = () => <div>Tekrarlayan Ödemeler Sayfası</div>;
 const AddTransactionPage = () => <div>İşlem Ekle Sayfası</div>;
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'gold' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 const AppContent: React.FC = () => {
   const { currentUser } = useAuth();
@@ -28,7 +27,7 @@ const AppContent: React.FC = () => {
   React.useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(2); // Remove '#/'
-      if (hash && ['dashboard', 'accounts', 'transactions', 'credit-cards', 'gold', 'recurring', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'].includes(hash)) {
+      if (hash && ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'].includes(hash)) {
         setCurrentPage(hash as PageType);
       }
     };
@@ -49,8 +48,6 @@ const AppContent: React.FC = () => {
         return <TransactionsPage />;
       case 'credit-cards':
         return <CreditCardsPage />;
-      case 'gold':
-        return <GoldPage />;
       case 'recurring':
         return <RecurringPage />;
       case 'reports':
