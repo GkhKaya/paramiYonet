@@ -42,7 +42,7 @@ import { gradients, animations } from '../../styles/theme';
 
 const drawerWidth = 280;
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 interface WebLayoutProps {
   children: React.ReactNode;
@@ -80,6 +80,12 @@ const menuItems = [
     icon: Repeat,
     page: 'recurring' as PageType,
     color: '#8b5cf6'
+  },
+  {
+    text: 'Borçlar',
+    icon: TrendingUp,
+    page: 'debts' as PageType,
+    color: '#f97316'
   },
   {
     text: 'Raporlar',

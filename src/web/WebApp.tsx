@@ -17,11 +17,13 @@ import HelpSupport from './pages/HelpSupport';
 import CreditCardsPage from './pages/CreditCards';
 import AddTransaction from './pages/AddTransaction';
 import RecurringPayments from './pages/RecurringPayments';
+import Debts from './pages/Debts';
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 const AppContent: React.FC = () => {
-  const { currentUser } = useAuth();
+  console.log('AppContent component rendering...');
+  const { currentUser, loading } = useAuth();
   const { setLoading } = useLoading();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [pageLoading, setPageLoading] = useState(false);
@@ -30,7 +32,7 @@ const AppContent: React.FC = () => {
   React.useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(2); // Remove '#/'
-      if (hash && ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'].includes(hash)) {
+      if (hash && ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'debts', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'].includes(hash)) {
         setPageLoading(true);
         setTimeout(() => {
           setCurrentPage(hash as PageType);
@@ -45,14 +47,14 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Initial app loading
+  // Initial app loading - sadece loading state true iken göster
   React.useEffect(() => {
-    if (!currentUser) {
-      setLoading(true, 'Giriş yapılıyor...');
+    if (loading) {
+      setLoading(true, 'Uygulama yükleniyor...');
     } else {
       setLoading(false);
     }
-  }, [currentUser, setLoading]);
+  }, [loading, setLoading]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -66,6 +68,8 @@ const AppContent: React.FC = () => {
         return <CreditCardsPage />;
       case 'recurring':
         return <RecurringPayments />;
+      case 'debts':
+        return <Debts />;
       case 'reports':
         return <Reports />;
       case 'settings':
@@ -87,7 +91,25 @@ const AppContent: React.FC = () => {
     }
   };
 
+  console.log('Auth state:', { currentUser: !!currentUser, loading });
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        backgroundColor: '#0f172a',
+        color: '#f8fafc'
+      }}>
+        Yükleniyor...
+      </div>
+    );
+  }
+
   if (!currentUser) {
+    console.log('No user, showing AuthPage');
     return <AuthPage />;
   }
 
@@ -102,6 +124,7 @@ const AppContent: React.FC = () => {
 };
 
 const WebApp: React.FC = () => {
+  console.log('WebApp component rendering...');
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />

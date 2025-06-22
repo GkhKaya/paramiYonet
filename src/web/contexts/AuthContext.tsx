@@ -11,7 +11,7 @@ import { auth } from '../../config/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -35,9 +35,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = async (email: string, password: string, rememberMe?: boolean): Promise<void> => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      
+      // Eğer "beni hatırla" seçildiyse bilgileri kaydet
+      if (rememberMe) {
+        localStorage.setItem('paramiyonet_remember_me', 'true');
+        localStorage.setItem('paramiyonet_saved_email', email);
+        localStorage.setItem('paramiyonet_saved_password', password);
+      } else {
+        // "Beni hatırla" seçilmediyse kayıtlı bilgileri temizle
+        localStorage.removeItem('paramiyonet_remember_me');
+        localStorage.removeItem('paramiyonet_saved_email');
+        localStorage.removeItem('paramiyonet_saved_password');
+      }
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -58,6 +70,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async (): Promise<void> => {
     try {
+      // Kayıtlı bilgileri temizle
+      localStorage.removeItem('paramiyonet_remember_me');
+      localStorage.removeItem('paramiyonet_saved_email');
+      localStorage.removeItem('paramiyonet_saved_password');
+      
       await signOut(auth);
     } catch (error) {
       console.error('Logout error:', error);
@@ -66,9 +83,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoading(false);
+    let isInitialLoad = true;
+    let isAutoLoginAttempted = false;
+    
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        setLoading(false);
+        isInitialLoad = false;
+      } else {
+        // Sadece ilk yüklemede ve daha önce denenmemişse auto-login dene
+        if (isInitialLoad && !isAutoLoginAttempted) {
+          isAutoLoginAttempted = true;
+          try {
+            const rememberMe = localStorage.getItem('paramiyonet_remember_me');
+            if (rememberMe === 'true') {
+              const email = localStorage.getItem('paramiyonet_saved_email');
+              const password = localStorage.getItem('paramiyonet_saved_password');
+              
+              if (email && password) {
+                console.log('Attempting auto-login...');
+                await signInWithEmailAndPassword(auth, email, password);
+                return; // onAuthStateChanged tekrar tetiklenecek
+              }
+            }
+          } catch (error) {
+            console.error('Auto-login failed:', error);
+            // Hatalı kayıtlı bilgileri temizle
+            localStorage.removeItem('paramiyonet_remember_me');
+            localStorage.removeItem('paramiyonet_saved_email');
+            localStorage.removeItem('paramiyonet_saved_password');
+          }
+        }
+        
+        setCurrentUser(null);
+        setLoading(false);
+        isInitialLoad = false;
+      }
     });
 
     return unsubscribe;
@@ -84,7 +135,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }; 
