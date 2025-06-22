@@ -9,6 +9,7 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
+  deleteUser,
   User as FirebaseUser
 } from 'firebase/auth';
 import { 
@@ -16,6 +17,12 @@ import {
   setDoc, 
   getDoc, 
   updateDoc,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  writeBatch,
   serverTimestamp 
 } from 'firebase/firestore';
 
@@ -102,6 +109,79 @@ class UserService {
 
   getCurrentUserId(): string | null {
     return auth.currentUser?.uid || null;
+  }
+
+  async deleteUserAccount(userId: string): Promise<void> {
+    try {
+      const batch = writeBatch(db);
+
+      // 1. Kullanıcının tüm işlemlerini sil
+      const transactionsQuery = query(
+        collection(db, 'transactions'),
+        where('userId', '==', userId)
+      );
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+      transactionsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 2. Kullanıcının hesaplarını sil
+      const accountsQuery = query(
+        collection(db, 'accounts'),
+        where('userId', '==', userId)
+      );
+      const accountsSnapshot = await getDocs(accountsQuery);
+      accountsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 3. Kullanıcının kategorilerini sil
+      const categoriesQuery = query(
+        collection(db, 'categories'),
+        where('userId', '==', userId)
+      );
+      const categoriesSnapshot = await getDocs(categoriesQuery);
+      categoriesSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 4. Kullanıcının bütçelerini sil
+      const budgetsQuery = query(
+        collection(db, 'budgets'),
+        where('userId', '==', userId)
+      );
+      const budgetsSnapshot = await getDocs(budgetsQuery);
+      budgetsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 5. Kullanıcının tekrarlayan ödemelerini sil
+      const recurringQuery = query(
+        collection(db, 'recurringPayments'),
+        where('userId', '==', userId)
+      );
+      const recurringSnapshot = await getDocs(recurringQuery);
+      recurringSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      // 6. Kullanıcı profilini sil
+      batch.delete(doc(db, COLLECTIONS.USERS, userId));
+
+      // Tüm Firestore verilerini sil
+      await batch.commit();
+
+      // 7. Firebase Auth hesabını sil
+      const currentUser = auth.currentUser;
+      if (currentUser && currentUser.uid === userId) {
+        await deleteUser(currentUser);
+      }
+
+      console.log('User account and all data deleted successfully');
+    } catch (error) {
+      console.error('Error deleting user account:', error);
+      throw error;
+    }
   }
 }
 

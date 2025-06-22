@@ -41,7 +41,7 @@ import { gradients, animations } from '../../styles/theme';
 
 const drawerWidth = 280;
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'gold' | 'recurring' | 'reports' | 'settings' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'gold' | 'recurring' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 interface WebLayoutProps {
   children: React.ReactNode;
@@ -332,8 +332,15 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
           flexGrow: 1,
           width: { md: `calc(100% - ${drawerWidth}px)` },
           height: '100vh',
-          overflow: 'hidden',
+          overflow: 'auto',
           background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          '&::-webkit-scrollbar': { width: '8px' },
+          '&::-webkit-scrollbar-track': { background: 'rgba(255, 255, 255, 0.05)' },
+          '&::-webkit-scrollbar-thumb': { 
+            background: 'rgba(255, 255, 255, 0.2)', 
+            borderRadius: '4px',
+            '&:hover': { background: 'rgba(255, 255, 255, 0.3)' },
+          },
         }}
       >
         <Toolbar />

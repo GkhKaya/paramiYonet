@@ -483,9 +483,11 @@ export class SecurityService {
         throw new Error('Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı');
       } else if (error.code === 'auth/invalid-email') {
         throw new Error('Geçersiz e-posta adresi');
+      } else if (error.code === 'auth/too-many-requests') {
+        throw new Error('Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin.');
       }
       
-      throw error;
+      throw new Error(error.message || 'E-posta gönderilemedi');
     }
   }
 }
