@@ -43,10 +43,9 @@ import {
   Savings,
   AccountBalanceWallet,
   AttachMoney,
-  Analytics,
+    Analytics,
   Assessment,
   Timeline,
-  Wallet,
   Add,
   Edit,
   Delete,
@@ -640,8 +639,6 @@ const Reports: React.FC = () => {
         >
                       <Tab icon={<Assessment />} label="Özet" />
             <Tab icon={<Analytics />} label="Analizler" />
-            <Tab icon={<Timeline />} label="Eğilimler" />
-            <Tab icon={<Wallet />} label="Hesaplar" />
             <Tab icon={<CreditCard />} label="Kredi Kartları" />
             <Tab icon={<TrackChanges />} label="Bütçeler" />
         </Tabs>
@@ -1232,34 +1229,10 @@ const Reports: React.FC = () => {
            </Box>
         </TabPanel>
 
-        {/* Trends Tab */}
-        <TabPanel value={selectedTab} index={2}>
-          <Box sx={{ textAlign: 'center', py: 6 }}>
-            <Timeline sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Eğilimler
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Bu özellik yakında eklenecek
-            </Typography>
-          </Box>
-        </TabPanel>
 
-        {/* Accounts Tab */}
-        <TabPanel value={selectedTab} index={3}>
-          <Box sx={{ textAlign: 'center', py: 6 }}>
-            <Wallet sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              Hesap Raporları
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Bu özellik yakında eklenecek
-            </Typography>
-          </Box>
-        </TabPanel>
 
         {/* Credit Cards Tab */}
-        <TabPanel value={selectedTab} index={4}>
+        <TabPanel value={selectedTab} index={2}>
           <Box>
             {/* Credit Cards Summary */}
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 3, mb: 4 }}>
@@ -1527,7 +1500,7 @@ const Reports: React.FC = () => {
         </TabPanel>
 
         {/* Budgets Tab */}
-        <TabPanel value={selectedTab} index={5}>
+        <TabPanel value={selectedTab} index={3}>
           <Box sx={{ textAlign: 'center', py: 6 }}>
             <TrackChanges sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
