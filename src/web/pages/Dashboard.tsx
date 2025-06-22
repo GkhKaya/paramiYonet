@@ -29,6 +29,7 @@ import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { gradients, animations } from '../styles/theme';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 import { TransactionService } from '../../services/TransactionService';
 import { AccountService } from '../../services/AccountService';
 import { Transaction, TransactionType } from '../../models/Transaction';
@@ -137,6 +138,7 @@ const calculateCategoryData = (transactions: Transaction[]): CategoryDataItem[] 
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
+  const { setLoading: setGlobalLoading } = useLoading();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
@@ -151,6 +153,7 @@ const Dashboard: React.FC = () => {
       if (!currentUser) return;
       
       setLoading(true);
+      setGlobalLoading(true, 'Dashboard verileri yükleniyor...');
       try {
         // Load accounts
         const accountsData = await AccountService.getUserAccounts(currentUser.uid);
@@ -325,6 +328,7 @@ const Dashboard: React.FC = () => {
         setMonthlyChange(12.5); // Mock değer
       } finally {
         setLoading(false);
+        setGlobalLoading(false);
       }
     };
 

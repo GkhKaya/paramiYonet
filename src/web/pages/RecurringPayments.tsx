@@ -35,6 +35,7 @@ import {
 import { motion } from 'framer-motion';
 import { gradients, animations } from '../styles/theme';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 import { RecurringPayment } from '../../models/RecurringPayment';
 import { Account } from '../../models/Account';
 import { RecurringPaymentService } from '../../services/RecurringPaymentService';
@@ -52,6 +53,7 @@ interface PaymentSummary {
 
 const RecurringPayments: React.FC = () => {
   const { currentUser } = useAuth();
+  const { setLoading: setGlobalLoading } = useLoading();
   const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +85,7 @@ const RecurringPayments: React.FC = () => {
     if (!currentUser) return;
     
     setLoading(true);
+    setGlobalLoading(true, 'Düzenli ödemeler yükleniyor...');
     try {
       const [paymentsData, accountsData] = await Promise.all([
         RecurringPaymentService.getRecurringPayments(currentUser.uid),
@@ -96,6 +99,7 @@ const RecurringPayments: React.FC = () => {
       showSnackbar('Veriler yüklenirken hata oluştu');
     } finally {
       setLoading(false);
+      setGlobalLoading(false);
     }
   };
 
@@ -127,6 +131,8 @@ const RecurringPayments: React.FC = () => {
   const handleCreateSubmit = async () => {
     if (!currentUser) return;
 
+    setGlobalLoading(true, 'Düzenli ödeme oluşturuluyor...');
+    
     // Validation
     if (!formData.name.trim()) {
       showSnackbar('Lütfen ödeme adını girin');
@@ -175,6 +181,8 @@ const RecurringPayments: React.FC = () => {
       await loadData();
     } catch (error) {
       showSnackbar('Ödeme oluşturulurken hata oluştu');
+    } finally {
+      setGlobalLoading(false);
     }
   };
 

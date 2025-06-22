@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { darkTheme } from './styles/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LoadingProvider, useLoading, LoadingBar } from './contexts/LoadingContext';
 import WebLayout from './components/Layout/WebLayout';
 import Dashboard from './pages/Dashboard';
 import TransactionsPage from './pages/Transactions';
@@ -21,14 +22,20 @@ type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 're
 
 const AppContent: React.FC = () => {
   const { currentUser } = useAuth();
+  const { setLoading } = useLoading();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+  const [pageLoading, setPageLoading] = useState(false);
 
-  // Hash-based navigation
+  // Hash-based navigation with loading
   React.useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(2); // Remove '#/'
       if (hash && ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'].includes(hash)) {
-        setCurrentPage(hash as PageType);
+        setPageLoading(true);
+        setTimeout(() => {
+          setCurrentPage(hash as PageType);
+          setPageLoading(false);
+        }, 300); // Small delay for smooth transition
       }
     };
 
@@ -37,6 +44,15 @@ const AppContent: React.FC = () => {
 
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  // Initial app loading
+  React.useEffect(() => {
+    if (!currentUser) {
+      setLoading(true, 'Giriş yapılıyor...');
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser, setLoading]);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -76,9 +92,12 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <WebLayout currentPage={currentPage} onNavigate={setCurrentPage}>
-      {renderPage()}
-    </WebLayout>
+    <>
+      <LoadingBar show={pageLoading} />
+      <WebLayout currentPage={currentPage} onNavigate={setCurrentPage}>
+        {renderPage()}
+      </WebLayout>
+    </>
   );
 };
 
@@ -87,7 +106,9 @@ const WebApp: React.FC = () => {
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <AuthProvider>
-        <AppContent />
+        <LoadingProvider>
+          <AppContent />
+        </LoadingProvider>
       </AuthProvider>
     </ThemeProvider>
   );

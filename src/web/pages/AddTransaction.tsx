@@ -44,6 +44,7 @@ import {
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { useLoading } from '../contexts/LoadingContext';
 import { AccountService } from '../../services/AccountService';
 import { TransactionService } from '../../services/TransactionService';
 import { CategoryService } from '../../services/CategoryService';
@@ -70,6 +71,7 @@ const quickAmounts = [
 
 const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType }) => {
   const { currentUser } = useAuth();
+  const { setLoading: setGlobalLoading } = useLoading();
   const theme = useTheme();
   
   // States
@@ -272,6 +274,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
     }
 
     setLoading(true);
+    setGlobalLoading(true, 'İşlem kaydediliyor...');
 
     try {
       const categoryDetails = categories.find(cat => cat.name === selectedCategory);
@@ -302,6 +305,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
       showSnackbar('İşlem kaydedilemedi', 'error');
     } finally {
       setLoading(false);
+      setGlobalLoading(false);
     }
   };
 
