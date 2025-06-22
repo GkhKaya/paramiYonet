@@ -28,23 +28,62 @@ const AppContent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [pageLoading, setPageLoading] = useState(false);
 
-  // Hash-based navigation with loading
+  // Navigation function that updates both state and browser history
+  const navigateToPage = (page: PageType) => {
+    if (page !== currentPage) {
+      // Browser history'ye ekle
+      window.history.pushState({ page }, '', `#/${page}`);
+      setPageLoading(true);
+      setTimeout(() => {
+        setCurrentPage(page);
+        setPageLoading(false);
+      }, 300);
+    }
+  };
+
+  // Hash-based navigation with browser history support
   React.useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(2); // Remove '#/'
-      if (hash && ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'debts', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'].includes(hash)) {
-        setPageLoading(true);
-        setTimeout(() => {
-          setCurrentPage(hash as PageType);
-          setPageLoading(false);
-        }, 300); // Small delay for smooth transition
+      const validPages = ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'debts', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'];
+      
+      if (hash && validPages.includes(hash)) {
+        const newPage = hash as PageType;
+        if (newPage !== currentPage) {
+          setPageLoading(true);
+          setTimeout(() => {
+            setCurrentPage(newPage);
+            setPageLoading(false);
+          }, 300); // Small delay for smooth transition
+        }
+      } else {
+        // Eğer hash yoksa veya geçersizse dashboard'a yönlendir
+        if (currentPage !== 'dashboard') {
+          window.history.replaceState({ page: 'dashboard' }, '', '#/dashboard');
+          setCurrentPage('dashboard');
+        }
       }
     };
 
+    // Browser geri/ileri butonları için popstate event'i dinle
+    const handlePopState = () => {
+      handleHashChange();
+    };
+
     window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
+    
+    // Initial hash check - eğer hash yoksa dashboard'a yönlendir
+    const initialHash = window.location.hash.slice(2);
+    if (!initialHash) {
+      window.history.replaceState({ page: 'dashboard' }, '', '#/dashboard');
+    }
     handleHashChange(); // Check initial hash
 
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // Initial app loading - sadece loading state true iken göster
@@ -63,7 +102,7 @@ const AppContent: React.FC = () => {
       case 'accounts':
         return <AccountsPage />;
       case 'transactions':
-        return <TransactionsPage onNavigate={setCurrentPage} />;
+        return <TransactionsPage onNavigate={navigateToPage} />;
       case 'credit-cards':
         return <CreditCardsPage />;
       case 'recurring':
@@ -74,18 +113,18 @@ const AppContent: React.FC = () => {
         return <Reports />;
       case 'settings':
         return <Settings 
-          onNavigateToProfile={() => setCurrentPage('profile')} 
-          onNavigateToCategories={() => setCurrentPage('categories')}
-          onNavigateToHelp={() => setCurrentPage('help')} 
+          onNavigateToProfile={() => navigateToPage('profile')} 
+          onNavigateToCategories={() => navigateToPage('categories')}
+          onNavigateToHelp={() => navigateToPage('help')} 
         />;
       case 'profile':
-        return <Profile onNavigateBack={() => setCurrentPage('settings')} />;
+        return <Profile onNavigateBack={() => navigateToPage('settings')} />;
       case 'categories':
         return <CategoryManagement />;
       case 'help':
         return <HelpSupport />;
       case 'add-transaction':
-        return <AddTransaction onClose={() => setCurrentPage('dashboard')} />;
+        return <AddTransaction onClose={() => navigateToPage('dashboard')} />;
       default:
         return <Dashboard />;
     }
@@ -116,7 +155,7 @@ const AppContent: React.FC = () => {
   return (
     <>
       <LoadingBar show={pageLoading} />
-      <WebLayout currentPage={currentPage} onNavigate={setCurrentPage}>
+      <WebLayout currentPage={currentPage} onNavigate={navigateToPage}>
         {renderPage()}
       </WebLayout>
     </>
