@@ -8,10 +8,10 @@ import Dashboard from './pages/Dashboard';
 import TransactionsPage from './pages/Transactions';
 import AccountsPage from './pages/Accounts';
 import AuthPage from './pages/AuthPage';
+import Reports from './pages/Reports';
 const CreditCardsPage = () => <div>Kredi Kartları Sayfası</div>;
 const GoldPage = () => <div>Altın Sayfası</div>;
 const RecurringPage = () => <div>Tekrarlayan Ödemeler Sayfası</div>;
-const ReportsPage = () => <div>Raporlar Sayfası</div>;
 const SettingsPage = () => <div>Ayarlar Sayfası</div>;
 const AddTransactionPage = () => <div>İşlem Ekle Sayfası</div>;
 
@@ -36,7 +36,7 @@ const AppContent: React.FC = () => {
       case 'recurring':
         return <RecurringPage />;
       case 'reports':
-        return <ReportsPage />;
+        return <Reports />;
       case 'settings':
         return <SettingsPage />;
       case 'add-transaction':
