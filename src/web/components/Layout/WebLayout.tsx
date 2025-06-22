@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Drawer, 
@@ -38,6 +38,7 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gradients, animations } from '../../styles/theme';
+
 
 const drawerWidth = 280;
 
@@ -107,6 +108,47 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [totalBalance, setTotalBalance] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  // Firebase'den toplam bakiye hesaplama
+  useEffect(() => {
+    const calculateTotalBalance = async () => {
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Firebase'den tüm işlemleri çek ve toplam bakiye hesapla  
+        const { db } = await import('../../../config/firebase');
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        
+        const transactionsRef = collection(db, 'transactions');
+        const q = query(transactionsRef, where('userId', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+        
+        let balance = 0;
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.type === 'income') {
+            balance += data.amount || 0;
+          } else if (data.type === 'expense') {
+            balance -= data.amount || 0;
+          }
+        });
+        
+        setTotalBalance(balance);
+      } catch (error) {
+        console.error('Error calculating total balance:', error);
+        setTotalBalance(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    calculateTotalBalance();
+  }, [currentUser]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -230,15 +272,26 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Typography variant="caption" color="text.secondary">
-            Bu Ay
+            Anlık Durum
           </Typography>
-          <Chip size="small" label="+12%" color="success" />
+          {loading ? (
+            <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: 'warning.main', animation: 'pulse 2s infinite' }} />
+          ) : (
+            <Chip 
+              size="small" 
+              label={totalBalance >= 0 ? "Pozitif" : "Negatif"} 
+              color={totalBalance >= 0 ? "success" : "error"} 
+            />
+          )}
         </Box>
-        <Typography variant="h6" sx={{ fontWeight: 700, color: 'success.main' }}>
-          ₺25,430
+        <Typography variant="h6" sx={{ 
+          fontWeight: 700, 
+          color: loading ? 'text.secondary' : (totalBalance >= 0 ? 'success.main' : 'error.main')
+        }}>
+          {loading ? '₺ - - -' : `₺${totalBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          Toplam Bakiye
+          Toplam Bakiye (Gelir - Gider)
         </Typography>
       </Box>
     </Box>
