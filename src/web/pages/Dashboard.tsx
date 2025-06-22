@@ -89,8 +89,10 @@ const Dashboard: React.FC = () => {
         const accountsData = await AccountService.getUserAccounts(currentUser.uid);
         setAccounts(accountsData);
 
-        // Calculate total balance
-        const total = accountsData.reduce((sum, account) => sum + account.balance, 0);
+        // Calculate total balance (only include accounts that are marked to be included)
+        const total = accountsData
+          .filter(account => account.includeInTotalBalance)
+          .reduce((sum, account) => sum + account.balance, 0);
         setTotalBalance(total);
 
         // Load recent transactions
@@ -172,7 +174,9 @@ const Dashboard: React.FC = () => {
         ];
 
         setAccounts(mockAccounts);
-        setTotalBalance(mockAccounts.reduce((sum, account) => sum + account.balance, 0));
+        setTotalBalance(mockAccounts
+          .filter(account => account.includeInTotalBalance)
+          .reduce((sum, account) => sum + account.balance, 0));
         setTransactions(mockTransactions);
       } finally {
         setLoading(false);
@@ -307,7 +311,7 @@ const Dashboard: React.FC = () => {
 
           {/* Account Cards Row */}
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, flexWrap: 'wrap' }}>
-            {accounts.map((account, index) => (
+            {accounts.filter(account => account.includeInTotalBalance).map((account, index) => (
               <Box key={account.name} sx={{ flex: { sm: '1 1 calc(50% - 8px)' }, minWidth: 250 }}>
                 <motion.div
                   {...animations.slideIn}
