@@ -245,6 +245,29 @@ export class AccountService {
     }
   }
 
+  static async updateBalance(accountId: string, balanceChange: number): Promise<void> {
+    try {
+      // Get current account
+      const accountRef = doc(db, AccountService.COLLECTION_NAME, accountId);
+      const accountDoc = await getDoc(accountRef);
+      
+      if (!accountDoc.exists()) {
+        throw new Error('Hesap bulunamadı');
+      }
+
+      const currentBalance = accountDoc.data().balance || 0;
+      const newBalance = currentBalance + balanceChange;
+
+      await updateDoc(accountRef, {
+        balance: newBalance,
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+    } catch (error) {
+      console.error('Error updating balance:', error);
+      throw new Error('Hesap bakiyesi güncellenemedi');
+    }
+  }
+
   static async deactivateAccount(id: string): Promise<void> {
     try {
       await AccountService.updateAccount(id, { isActive: false });

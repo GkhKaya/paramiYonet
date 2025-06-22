@@ -254,6 +254,15 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
     }
   }, [accountViewModel]);
 
+
+
+  /**
+   * Borçlar sayfasına yönlendirir
+   */
+  const navigateToDebts = useCallback(() => {
+    parentNavigation.navigate('Debts');
+  }, [parentNavigation]);
+
   // Quick Actions Configuration - Hızlı eylem butonları konfigürasyonu
   const quickActions = createCommonQuickActions(
     () => navigateToAddTransaction(TransactionType.INCOME),   // onAddIncome
@@ -264,7 +273,9 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
     undefined,
     navigateToAnalytics,
     navigateToCreditCardTransaction,  // Kredi kartı harcama
-    navigateToCreditCardPayment       // Kredi kartı ödeme
+    navigateToCreditCardPayment,      // Kredi kartı ödeme
+    undefined,                        // Borç ekleme kaldırıldı
+    navigateToDebts                   // Borçlar listesi
   );
 
   // Content component for both web and mobile

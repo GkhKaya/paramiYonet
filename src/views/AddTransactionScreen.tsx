@@ -25,6 +25,7 @@ import { Account, AccountType } from '../models/Account';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { useCurrency, useCategory, useDate } from '../hooks';
+import { RecurringPaymentService } from '../services/RecurringPaymentService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,6 +55,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const [loading, setLoading] = useState(false);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
   // Hooks
   const { formatCurrency, currencySymbol } = useCurrency();
@@ -182,16 +185,62 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       date: selectedDate,
     };
 
-    const success = await transactionViewModel.addTransaction(transactionData);
+    let success = false;
+
+    if (isRecurring) {
+      // Düzenli ödeme oluştur
+      try {
+        // Önce ilk transaction'ı oluştur
+        const firstTransactionSuccess = await transactionViewModel.addTransaction(transactionData);
+        
+        if (firstTransactionSuccess) {
+          // Sonraki ödeme tarihini hesapla
+          const nextPaymentDate = RecurringPaymentService.calculateNextPaymentDate(selectedDate, recurringFrequency);
+          
+          const recurringPaymentData = {
+            userId: user.id,
+            name: description || selectedCategory,
+            description: description,
+            amount: numericAmount,
+            category: selectedCategory,
+            categoryIcon: categoryDetails?.icon || 'help-circle-outline',
+            accountId: selectedCard.id,
+            frequency: recurringFrequency,
+            startDate: selectedDate,
+            nextPaymentDate: nextPaymentDate, // Sonraki ödeme tarihi
+            lastPaymentDate: selectedDate, // İlk ödeme yapıldı
+            isActive: true,
+            autoCreateTransaction: true,
+            reminderDays: 3,
+            totalPaid: numericAmount, // İlk ödeme yapıldı
+            paymentCount: 1, // İlk ödeme sayıldı
+            createdAt: new Date(),
+          };
+
+          await RecurringPaymentService.createRecurringPayment(recurringPaymentData);
+          success = true;
+        } else {
+          success = false;
+        }
+      } catch (error) {
+        console.error('Error creating recurring payment:', error);
+        success = false;
+      }
+    } else {
+      // Normal işlem oluştur
+      success = await transactionViewModel.addTransaction(transactionData);
+    }
     
     setLoading(false);
 
     if (success) {
-      Alert.alert('Başarılı', 'İşlem kaydedildi', [
+      const message = isRecurring ? 'Düzenli ödeme oluşturuldu' : 'İşlem kaydedildi';
+      Alert.alert('Başarılı', message, [
         { text: 'Tamam', onPress: () => navigation.goBack() }
       ]);
     } else {
-      Alert.alert('Hata', 'İşlem kaydedilemedi');
+      const message = isRecurring ? 'Düzenli ödeme oluşturulamadı' : 'İşlem kaydedilemedi';
+      Alert.alert('Hata', message);
     }
   };
 
@@ -368,6 +417,52 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             </Text>
             <Ionicons name="chevron-down" size={16} color="#888888" />
           </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Düzenli Ödeme Seçeneği */}
+      <View style={styles.recurringSection}>
+        <TouchableOpacity 
+          style={styles.recurringToggle}
+          onPress={() => setIsRecurring(!isRecurring)}
+        >
+          <View style={styles.recurringToggleLeft}>
+            <Ionicons name="repeat-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.recurringToggleText}>Düzenli Ödeme</Text>
+          </View>
+          <View style={[styles.toggleSwitch, isRecurring && styles.toggleSwitchActive]}>
+            <View style={[styles.toggleButton, isRecurring && styles.toggleButtonActive]} />
+          </View>
+        </TouchableOpacity>
+
+        {isRecurring && (
+          <View style={styles.frequencySelector}>
+            <Text style={styles.frequencyLabel}>Sıklık:</Text>
+            <View style={styles.frequencyButtons}>
+              {[
+                { value: 'daily', label: 'Günlük' },
+                { value: 'weekly', label: 'Haftalık' },
+                { value: 'monthly', label: 'Aylık' },
+                { value: 'yearly', label: 'Yıllık' }
+              ].map((freq) => (
+                <TouchableOpacity
+                  key={freq.value}
+                  style={[
+                    styles.frequencyButton,
+                    recurringFrequency === freq.value && styles.frequencyButtonActive
+                  ]}
+                  onPress={() => setRecurringFrequency(freq.value as any)}
+                >
+                  <Text style={[
+                    styles.frequencyButtonText,
+                    recurringFrequency === freq.value && styles.frequencyButtonTextActive
+                  ]}>
+                    {freq.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         )}
       </View>
 
@@ -1035,6 +1130,93 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  // Recurring Payment Styles
+  recurringSection: {
+    marginBottom: 15,
+  },
+  recurringToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  recurringToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recurringToggleText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    backgroundColor: '#333333',
+    borderRadius: 14,
+    padding: 2,
+    justifyContent: 'center',
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#4CAF50',
+  },
+  toggleButton: {
+    width: 24,
+    height: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  toggleButtonActive: {
+    alignSelf: 'flex-end',
+  },
+  frequencySelector: {
+    backgroundColor: '#1A1A1A',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2A2A2A',
+    padding: 15,
+  },
+  frequencyLabel: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  frequencyButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  frequencyButton: {
+    flex: 1,
+    backgroundColor: '#2A2A2A',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  frequencyButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  frequencyButtonText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  frequencyButtonTextActive: {
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 });

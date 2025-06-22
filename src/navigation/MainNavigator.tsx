@@ -28,6 +28,9 @@ import AnalyticsScreen from '../views/AnalyticsScreen';
 import CreditCardTransactionScreen from '../views/CreditCardTransactionScreen';
 import CreditCardPaymentScreen from '../views/CreditCardPaymentScreen';
 import ReportsCreditCardPaymentScreen from '../views/ReportsCreditCardPaymentScreen';
+import DebtsScreen from '../views/DebtsScreen';
+import AddDebtScreen from '../views/AddDebtScreen';
+import DebtDetailScreen from '../views/DebtDetailScreen';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -514,6 +517,85 @@ const MainNavigator: React.FC = () => {
                   duration: 150,
                 },
               },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="Debts" 
+          component={DebtsScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="AddDebt" 
+          component={AddDebtScreen}
+          options={{
+            presentation: 'modal',
+            animationTypeForReplace: 'push',
+            cardStyleInterpolator: ({ current }) => ({
+              cardStyle: {
+                opacity: current.progress,
+              },
+            }),
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 200,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 150,
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="DebtDetail" 
+          component={DebtDetailScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
             },
           }}
         />

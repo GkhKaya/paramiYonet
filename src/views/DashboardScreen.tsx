@@ -28,6 +28,7 @@ import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import { isWeb, getResponsiveColumns } from '../utils/platform';
 import { useCurrency, useCategory, useDate } from '../hooks';
+import { RecurringPaymentService } from '../services/RecurringPaymentService';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -193,6 +194,24 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
         }
       ]
     );
+  };
+
+  // Test function for recurring payments
+  const handleProcessRecurringPayments = async () => {
+    if (!user) return;
+    
+    setRefreshing(true);
+    try {
+      await RecurringPaymentService.processRecurringPayments(user.id);
+      Alert.alert('Başarılı', 'Düzenli ödemeler işlendi');
+      // Refresh data to show new transactions
+      await onRefresh();
+    } catch (error) {
+      console.error('Error processing recurring payments:', error);
+      Alert.alert('Hata', 'Düzenli ödemeler işlenirken hata oluştu');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Web-specific responsive grid layout
@@ -560,13 +579,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Dashboard</Text>
-          <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-            <Ionicons 
-              name={refreshing ? "refresh" : "refresh-outline"} 
-              size={24} 
-              color={COLORS.PRIMARY} 
-            />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.refreshButton} onPress={handleProcessRecurringPayments}>
+              <Ionicons 
+                name="repeat-outline" 
+                size={20} 
+                color={COLORS.SUCCESS} 
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
+              <Ionicons 
+                name={refreshing ? "refresh" : "refresh-outline"} 
+                size={24} 
+                color={COLORS.PRIMARY} 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -622,6 +650,10 @@ const styles = StyleSheet.create({
     fontSize: isSmallDevice ? TYPOGRAPHY.sizes.md : TYPOGRAPHY.sizes.lg,
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   refreshButton: {
     padding: SPACING.xs,

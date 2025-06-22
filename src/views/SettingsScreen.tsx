@@ -274,6 +274,20 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               }
             }}
           />
+          <SettingItem
+            icon="people"
+            title="Borç Yönetimi"
+            subtitle="Verilen ve alınan borçları takip et"
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                navigation.navigate('Debts', undefined, {
+                  animation: 'none'
+                });
+              } else {
+                navigation.navigate('Debts');
+              }
+            }}
+          />
         </View>
       </View>
 

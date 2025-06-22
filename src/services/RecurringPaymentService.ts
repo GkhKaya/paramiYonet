@@ -15,6 +15,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { RecurringPayment } from '../models/RecurringPayment';
+import { TransactionService } from './TransactionService';
+import { TransactionType } from '../models/Transaction';
 
 export class RecurringPaymentService {
   private static readonly COLLECTION_NAME = 'recurringPayments';
@@ -282,5 +284,91 @@ export class RecurringPaymentService {
     );
 
     return unsubscribe;
+  }
+
+  // Process all due recurring payments for a user
+  static async processRecurringPayments(userId: string): Promise<void> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      const q = query(
+        collection(db, this.COLLECTION_NAME),
+        where('userId', '==', userId),
+        where('isActive', '==', true),
+        where('autoCreateTransaction', '==', true)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const duePayments: RecurringPayment[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const nextPaymentDate = data.nextPaymentDate.toDate();
+        nextPaymentDate.setHours(0, 0, 0, 0);
+        
+        // Check if payment is due (nextPaymentDate <= today)
+        if (nextPaymentDate <= today) {
+          duePayments.push({
+            id: doc.id,
+            userId: data.userId,
+            name: data.name,
+            description: data.description,
+            amount: data.amount,
+            category: data.category,
+            categoryIcon: data.categoryIcon,
+            accountId: data.accountId,
+            frequency: data.frequency,
+            startDate: data.startDate.toDate(),
+            endDate: data.endDate?.toDate() || undefined,
+            nextPaymentDate: data.nextPaymentDate.toDate(),
+            lastPaymentDate: data.lastPaymentDate?.toDate() || undefined,
+            isActive: data.isActive,
+            autoCreateTransaction: data.autoCreateTransaction,
+            reminderDays: data.reminderDays,
+            totalPaid: data.totalPaid,
+            paymentCount: data.paymentCount,
+            createdAt: data.createdAt.toDate(),
+            updatedAt: data.updatedAt?.toDate() || data.createdAt.toDate(),
+          });
+        }
+      });
+
+      // Process each due payment
+      for (const payment of duePayments) {
+        try {
+          // Create transaction
+          const transactionData = {
+            userId: payment.userId,
+            amount: payment.amount,
+            description: payment.description || payment.name,
+            type: payment.amount > 0 ? TransactionType.INCOME : TransactionType.EXPENSE,
+            category: payment.category,
+            categoryIcon: payment.categoryIcon || 'help-circle-outline',
+            accountId: payment.accountId,
+            date: payment.nextPaymentDate,
+          };
+
+          await TransactionService.createTransaction(transactionData);
+
+          // Update recurring payment
+          const newNextPayment = this.calculateNextPaymentDate(payment.nextPaymentDate, payment.frequency);
+          
+          await this.updateRecurringPayment(payment.id, {
+            lastPaymentDate: payment.nextPaymentDate,
+            nextPaymentDate: newNextPayment,
+            totalPaid: payment.totalPaid + payment.amount,
+            paymentCount: payment.paymentCount + 1,
+          });
+
+          console.log(`Processed recurring payment: ${payment.name}`);
+        } catch (error) {
+          console.error(`Error processing recurring payment ${payment.name}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error processing recurring payments:', error);
+      throw error;
+    }
   }
 } 

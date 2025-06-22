@@ -13,6 +13,7 @@ import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { User } from '../models/User';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validation';
+import { RecurringPaymentService } from '../services/RecurringPaymentService';
 
 interface AuthContextType {
   user: User | null;
@@ -97,6 +98,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return () => unsubscribe();
   }, [isInitialLoad]);
+
+  // Kullanıcı giriş yaptığında düzenli ödemeleri kontrol et
+  useEffect(() => {
+    if (user && !loading) {
+      // Düzenli ödemeleri arka planda işle
+      RecurringPaymentService.processRecurringPayments(user.id)
+        .then(() => {
+          console.log('Recurring payments processed successfully');
+        })
+        .catch((error) => {
+          console.error('Error processing recurring payments:', error);
+        });
+    }
+  }, [user, loading]);
 
   const signIn = async (email: string, password: string, rememberMe?: boolean): Promise<boolean> => {
     try {

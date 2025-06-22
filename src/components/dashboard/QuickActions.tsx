@@ -117,61 +117,79 @@ export const createCommonQuickActions = (
   onRecalculateBalances?: () => void,
   onViewAnalytics?: () => void,
   onCreditCardTransaction?: () => void,
-  onCreditCardPayment?: () => void
+  onCreditCardPayment?: () => void,
+  onAddDebt?: () => void,
+  onViewDebts?: () => void
 ): QuickAction[] => {
   const commonActions: QuickAction[] = [
+    // En çok kullanılan: Günlük giderler
     {
       icon: 'remove-circle',
       title: 'Gider Ekle',
       color: '#F44336',
       onPress: onAddExpense,
     },
+    // İkinci en çok: Gelir ekleme
     {
       icon: 'add-circle',
       title: 'Gelir Ekle',
       color: '#4CAF50',
       onPress: onAddIncome,
     },
-    {
-      icon: 'wallet',
-      title: 'Yeni Hesap',
-      color: '#2196F3',
-      onPress: onAddAccount,
-    },
-    {
-      icon: 'bar-chart',
-      title: 'Raporlar',
-      color: '#9C27B0',
-      onPress: onViewReports,
-    },
+    // Üçüncü: İşlemleri görme
     {
       icon: 'list',
       title: 'İşlemler',
       color: '#FF9800',
       onPress: onViewTransactions,
     },
+    // Dördüncü: Raporları inceleme
+    {
+      icon: 'bar-chart',
+      title: 'Raporlar',
+      color: '#9C27B0',
+      onPress: onViewReports,
+    },
+    // Beşinci: Yeni hesap (daha az sıklıkta)
+    {
+      icon: 'wallet',
+      title: 'Yeni Hesap',
+      color: '#2196F3',
+      onPress: onAddAccount,
+    },
   ];
 
-  // Kredi kartı butonları
+  // Altıncı: Kredi kartı harcama (sık kullanılan)
   if (onCreditCardTransaction) {
     commonActions.push({
       icon: 'card',
-      title: 'Kredi Kartı Harcama',
+      title: 'K.Kartı Harcama',
       color: '#E91E63',
       onPress: onCreditCardTransaction,
     });
   }
 
+  // Yedinci: Kredi kartı ödeme (aylık)
   if (onCreditCardPayment) {
     commonActions.push({
       icon: 'cash',
-      title: 'Kredi Kartı Ödeme',
+      title: 'K.Kartı Ödeme',
       color: '#00BCD4',
       onPress: onCreditCardPayment,
     });
   }
 
-  // Analytics butonu
+  // Sekizinci: Borçları görme
+  if (onViewDebts) {
+    commonActions.push({
+      icon: 'person-circle',
+      title: 'Borçlar',
+      color: '#3F51B5',
+      onPress: onViewDebts,
+    });
+  }
+
+  // Onuncu: Analytics (periyodik bakış)
   if (onViewAnalytics) {
     commonActions.push({
       icon: 'analytics',
@@ -181,7 +199,7 @@ export const createCommonQuickActions = (
     });
   }
 
-  // Debug/geliştirme amaçlı bakiye hesaplama butonu (isteğe bağlı)
+  // Son: Debug/geliştirme amaçlı (sadece gerektiğinde)
   if (onRecalculateBalances) {
     commonActions.push({
       icon: 'calculator',

@@ -30,6 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { useCurrency, useCategory, useDate } from '../hooks';
 
+
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
 const isSmallDevice = width < 375;
@@ -44,6 +45,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
+
   const [editForm, setEditForm] = useState({
     amount: '',
     description: '',
@@ -67,6 +69,8 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   const getCategoryDetails = (categoryName: string, type: TransactionType) => {
     return getDetails(categoryName, type);
   };
+
+
 
   const handleTransactionPress = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -203,6 +207,8 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
       </TouchableOpacity>
     );
   };
+
+
 
   const MonthSelector = () => (
     <View style={styles.monthSelector}>
@@ -1046,6 +1052,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
+
 
 });
 

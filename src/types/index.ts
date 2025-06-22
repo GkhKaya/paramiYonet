@@ -85,6 +85,9 @@ export type MainStackParamList = {
   CreditCardTransaction: { selectedCreditCard?: Account } | undefined;
   CreditCardPayment: { creditCard: Account };
   ReportsCreditCardPayment: { creditCard: Account };
+  Debts: undefined;
+  AddDebt: undefined;
+  DebtDetail: { debtId: string };
 };
 
 export type MainTabParamList = {
