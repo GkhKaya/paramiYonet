@@ -4,6 +4,7 @@ import { CssBaseline } from '@mui/material';
 import { darkTheme } from './styles/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoadingProvider, useLoading, LoadingBar } from './contexts/LoadingContext';
+import { ErrorProvider } from '../contexts/ErrorContext';
 import WebLayout from './components/Layout/WebLayout';
 import Dashboard from './pages/Dashboard';
 import TransactionsPage from './pages/Transactions';
@@ -167,11 +168,13 @@ const WebApp: React.FC = () => {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <AuthProvider>
-        <LoadingProvider>
-          <AppContent />
-        </LoadingProvider>
-      </AuthProvider>
+      <ErrorProvider>
+        <AuthProvider>
+          <LoadingProvider>
+            <AppContent />
+          </LoadingProvider>
+        </AuthProvider>
+      </ErrorProvider>
     </ThemeProvider>
   );
 };

@@ -8,8 +8,10 @@ import * as SystemUI from 'expo-system-ui';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ViewModelProvider } from './src/contexts/ViewModelContext';
+import { ErrorProvider } from './src/contexts/ErrorContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import WebApp from './src/web/WebApp';
+import ErrorNotification from './src/components/common/ErrorNotification';
 
 // Splash screen'i uygulama yüklenene kadar göster
 SplashScreen.preventAutoHideAsync();
@@ -61,14 +63,17 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-          <AuthProvider>
-            <ViewModelProvider>
-            <NavigationContainer>
-              <AppNavigator />
-              <StatusBar style="light" backgroundColor="#000000" />
-            </NavigationContainer>
-            </ViewModelProvider>
-          </AuthProvider>
+          <ErrorProvider>
+            <AuthProvider>
+              <ViewModelProvider>
+              <NavigationContainer>
+                <AppNavigator />
+                <StatusBar style="light" backgroundColor="#000000" />
+              </NavigationContainer>
+              </ViewModelProvider>
+            </AuthProvider>
+            <ErrorNotification />
+          </ErrorProvider>
         </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>

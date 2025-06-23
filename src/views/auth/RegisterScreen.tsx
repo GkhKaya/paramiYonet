@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
+import { useError } from '../../contexts/ErrorContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,7 +30,8 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
   onNavigateToLogin, 
   onRegisterSuccess 
 }) => {
-  const { signUp, loading } = useAuth();
+  const { signUp, loading, dataLoading } = useAuth();
+  const { showError } = useError();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,17 +57,17 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
 
   const handleRegister = async () => {
     if (!displayName || !email || !password || !confirmPassword) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      showError('Lütfen tüm alanları doldurun', 'warning', 'Eksik Bilgi');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor');
+      showError('Şifreler eşleşmiyor', 'error', 'Şifre Hatası');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
+      showError('Şifre en az 6 karakter olmalıdır', 'warning', 'Şifre Uzunluğu');
       return;
     }
 
@@ -205,10 +206,10 @@ const RegisterScreen: React.FC<RegisterScreenProps> = observer(({
                     !isFormValid && styles.signUpButtonDisabled
                   ]}
                   onPress={handleRegister}
-                  disabled={!isFormValid || loading}
+                  disabled={!isFormValid || dataLoading}
                 >
                   <Text style={styles.signUpButtonText}>
-                    {loading ? 'Hesap oluşturuluyor...' : 'Hesap oluştur'}
+                    {dataLoading ? 'Hesap oluşturuluyor...' : 'Hesap oluştur'}
                   </Text>
                 </TouchableOpacity>
 

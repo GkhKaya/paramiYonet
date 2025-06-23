@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   signInWithEmailAndPassword,
@@ -14,6 +14,7 @@ import { auth, db } from '../config/firebase';
 import { User } from '../models/User';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validation';
 import { RecurringPaymentService } from '../services/RecurringPaymentService';
+import { useError } from './ErrorContext';
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true); // İlk yükleme kontrolü
+  const { showAuthError, showError } = useError();
 
   useEffect(() => {
     // Firebase auth state değişikliklerini dinle
@@ -118,17 +120,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Email validation
       const emailValidation = validateEmail(email);
       if (!emailValidation.isValid) {
-        Alert.alert('Giriş Hatası', emailValidation.message);
+        showError(emailValidation.message || 'Geçersiz e-posta adresi', 'error', 'Giriş Hatası');
         return false;
       }
 
       // Password boş olup olmadığını kontrol et
       if (!password || password.trim().length === 0) {
-        Alert.alert('Giriş Hatası', 'Şifre gereklidir.');
+        showError('Şifre gereklidir.', 'error', 'Giriş Hatası');
         return false;
       }
 
-      setLoading(true);
+      // Loading'i sadece doğrulama sonrası set et
+      setDataLoading(true);
+      
       await signInWithEmailAndPassword(auth, email, password);
       
       // Eğer "beni hatırla" seçildiyse bilgileri kaydet
@@ -145,23 +149,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Sign in error:', error);
       
-      // Firebase hata mesajlarını Türkçe'ye çevir
-      let errorMessage = 'Giriş yapılamadı.';
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı.';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Şifre hatalı.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Geçersiz e-posta adresi.';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Çok fazla başarısız deneme. Lütfen daha sonra tekrar deneyin.';
-      }
-      
-      Alert.alert('Giriş Hatası', errorMessage);
+      // Use global error handler for auth errors
+      showAuthError(error.code || 'auth/unknown-error');
+      setDataLoading(false); // Error durumunda loading'i false yap
       return false;
-    } finally {
-      setLoading(false);
     }
+    // finally bloğunu kaldırıyoruz çünkü successful giriş durumunda onAuthStateChanged loading'i false yapacak
   };
 
   const signUp = async (email: string, password: string, displayName: string): Promise<boolean> => {
@@ -169,25 +162,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Email validation
       const emailValidation = validateEmail(email);
       if (!emailValidation.isValid) {
-        Alert.alert('Kayıt Hatası', emailValidation.message);
+        showError(emailValidation.message || 'Geçersiz e-posta adresi', 'error', 'Kayıt Hatası');
         return false;
       }
 
       // Password validation
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
-        Alert.alert('Kayıt Hatası', `Şifre kuralları:\n${passwordValidation.errors.join('\n')}`);
+        showError(`Şifre kuralları:\n${passwordValidation.errors.join('\n')}`, 'error', 'Kayıt Hatası');
         return false;
       }
 
       // Display name validation
       const displayNameValidation = validateDisplayName(displayName);
       if (!displayNameValidation.isValid) {
-        Alert.alert('Kayıt Hatası', displayNameValidation.message);
+        showError(displayNameValidation.message || 'Geçersiz kullanıcı adı', 'error', 'Kayıt Hatası');
         return false;
       }
 
-      setLoading(true);
+      setDataLoading(true);
       
       // Firebase'de kullanıcı oluştur
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -226,35 +219,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.error('Sign up error:', error);
       
-      // Firebase hata mesajlarını Türkçe'ye çevir
-      let errorMessage = 'Hesap oluşturulamadı.';
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'Bu e-posta adresi zaten kullanımda.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Geçersiz e-posta adresi.';
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'Şifre çok zayıf. En az 6 karakter olmalıdır.';
-      }
-      
-      Alert.alert('Kayıt Hatası', errorMessage);
+      // Use global error handler for auth errors
+      showAuthError(error.code || 'auth/unknown-error');
+      setDataLoading(false); // Error durumunda loading'i false yap
       return false;
-    } finally {
-      setLoading(false);
     }
+    // finally bloğunu kaldırıyoruz çünkü successful kayıt durumunda onAuthStateChanged loading'i false yapacak
   };
 
   const signOut = async (): Promise<void> => {
     try {
-      setLoading(true);
       await firebaseSignOut(auth);
       // Çıkış yaparken kaydedilmiş bilgileri temizle
       await clearSavedCredentials();
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
-    } finally {
-      setLoading(false);
     }
+    // onAuthStateChanged otomatik olarak user'ı null yapacak ve loading'i false yapacak
   };
 
   const getSavedCredentials = async (): Promise<{ email: string; password: string } | null> => {

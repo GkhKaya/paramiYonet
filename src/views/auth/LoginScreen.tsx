@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
+import { useError } from '../../contexts/ErrorContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,7 +30,8 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
   onNavigateToRegister, 
   onLoginSuccess 
 }) => {
-  const { signIn, loading, getSavedCredentials } = useAuth();
+  const { signIn, loading, dataLoading, getSavedCredentials } = useAuth();
+  const { showError } = useError();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -63,7 +64,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      showError('Lütfen tüm alanları doldurun', 'warning', 'Eksik Bilgi');
       return;
     }
 
@@ -171,10 +172,10 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                     (!email || !password) && styles.signInButtonDisabled
                   ]}
                   onPress={handleLogin}
-                  disabled={!email || !password || loading}
+                  disabled={!email || !password || dataLoading}
                 >
                   <Text style={styles.signInButtonText}>
-                    {loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
+                    {dataLoading ? 'Giriş yapılıyor...' : 'Giriş yap'}
                   </Text>
                 </TouchableOpacity>
 

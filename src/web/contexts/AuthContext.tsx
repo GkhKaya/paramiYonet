@@ -8,6 +8,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
+import { useError } from '../../contexts/ErrorContext';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -15,6 +16,7 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
+  loginLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,9 +36,12 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const { showAuthError } = useError();
 
   const login = async (email: string, password: string, rememberMe?: boolean): Promise<void> => {
     try {
+      setLoginLoading(true);
       await signInWithEmailAndPassword(auth, email, password);
       
       // Eğer "beni hatırla" seçildiyse bilgileri kaydet
@@ -50,10 +55,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('paramiyonet_saved_email');
         localStorage.removeItem('paramiyonet_saved_password');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      showAuthError(error.code || 'auth/unknown-error');
+      setLoginLoading(false);
       throw error;
     }
+    // Successful login durumunda onAuthStateChanged loginLoading'i false yapacak
   };
 
   const register = async (email: string, password: string, displayName: string): Promise<void> => {
@@ -62,8 +70,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (result.user) {
         await updateProfile(result.user, { displayName });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
+      showAuthError(error.code || 'auth/unknown-error');
       throw error;
     }
   };
@@ -90,6 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setCurrentUser(user);
         setLoading(false);
+        setLoginLoading(false);
         isInitialLoad = false;
       } else {
         // Sadece ilk yüklemede ve daha önce denenmemişse auto-login dene
@@ -130,7 +140,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    loading
+    loading,
+    loginLoading
   };
 
   return (
