@@ -56,6 +56,7 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const hookNavigation = useNavigation<any>();
 
   if (!isWeb) {
@@ -157,21 +158,69 @@ export const WebLayout: React.FC<WebLayoutProps> = ({
             </TouchableOpacity>
           ))}
           
-          <TouchableOpacity 
-            style={styles.userProfile}
-            onPress={() => navigation?.navigate('Profile', undefined, { animation: 'none' })}
-          >
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={20} color={COLORS.WHITE} />
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>Gökhan Kaya</Text>
-              <Text style={styles.userRole}>Admin</Text>
-            </View>
-            <View style={styles.dropdownButton}>
-              <Ionicons name="chevron-down" size={16} color={COLORS.TEXT_SECONDARY} />
-            </View>
-          </TouchableOpacity>
+          <View style={styles.userProfileContainer}>
+            <TouchableOpacity 
+              style={styles.userProfile}
+              onPress={() => setProfileDropdownOpen(!profileDropdownOpen)}
+            >
+              <View style={styles.avatar}>
+                <Ionicons name="person" size={20} color={COLORS.WHITE} />
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>Gökhan Kaya</Text>
+                <Text style={styles.userRole}>Admin</Text>
+              </View>
+              <View style={styles.dropdownButton}>
+                <Ionicons 
+                  name={profileDropdownOpen ? "chevron-up" : "chevron-down"} 
+                  size={16} 
+                  color={COLORS.TEXT_SECONDARY} 
+                />
+              </View>
+            </TouchableOpacity>
+
+            {profileDropdownOpen && (
+              <View style={styles.dropdown}>
+                <TouchableOpacity 
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setProfileDropdownOpen(false);
+                    // Buraya kendi navigation kodunuzu ekleyebilirsiniz
+                    console.log('Profil tıklandı');
+                  }}
+                >
+                  <Ionicons name="person-outline" size={16} color={COLORS.TEXT_SECONDARY} />
+                  <Text style={styles.dropdownText}>Profil</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setProfileDropdownOpen(false);
+                    // Buraya kendi navigation kodunuzu ekleyebilirsiniz
+                    console.log('Ayarlar tıklandı');
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={16} color={COLORS.TEXT_SECONDARY} />
+                  <Text style={styles.dropdownText}>Ayarlar</Text>
+                </TouchableOpacity>
+                
+                <View style={styles.dropdownDivider} />
+                
+                <TouchableOpacity 
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setProfileDropdownOpen(false);
+                    // Buraya çıkış işlemi kodunuzu ekleyebilirsiniz
+                    console.log('Çıkış yapılıyor');
+                  }}
+                >
+                  <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+                  <Text style={[styles.dropdownText, { color: '#EF4444' }]}>Çıkış Yap</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -644,5 +693,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.PRIMARY,
     cursor: 'pointer' as any,
+  },
+
+  // Profile Dropdown
+  userProfileContainer: {
+    position: 'relative',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    width: 200,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 8,
+    zIndex: 9999,
+    overflow: 'visible',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#38383A',
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    cursor: 'pointer' as any,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: COLORS.TEXT_PRIMARY,
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  dropdownDivider: {
+    height: 1,
+    backgroundColor: '#38383A',
+    marginVertical: 8,
   },
 }); 

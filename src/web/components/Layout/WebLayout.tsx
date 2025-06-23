@@ -435,13 +435,13 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
             {currentUser?.email}
           </Typography>
         </Box>
-        <MenuItem onClick={handleProfileMenuClose}>
+        <MenuItem onClick={() => { handleProfileMenuClose(); onNavigate('profile'); }}>
           <ListItemIcon>
             <AccountCircle fontSize="small" />
           </ListItemIcon>
           Profil
         </MenuItem>
-        <MenuItem onClick={handleProfileMenuClose}>
+        <MenuItem onClick={() => { handleProfileMenuClose(); onNavigate('settings'); }}>
           <ListItemIcon>
             <Settings fontSize="small" />
           </ListItemIcon>
