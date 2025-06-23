@@ -451,7 +451,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ayarlar</Text>
@@ -479,6 +479,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 24,
     alignItems: 'center',
+    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
   },
   headerTitle: {
     fontSize: isSmallDevice ? 18 : 20,

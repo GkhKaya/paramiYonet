@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -294,7 +295,7 @@ const AccountsScreen: React.FC<AccountsScreenProps> = observer(({ navigation }) 
 
   // Mobile layout
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+          <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity

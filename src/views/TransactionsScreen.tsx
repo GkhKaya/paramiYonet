@@ -461,7 +461,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     return (
       <>
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FFFFFF" />
             <Text style={styles.loadingText}>İşlemler yükleniyor...</Text>
@@ -476,7 +476,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     return (
       <>
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <SafeAreaView style={styles.container} edges={['top']}>
+        <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={48} color="#F44336" />
             <Text style={styles.errorText}>{viewModel.error}</Text>
@@ -635,7 +635,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
         <ContentLayout />
       </SafeAreaView>
     </>
@@ -652,6 +652,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingVertical: 24,
+    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
   },
   headerTitle: {
     fontSize: isSmallDevice ? 18 : 20,

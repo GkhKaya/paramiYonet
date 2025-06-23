@@ -478,7 +478,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {renderHeader()}
@@ -688,6 +688,45 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
               </Pressable>
             </Pressable>
           </Modal>
+        ) : Platform.OS === 'ios' ? (
+          <Modal
+            visible={showDatePicker}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowDatePicker(false)}
+          >
+            <View style={styles.iosDatePickerBackdrop}>
+              <View style={styles.iosDatePickerContainer}>
+                <View style={styles.iosDatePickerHeader}>
+                  <TouchableOpacity 
+                    onPress={() => setShowDatePicker(false)}
+                    style={styles.iosDatePickerButton}
+                  >
+                    <Text style={styles.iosDatePickerButtonText}>İptal</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.iosDatePickerTitle}>Tarih Seç</Text>
+                  <TouchableOpacity 
+                    onPress={() => setShowDatePicker(false)}
+                    style={styles.iosDatePickerButton}
+                  >
+                    <Text style={[styles.iosDatePickerButtonText, styles.iosDatePickerDoneButton]}>Tamam</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.iosDatePickerContent}>
+                  <DateTimePicker
+                    value={selectedDate}
+                    mode="date"
+                    display="spinner"
+                    textColor="#FFFFFF"
+                    themeVariant="dark"
+                    onChange={(event, date) => {
+                      if (date) setSelectedDate(date);
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+          </Modal>
         ) : (
           <DateTimePicker
             value={selectedDate}
@@ -715,6 +754,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
+    paddingTop: Platform.OS === 'ios' ? 50 : 15,
     borderBottomWidth: 1,
     borderBottomColor: '#1A1A1A',
   },
@@ -733,8 +773,8 @@ const styles = StyleSheet.create({
   },
   typeSelectorContainer: {
     flexDirection: 'row',
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: Platform.OS === 'ios' ? 10 : 20,
+    marginBottom: Platform.OS === 'ios' ? 20 : 30,
     gap: 15,
   },
   typeButton: {
@@ -755,8 +795,8 @@ const styles = StyleSheet.create({
   },
   // Ana tutar girişi - büyük ve öne çıkan
   amountMainSection: {
-    marginTop: 20,
-    marginBottom: 25,
+    marginTop: Platform.OS === 'ios' ? 10 : 20,
+    marginBottom: Platform.OS === 'ios' ? 15 : 25,
     alignItems: 'center',
   },
   amountInputContainer: {
@@ -1218,6 +1258,49 @@ const styles = StyleSheet.create({
   frequencyButtonTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // iOS Date Picker Styles
+  iosDatePickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  iosDatePickerContainer: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 35 : 20,
+  },
+  iosDatePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  iosDatePickerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  iosDatePickerButtonText: {
+    fontSize: 16,
+    color: '#888888',
+    fontWeight: '500',
+  },
+  iosDatePickerDoneButton: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  iosDatePickerTitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  iosDatePickerContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
 });
 

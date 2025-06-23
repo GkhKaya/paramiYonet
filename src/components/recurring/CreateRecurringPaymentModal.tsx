@@ -10,6 +10,7 @@ import {
   Alert,
   Switch,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -381,31 +382,113 @@ export const CreateRecurringPaymentModal: React.FC<CreateRecurringPaymentModalPr
 
         {/* Date Pickers */}
         {showStartDatePicker && (
-          <DateTimePicker
-            value={startDate}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowStartDatePicker(false);
-              if (selectedDate) {
-                setStartDate(selectedDate);
-              }
-            }}
-          />
+          Platform.OS === 'ios' ? (
+            <Modal
+              visible={showStartDatePicker}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={() => setShowStartDatePicker(false)}
+            >
+              <View style={styles.iosDatePickerBackdrop}>
+                <View style={styles.iosDatePickerContainer}>
+                  <View style={styles.iosDatePickerHeader}>
+                    <TouchableOpacity 
+                      onPress={() => setShowStartDatePicker(false)}
+                      style={styles.iosDatePickerButton}
+                    >
+                      <Text style={styles.iosDatePickerButtonText}>İptal</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.iosDatePickerTitle}>Başlangıç Tarihi</Text>
+                    <TouchableOpacity 
+                      onPress={() => setShowStartDatePicker(false)}
+                      style={styles.iosDatePickerButton}
+                    >
+                      <Text style={[styles.iosDatePickerButtonText, styles.iosDatePickerDoneButton]}>Tamam</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.iosDatePickerContent}>
+                    <DateTimePicker
+                      value={startDate}
+                      mode="date"
+                      display="spinner"
+                      textColor="#FFFFFF"
+                      themeVariant="dark"
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setStartDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowStartDatePicker(false);
+                if (selectedDate) {
+                  setStartDate(selectedDate);
+                }
+              }}
+            />
+          )
         )}
 
         {showEndDatePicker && (
-          <DateTimePicker
-            value={endDate || new Date()}
-            mode="date"
-            display="default"
-            onChange={(event, selectedDate) => {
-              setShowEndDatePicker(false);
-              if (selectedDate) {
-                setEndDate(selectedDate);
-              }
-            }}
-          />
+          Platform.OS === 'ios' ? (
+            <Modal
+              visible={showEndDatePicker}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={() => setShowEndDatePicker(false)}
+            >
+              <View style={styles.iosDatePickerBackdrop}>
+                <View style={styles.iosDatePickerContainer}>
+                  <View style={styles.iosDatePickerHeader}>
+                    <TouchableOpacity 
+                      onPress={() => setShowEndDatePicker(false)}
+                      style={styles.iosDatePickerButton}
+                    >
+                      <Text style={styles.iosDatePickerButtonText}>İptal</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.iosDatePickerTitle}>Bitiş Tarihi</Text>
+                    <TouchableOpacity 
+                      onPress={() => setShowEndDatePicker(false)}
+                      style={styles.iosDatePickerButton}
+                    >
+                      <Text style={[styles.iosDatePickerButtonText, styles.iosDatePickerDoneButton]}>Tamam</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.iosDatePickerContent}>
+                    <DateTimePicker
+                      value={endDate || new Date()}
+                      mode="date"
+                      display="spinner"
+                      textColor="#FFFFFF"
+                      themeVariant="dark"
+                      onChange={(event, selectedDate) => {
+                        if (selectedDate) setEndDate(selectedDate);
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={endDate || new Date()}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowEndDatePicker(false);
+                if (selectedDate) {
+                  setEndDate(selectedDate);
+                }
+              }}
+            />
+          )
         )}
       </View>
     </Modal>
@@ -562,5 +645,48 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#333333',
+  },
+  // iOS Date Picker Styles
+  iosDatePickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  iosDatePickerContainer: {
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 35 : 20,
+  },
+  iosDatePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+  iosDatePickerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  iosDatePickerButtonText: {
+    fontSize: 16,
+    color: '#888888',
+    fontWeight: '500',
+  },
+  iosDatePickerDoneButton: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  iosDatePickerTitle: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  iosDatePickerContent: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
 }); 
