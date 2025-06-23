@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { observer } from 'mobx-react-lite';
 import { Card } from '../components/common/Card';
 import { Input } from '../components/common/Input';
@@ -45,6 +46,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [editForm, setEditForm] = useState({
     amount: '',
@@ -145,6 +147,14 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     setModalVisible(false);
     setEditMode(false);
     setSelectedTransaction(null);
+    setShowDatePicker(false);
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setEditForm(prev => ({ ...prev, date: selectedDate }));
+    }
   };
 
   const FilterButton = ({ 
@@ -393,7 +403,80 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
             {/* Date */}
             <View style={styles.modalSection}>
               <Text style={styles.modalSectionTitle}>Tarih</Text>
-              <Text style={styles.dateDisplay}>{formatDate(selectedTransaction.date)}</Text>
+              {editMode ? (
+                <>
+                  {Platform.OS === 'ios' ? (
+                    <>
+                      <TouchableOpacity
+                        style={styles.dateButton}
+                        onPress={() => setShowDatePicker(true)}
+                      >
+                        <Text style={styles.dateButtonText}>
+                          {formatDate(editForm.date)}
+                        </Text>
+                        <Ionicons name="calendar-outline" size={20} color="#2196F3" />
+                      </TouchableOpacity>
+                      
+                      <Modal
+                        visible={showDatePicker}
+                        transparent={true}
+                        animationType="slide"
+                        onRequestClose={() => setShowDatePicker(false)}
+                      >
+                        <View style={styles.datePickerOverlay}>
+                          <View style={styles.datePickerContainer}>
+                            <View style={styles.datePickerHeader}>
+                              <TouchableOpacity
+                                onPress={() => setShowDatePicker(false)}
+                                style={styles.datePickerButton}
+                              >
+                                <Text style={styles.datePickerButtonText}>İptal</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => setShowDatePicker(false)}
+                                style={styles.datePickerButton}
+                              >
+                                <Text style={[styles.datePickerButtonText, styles.datePickerDone]}>Tamam</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                              value={editForm.date}
+                              mode="date"
+                              display="spinner"
+                              onChange={handleDateChange}
+                              textColor="#FFFFFF"
+                              locale="tr-TR"
+                            />
+                          </View>
+                        </View>
+                      </Modal>
+                    </>
+                  ) : (
+                    showDatePicker && (
+                      <DateTimePicker
+                        value={editForm.date}
+                        mode="date"
+                        display="default"
+                        onChange={handleDateChange}
+                      />
+                    )
+                  )}
+                  
+                  {Platform.OS === 'android' && (
+                    <TouchableOpacity
+                      style={styles.dateButton}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Text style={styles.dateButtonText}>
+                        {formatDate(editForm.date)}
+                      </Text>
+                      <Ionicons name="calendar-outline" size={20} color="#2196F3" />
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.dateDisplay}>{formatDate(selectedTransaction.date)}</Text>
+              )}
             </View>
           </ScrollView>
 
@@ -1052,6 +1135,54 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#333333',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  datePickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  datePickerContainer: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  datePickerButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  datePickerButtonText: {
+    fontSize: 16,
+    color: '#2196F3',
+    fontWeight: '500',
+  },
+  datePickerDone: {
+    fontWeight: '600',
   },
 
 
