@@ -20,6 +20,7 @@ import {
   Chip
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
+
 import {
   Dashboard,
   AccountBalance,
@@ -34,7 +35,8 @@ import {
   Diamond,
   Receipt,
   Repeat,
-  Add
+  Add,
+  AccountBalanceWallet
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gradients, animations } from '../../styles/theme';
@@ -183,16 +185,31 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
               width: 40,
               height: 40,
               borderRadius: 2,
-              background: gradients.primary,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '1.2rem'
+              transition: 'transform 0.2s ease',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              }
             }}
           >
-            ₺
+            <svg width="40" height="40" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="120" height="120" rx="60" fill="url(#paint0_linear_2003_11)"/>
+              <path d="M35.2734 88.8281C33.979 88.8281 32.9297 87.7788 32.9297 86.4844C32.9297 85.19 33.979 84.1406 35.2734 84.1406H82.0312C83.3257 84.1406 84.375 85.19 84.375 86.4844C84.375 87.7788 83.3257 88.8281 82.0312 88.8281H35.2734Z" fill="#D9D9D9"/>
+              <rect x="37.5" y="29.1797" width="5.50781" height="56.9531" rx="2.75391" fill="#D9D9D9"/>
+              <rect x="45" y="12.1875" width="5.39062" height="73.9453" rx="2.69531" fill="#D9D9D9"/>
+              <rect x="52.3828" y="33.9844" width="5.39062" height="52.1484" rx="2.69531" fill="#D9D9D9"/>
+              <rect x="59.7656" y="42.0703" width="5.39062" height="44.0625" rx="2.69531" fill="#D9D9D9"/>
+              <rect x="67.2656" y="58.4766" width="5.39062" height="27.6562" rx="2.69531" fill="#D9D9D9"/>
+              <rect x="74.6484" y="37.5" width="5.39062" height="48.6328" rx="2.69531" fill="#D9D9D9"/>
+              <defs>
+                <linearGradient id="paint0_linear_2003_11" x1="-1.23047" y1="54.8437" x2="120" y2="53.7305" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#0575E6"/>
+                  <stop offset="1" stopColor="#021B79"/>
+                </linearGradient>
+              </defs>
+            </svg>
           </Box>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             ParamıYönet
@@ -326,12 +343,6 @@ const WebLayout: React.FC<WebLayoutProps> = ({ children, currentPage, onNavigate
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton color="inherit">
-              <Badge badgeContent={3} color="error">
-                <Notifications />
-              </Badge>
-            </IconButton>
-            
             <IconButton
               size="large"
               edge="end"
