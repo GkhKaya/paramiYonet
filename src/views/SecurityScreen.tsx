@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
   TouchableOpacity,
   StatusBar,
@@ -18,6 +17,7 @@ import { Card } from '../components/common/Card';
 import { WebLayout } from '../components/layout/WebLayout';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { useError } from '../contexts/ErrorContext';
 import { SecurityService } from '../services/FirebaseService';
 import { isWeb } from '../utils/platform';
 
@@ -27,6 +27,7 @@ interface SecurityScreenProps {
 
 const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   const { user } = useAuth();
+  const { showError } = useError();
   
   // Şifre değiştirme state'leri
   const [currentPassword, setCurrentPassword] = useState('');
@@ -45,17 +46,17 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      showError('Lütfen tüm alanları doldurun');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Hata', 'Yeni şifreler eşleşmiyor');
+      showError('Yeni şifreler eşleşmiyor');
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Hata', 'Yeni şifre en az 6 karakter olmalıdır');
+      showError('Yeni şifre en az 6 karakter olmalıdır');
       return;
     }
 
@@ -69,9 +70,9 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       setConfirmPassword('');
       setShowPasswordForm(false);
       
-      Alert.alert('Başarılı', 'Şifreniz başarıyla değiştirildi');
+      showError('Şifreniz başarıyla değiştirildi', 'success');
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Şifre değiştirilemedi');
+      showError(error.message || 'Şifre değiştirilemedi');
     } finally {
       setIsChangingPassword(false);
     }
@@ -79,19 +80,19 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
 
   const handleChangeEmail = async () => {
     if (!newEmail || !emailPassword) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
+      showError('Lütfen tüm alanları doldurun');
       return;
     }
 
     if (newEmail === user?.email) {
-      Alert.alert('Hata', 'Yeni e-posta adresi mevcut adresle aynı');
+      showError('Yeni e-posta adresi mevcut adresle aynı');
       return;
     }
 
     // E-posta formatı kontrolü
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi girin');
+      showError('Geçerli bir e-posta adresi girin');
       return;
     }
 
@@ -104,9 +105,9 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
       setEmailPassword('');
       setShowEmailForm(false);
       
-      Alert.alert('Başarılı', 'E-posta adresiniz başarıyla değiştirildi');
+      showError('E-posta adresiniz başarıyla değiştirildi', 'success');
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'E-posta adresi değiştirilemedi');
+      showError(error.message || 'E-posta adresi değiştirilemedi');
     } finally {
       setIsChangingEmail(false);
     }
@@ -114,18 +115,15 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
 
   const handleSendPasswordReset = async () => {
     if (!user?.email) {
-      Alert.alert('Hata', 'E-posta adresi bulunamadı');
+      showError('E-posta adresi bulunamadı');
       return;
     }
 
     try {
       await SecurityService.sendPasswordResetEmail(user.email);
-      Alert.alert(
-        'E-posta Gönderildi', 
-        'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi'
-      );
+      showError('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi', 'info');
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'E-posta gönderilemedi');
+      showError(error.message || 'E-posta gönderilemedi');
     }
   };
 
@@ -315,7 +313,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -357,6 +355,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
+    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
   },
   backButton: {
     marginRight: 16,
