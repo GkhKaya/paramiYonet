@@ -9,9 +9,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ViewModelProvider } from './src/contexts/ViewModelContext';
 import { ErrorProvider } from './src/contexts/ErrorContext';
+import { OnboardingProvider } from './src/contexts/OnboardingContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import WebApp from './src/web/WebApp';
 import ErrorNotification from './src/components/common/ErrorNotification';
+import OnboardingModal from './src/components/onboarding/OnboardingModal';
 
 // Splash screen'i uygulama yüklenene kadar göster
 SplashScreen.preventAutoHideAsync();
@@ -65,12 +67,15 @@ export default function App() {
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           <ErrorProvider>
             <AuthProvider>
-              <NavigationContainer>
-                <ViewModelProvider>
-                  <AppNavigator />
-                </ViewModelProvider>
-                <StatusBar style="light" backgroundColor="#000000" />
-              </NavigationContainer>
+              <OnboardingProvider>
+                <NavigationContainer>
+                  <ViewModelProvider>
+                    <AppNavigator />
+                    <OnboardingModal />
+                  </ViewModelProvider>
+                  <StatusBar style="light" backgroundColor="#000000" />
+                </NavigationContainer>
+              </OnboardingProvider>
             </AuthProvider>
             <ErrorNotification />
           </ErrorProvider>

@@ -313,7 +313,7 @@ const SecurityScreen: React.FC<SecurityScreenProps> = ({ navigation }) => {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -352,10 +352,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
-    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
   },
   backButton: {
     marginRight: 16,

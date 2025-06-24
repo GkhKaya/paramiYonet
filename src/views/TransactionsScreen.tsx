@@ -814,7 +814,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <ContentLayout />
       </SafeAreaView>
     </>
@@ -830,8 +830,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 24,
-    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
   },
   headerTitle: {
     fontSize: isSmallDevice ? 18 : 20,

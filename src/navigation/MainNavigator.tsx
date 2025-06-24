@@ -272,7 +272,48 @@ const MainNavigator: React.FC = () => {
             },
           }}
         />
-        <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
+        <Stack.Screen 
+          name="ManageCategories" 
+          component={ManageCategoriesScreen}
+          options={{
+            ...(Platform.OS !== 'web' && {
+              cardStyleInterpolator: ({ current, layouts }) => {
+                return {
+                  cardStyle: {
+                    transform: [
+                      {
+                        translateX: current.progress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [layouts.screen.width, 0],
+                        }),
+                      },
+                    ],
+                  },
+                  overlayStyle: {
+                    opacity: current.progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 0.5],
+                    }),
+                  },
+                };
+              },
+              transitionSpec: {
+                open: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                  },
+                },
+                close: {
+                  animation: 'timing',
+                  config: {
+                    duration: 250,
+                  },
+                },
+              },
+            }),
+          }}
+        />
         <Stack.Screen name="GoldAccountDetail" component={GoldAccountDetailScreen} />
         <Stack.Screen 
           name="Profile" 

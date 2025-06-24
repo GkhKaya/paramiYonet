@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Dimensions,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -375,7 +376,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -412,7 +413,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
   },
   headerTitle: {
     fontSize: isSmallDevice ? 18 : 20,

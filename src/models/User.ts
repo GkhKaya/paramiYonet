@@ -7,6 +7,7 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   preferences?: UserPreferences;
+  onboardingCompleted?: boolean;
 }
 
 export interface UserPreferences {
@@ -21,6 +22,7 @@ export interface UserPreferences {
   };
   dateFormat: string;
   firstDayOfWeek: number; // 0 = Sunday, 1 = Monday
+  onboardingCompleted: boolean;
 }
 
 export interface LoginRequest {
@@ -52,4 +54,5 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   },
   dateFormat: 'DD/MM/YYYY',
   firstDayOfWeek: 1, // Monday
+  onboardingCompleted: false,
 }; 

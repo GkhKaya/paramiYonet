@@ -236,14 +236,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Profil"
             subtitle={user?.email || 'Kullanıcı'}
             onPress={() => {
-              // Navigate to profile screen
-              if (Platform.OS === 'web') {
-                navigation.navigate('Profile', undefined, {
-                  animation: 'none'
-                });
-              } else {
-                navigation.navigate('Profile');
-              }
+              navigation.navigate('Profile');
             }}
           />
           <SettingItem
@@ -251,13 +244,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Güvenlik"
             subtitle="Şifre ve güvenlik ayarları"
             onPress={() => {
-              if (Platform.OS === 'web') {
-                navigation.navigate('Security', undefined, {
-                  animation: 'none'
-                });
-              } else {
-                navigation.navigate('Security');
-              }
+              navigation.navigate('Security');
             }}
           />
           <SettingItem
@@ -265,13 +252,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Kategoriler"
             subtitle="Özel kategorileri yönet"
             onPress={() => {
-              if (Platform.OS === 'web') {
-                navigation.navigate('ManageCategories', undefined, {
-                  animation: 'none'
-                });
-              } else {
-                navigation.navigate('ManageCategories');
-              }
+              navigation.navigate('ManageCategories');
             }}
           />
           <SettingItem
@@ -279,13 +260,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Borç Yönetimi"
             subtitle="Verilen ve alınan borçları takip et"
             onPress={() => {
-              if (Platform.OS === 'web') {
-                navigation.navigate('Debts', undefined, {
-                  animation: 'none'
-                });
-              } else {
-                navigation.navigate('Debts');
-              }
+              navigation.navigate('Debts');
             }}
           />
         </View>
@@ -398,13 +373,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Yardım ve Destek"
             subtitle="SSS ve destek"
             onPress={() => {
-              if (Platform.OS === 'web') {
-                navigation.navigate('HelpAndSupport', undefined, {
-                  animation: 'none'
-                });
-              } else {
-                navigation.navigate('HelpAndSupport');
-              }
+              navigation.navigate('HelpAndSupport');
             }}
           />
           <SettingItem
@@ -451,7 +420,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Ayarlar</Text>
@@ -477,9 +446,9 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingVertical: 16,
     alignItems: 'center',
-    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
   },
   headerTitle: {
     fontSize: isSmallDevice ? 18 : 20,

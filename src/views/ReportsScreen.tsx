@@ -1346,7 +1346,7 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
 
   return (
     <WebLayout title="Raporlar">
-      <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <StatusBar barStyle={isWeb ? 'dark-content' : 'light-content'} />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Raporlar</Text>
@@ -1405,8 +1405,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 24,
-    ...(Platform.OS === 'ios' && { paddingTop: 50 }),
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
   },
   headerTitle: {
     fontSize: isSmallDevice ? 18 : 20,

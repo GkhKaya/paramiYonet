@@ -490,7 +490,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={Platform.OS === 'ios' ? ['bottom'] : ['top', 'bottom']}>
+          <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {renderHeader()}
@@ -780,8 +780,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    paddingTop: Platform.OS === 'ios' ? 50 : 15,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
     borderBottomWidth: 1,
     borderBottomColor: '#1A1A1A',
   },
@@ -1167,7 +1167,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    paddingBottom: Platform.OS === 'ios' ? 35 : 15,
     borderTopWidth: 1,
     borderTopColor: '#2A2A2A',
   },

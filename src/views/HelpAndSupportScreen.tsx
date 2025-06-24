@@ -184,7 +184,7 @@ const HelpAndSupportScreen: React.FC<HelpAndSupportScreenProps> = ({ navigation 
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         {renderContent()}
       </SafeAreaView>
     </>
@@ -214,7 +214,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? 24 : 50,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
   },
