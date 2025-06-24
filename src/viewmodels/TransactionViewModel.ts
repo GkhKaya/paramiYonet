@@ -123,6 +123,7 @@ export class TransactionViewModel {
   currentMonth: Date = new Date();
   isLoading: boolean = false;
   error: string | null = null;
+  editTransactionId: string | null = null;
 
   constructor(private userId: string) {
     makeObservable(this, {
@@ -133,6 +134,7 @@ export class TransactionViewModel {
       currentMonth: observable,
       isLoading: observable,
       error: observable,
+      editTransactionId: observable,
       monthlyStats: computed,
       dayGroups: computed,
       recentTransactions: computed,
@@ -142,6 +144,8 @@ export class TransactionViewModel {
       deleteTransaction: action,
       setSearchTerm: action,
       setFilters: action,
+      setEditTransactionId: action,
+      clearEditTransactionId: action,
       goToNextMonth: action,
       goToPreviousMonth: action,
     });
@@ -529,5 +533,13 @@ export class TransactionViewModel {
         weekday: 'long',
       });
     }
+  }
+
+  setEditTransactionId(transactionId: string): void {
+    this.editTransactionId = transactionId;
+  }
+
+  clearEditTransactionId(): void {
+    this.editTransactionId = null;
   }
 } 

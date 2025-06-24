@@ -13,6 +13,7 @@ import { isWeb } from '../utils/platform';
 import CleanDashboardScreen from '../views/CleanDashboardScreen';
 import TransactionsScreen from '../views/TransactionsScreen';
 import AddTransactionScreen from '../views/AddTransactionScreen';
+import TransactionDetailScreen from '../views/TransactionDetailScreen';
 import ReportsScreen from '../views/ReportsScreen';
 import SettingsScreen from '../views/SettingsScreen';
 import AccountsScreen from '../views/AccountsScreen';
@@ -91,7 +92,7 @@ const TabNavigator: React.FC = () => {
               </TouchableOpacity>
             );
           }
-          return <TouchableOpacity {...props} />;
+                     return <TouchableOpacity {...(props as any)} />;
         },
         tabBarActiveTintColor: '#FFFFFF',
         tabBarInactiveTintColor: '#666666',
@@ -198,6 +199,46 @@ const MainNavigator: React.FC = () => {
                 animation: 'timing',
                 config: {
                   duration: 150, // Daha hızlı kapanma
+                },
+              },
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="TransactionDetail" 
+          component={TransactionDetailScreen}
+          options={{
+            cardStyleInterpolator: ({ current, layouts }) => {
+              return {
+                cardStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [layouts.screen.width, 0],
+                      }),
+                    },
+                  ],
+                },
+                overlayStyle: {
+                  opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                  }),
+                },
+              };
+            },
+            transitionSpec: {
+              open: {
+                animation: 'timing',
+                config: {
+                  duration: 300,
+                },
+              },
+              close: {
+                animation: 'timing',
+                config: {
+                  duration: 250,
                 },
               },
             },

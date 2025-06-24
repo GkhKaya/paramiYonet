@@ -19,6 +19,8 @@ interface RecentTransactionsProps {
   transactions: Transaction[];
   /** Tümünü görüntüle butonu tıklama fonksiyonu */
   onViewAll: () => void;
+  /** İşlem tıklama fonksiyonu */
+  onTransactionPress?: (transactionId: string) => void;
   /** Yükleniyor durumu */
   loading?: boolean;
 }
@@ -26,6 +28,7 @@ interface RecentTransactionsProps {
 export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
   transactions,
   onViewAll,
+  onTransactionPress,
   loading = false,
 }) => {
   // Custom hooks
@@ -63,7 +66,12 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
     const amountColor = isIncome ? '#4CAF50' : '#F44336';
 
     return (
-      <View key={transaction.id} style={styles.transactionItem}>
+      <TouchableOpacity 
+        key={transaction.id} 
+        style={styles.transactionItem}
+        onPress={() => onTransactionPress?.(transaction.id)}
+        activeOpacity={0.7}
+      >
         {/* İkon */}
         <View style={[
           styles.transactionIcon,
@@ -90,7 +98,15 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
         <Text style={[styles.transactionAmount, { color: amountColor }]}>
           {formatAmount(transaction.amount, transaction.type)}
         </Text>
-      </View>
+
+        {/* Chevron */}
+        <Ionicons 
+          name="chevron-forward" 
+          size={16} 
+          color="#666666" 
+          style={styles.chevron}
+        />
+      </TouchableOpacity>
     );
   };
 
@@ -237,6 +253,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'right',
+  },
+  chevron: {
+    marginLeft: 8,
   },
 
   // Yükleniyor ve Boş Durum

@@ -67,7 +67,11 @@ export type RootStackParamList = {
 
 export type MainStackParamList = {
   MainTabs: undefined;
-  AddTransaction: { defaultType?: 'income' | 'expense' } | undefined;
+  AddTransaction: { 
+    defaultType?: 'income' | 'expense';
+    editTransaction?: any; // Transaction to edit
+  } | undefined;
+  TransactionDetail: { transactionId: string };
   AddAccount: { editAccount?: Account } | undefined;
   AddCategory: { 
     defaultType?: 'income' | 'expense';

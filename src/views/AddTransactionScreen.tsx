@@ -19,7 +19,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { observer } from 'mobx-react-lite';
 import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
-import { TransactionType } from '../models/Transaction';
+import { Transaction, TransactionType } from '../models/Transaction';
 import { Account, AccountType } from '../models/Account';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';

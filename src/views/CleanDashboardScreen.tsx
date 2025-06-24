@@ -257,6 +257,13 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
 
 
   /**
+   * İşlem detayına yönlendirir
+   */
+  const navigateToTransactionDetail = useCallback((transactionId: string) => {
+    parentNavigation.navigate('TransactionDetail', { transactionId });
+  }, [parentNavigation]);
+
+  /**
    * Borçlar sayfasına yönlendirir
    */
   const navigateToDebts = useCallback(() => {
@@ -301,6 +308,7 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
       <RecentTransactions
         transactions={transactionViewModel?.recentTransactions || []}
         onViewAll={navigateToTransactions}
+        onTransactionPress={navigateToTransactionDetail}
         loading={!transactionViewModel}
       />
 
