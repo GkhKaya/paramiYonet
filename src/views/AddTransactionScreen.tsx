@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Alert,
   Platform,
   StatusBar,
   TextInput,
@@ -26,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { useCurrency, useCategory, useDate } from '../hooks';
 import { RecurringPaymentService } from '../services/RecurringPaymentService';
+import CustomAlert, { AlertType } from '../components/common/CustomAlert';
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,6 +57,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringFrequency, setRecurringFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+  
+  // Custom Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<AlertType>('error');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
 
   // Hooks
   const { formatCurrency, currencySymbol } = useCurrency();
@@ -146,21 +152,29 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     return isNaN(numericValue) ? 0 : numericValue;
   };
 
+  // Custom Alert helper
+  const showAlert = (type: AlertType, title: string, message: string) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertVisible(true);
+  };
+
   const handleSave = async () => {
     const numericAmount = getNumericAmount();
     
     if (!selectedCategory) {
-      Alert.alert('Hata', 'Lütfen kategori seçin');
+      showAlert('error', 'Hata', 'Lütfen kategori seçin');
       return;
     }
 
     if (numericAmount <= 0) {
-      Alert.alert('Hata', 'Lütfen geçerli bir tutar girin');
+      showAlert('error', 'Hata', 'Lütfen geçerli bir tutar girin');
       return;
     }
 
     if (!user || !transactionViewModel) {
-      Alert.alert('Hata', 'Sistem hatası');
+      showAlert('error', 'Hata', 'Sistem hatası');
       return;
     }
 
@@ -169,7 +183,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     const categoryDetails = availableCategories.find(cat => cat.name === selectedCategory);
     
     if (!selectedCard) {
-      Alert.alert('Hata', 'Lütfen hesap seçin');
+      showAlert('error', 'Hata', 'Lütfen hesap seçin');
       setLoading(false);
       return;
     }
@@ -235,12 +249,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
 
     if (success) {
       const message = isRecurring ? 'Düzenli ödeme oluşturuldu' : 'İşlem kaydedildi';
-      Alert.alert('Başarılı', message, [
-        { text: 'Tamam', onPress: () => navigation.goBack() }
-      ]);
+      showAlert('success', 'Başarılı', message);
     } else {
       const message = isRecurring ? 'Düzenli ödeme oluşturulamadı' : 'İşlem kaydedilemedi';
-      Alert.alert('Hata', message);
+      showAlert('error', 'Hata', message);
     }
   };
 
@@ -739,6 +751,21 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           />
         )
       )}
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        title={alertTitle}
+        message={alertMessage}
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          if (alertType === 'success') {
+            navigation.goBack();
+          }
+        }}
+        onClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 });

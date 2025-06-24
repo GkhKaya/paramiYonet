@@ -65,12 +65,12 @@ export default function App() {
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           <ErrorProvider>
             <AuthProvider>
-              <ViewModelProvider>
               <NavigationContainer>
-                <AppNavigator />
+                <ViewModelProvider>
+                  <AppNavigator />
+                </ViewModelProvider>
                 <StatusBar style="light" backgroundColor="#000000" />
               </NavigationContainer>
-              </ViewModelProvider>
             </AuthProvider>
             <ErrorNotification />
           </ErrorProvider>
