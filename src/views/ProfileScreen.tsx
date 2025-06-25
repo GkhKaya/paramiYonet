@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
   },
   avatarContainer: {
     position: 'relative',
@@ -475,14 +475,13 @@ const styles = StyleSheet.create({
   },
   displayName: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF', // White text
-    marginBottom: 4,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   email: {
-    fontSize: 16,
-    color: '#666666', // Gray text
-    marginBottom: 4,
+    fontSize: 14,
+    color: '#cccccc',
+    marginTop: 4,
   },
   editButton: {
     padding: 12,
@@ -490,7 +489,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   section: {
-    marginBottom: 24,
+    marginTop: 24,
   },
   sectionTitle: {
     fontSize: 16,

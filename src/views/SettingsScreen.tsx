@@ -248,6 +248,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           onPress={() => navigation.navigate('Reports', { initialTab: 'accounts' })}
         />
         <SettingItem
+          icon="repeat-outline"
+          title="Düzenli Ödemeler"
+          subtitle="Düzenli ödemelerinizi yönetin"
+          onPress={() => navigation.navigate('RecurringPayments')}
+        />
+        <SettingItem
           icon="bookmark-outline"
           title="Kategoriler"
           subtitle="Harcama kategorilerini yönetin"
@@ -284,7 +290,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           title="Tüm Verileri Sil"
           subtitle="Hesabınızı kalıcı olarak silin"
           onPress={handleDeleteAccount}
-          color={COLORS.DANGER}
+          color={COLORS.ERROR}
         />
       </SettingSection>
 
@@ -313,7 +319,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
       {/* Logout */}
       <View style={styles.logoutContainer}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color={COLORS.DANGER} />
+          <Ionicons name="log-out-outline" size={22} color={COLORS.ERROR} />
           <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
         </TouchableOpacity>
       </View>
