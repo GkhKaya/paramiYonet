@@ -76,30 +76,38 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       }
 
       // Check user preferences first - eğer onboarding tamamlanmışsa gösterme
-      if (user?.preferences?.onboardingCompleted || user?.onboardingCompleted) {
+      if (user?.preferences?.onboardingCompleted) {
         return false;
       }
 
-      // Check if user is newly registered (created within last 7 days)
+      // Check if user is newly registered (created within last 24 hours)
       if (user?.createdAt) {
-        const userCreatedTime = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+        const userCreatedTime = user.createdAt; // AuthContext'ten artık Date objesi geliyor
         const now = new Date();
         const timeDifference = now.getTime() - userCreatedTime.getTime();
-        const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000; // 7 gün
+        const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 saat
         
-        // Eğer kullanıcı 7 günden uzun süredir kayıtlıysa onboarding gösterme
-        if (timeDifference > sevenDaysInMs) {
+        // Eğer kullanıcı 24 saatten uzun süredir kayıtlıysa onboarding gösterme
+        if (timeDifference > twentyFourHoursInMs) {
+          // Otomatik olarak tamamlandı işaretle, bir daha kontrol etmesin
+          const UserService = (await import('../services/UserService')).default;
+          await UserService.updateUserProfile(user.id, { 
+            preferences: { ...user.preferences, onboardingCompleted: true } 
+          });
           return false;
         }
-      }
-
-      // Check local storage as fallback
-      const hasSeenOnboarding = await AsyncStorage.getItem('onboarding_completed');
-      const onboardingHistory = await AsyncStorage.getItem(`onboarding_completed_${user?.id}`);
-      
-      if (hasSeenOnboarding === 'true' || onboardingHistory === 'true') {
+      } else {
+        // createdAt yoksa ne olur ne olmaz gösterme
         return false;
       }
+
+      // AsyncStorage'deki yedek kontrolü de kaldırabiliriz veya bırakabiliriz.
+      // Şimdilik bırakalım, eski versiyonlardan gelen kullanıcılar için bir güvence olabilir.
+      const onboardingHistory = await AsyncStorage.getItem(`onboarding_completed_${user?.id}`);
+      if (onboardingHistory === 'true') {
+        return false;
+      }
+
       return true;
     } catch (error) {
       console.error('Error checking onboarding status:', error);

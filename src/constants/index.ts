@@ -121,6 +121,8 @@ export const COLLECTIONS = {
   ACCOUNTS: 'accounts',
   CATEGORIES: 'categories',
   BUDGETS: 'budgets',
+  RECURRING_PAYMENTS: 'recurringPayments',
+  DEBTS: 'debts',
 };
 
 // Validation

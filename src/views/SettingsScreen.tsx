@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   StatusBar,
   Platform,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,8 +35,11 @@ interface SettingsScreenProps {
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, deleteUserAccount } = useAuth();
   const [exportingData, setExportingData] = useState(false);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [password, setPassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Custom Alert states
   const [alertVisible, setAlertVisible] = useState(false);
@@ -187,6 +192,34 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     }
   };
 
+  const handleDeleteAccountPress = () => {
+    setDeleteModalVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!password) {
+      showAlert('error', 'Hata', 'Lütfen devam etmek için şifrenizi girin.');
+      return;
+    }
+
+    setDeleteLoading(true);
+    try {
+      const success = await deleteUserAccount(password);
+      if (success) {
+        setDeleteModalVisible(false);
+        // Otomatik olarak çıkış yapılmış olacak ve AuthNavigator'e yönlendirilecek.
+        // Başarılı olduğuna dair bir mesaj göstermeye gerek yok çünkü kullanıcı zaten sistemden atılmış olacak.
+      } else {
+        // Hata mesajı deleteUserAccount içinde gösterilecek.
+      }
+    } catch (error) {
+      // Hata zaten context'te ele alınıyor.
+    } finally {
+      setDeleteLoading(false);
+      setPassword('');
+    }
+  };
+
   const handleDeleteAccount = () => {
     showAlert(
       'warning',
@@ -289,7 +322,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           icon="trash-outline"
           title="Tüm Verileri Sil"
           subtitle="Hesabınızı kalıcı olarak silin"
-          onPress={handleDeleteAccount}
+          onPress={handleDeleteAccountPress}
           color={COLORS.ERROR}
         />
       </SettingSection>
@@ -368,6 +401,49 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
           primaryButtonText={alertType === 'confirm' ? 'Evet' : 'Tamam'}
           secondaryButtonText={alertType === 'confirm' ? 'İptal' : undefined}
         />
+        <Modal
+          visible={isDeleteModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setDeleteModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Hesabı Kalıcı Olarak Sil</Text>
+              <Text style={styles.modalMessage}>
+                Bu işlem geri alınamaz. Tüm verileriniz (hesaplar, işlemler, bütçeler vb.) kalıcı olarak silinecektir. Devam etmek için lütfen şifrenizi girin.
+              </Text>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Şifreniz"
+                placeholderTextColor="#666"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setDeleteModalVisible(false)}
+                  disabled={deleteLoading}
+                >
+                  <Text style={styles.modalButtonText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.deleteButton]}
+                  onPress={handleConfirmDelete}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.modalButtonText}>Hesabı Sil</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </>
   );
@@ -518,6 +594,61 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '90%',
+    backgroundColor: '#1e1e1e',
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 16,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#ccc',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  passwordInput: {
+    backgroundColor: '#111',
+    color: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginLeft: 10,
+  },
+  cancelButton: {
+    backgroundColor: '#444',
+  },
+  deleteButton: {
+    backgroundColor: COLORS.ERROR,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 

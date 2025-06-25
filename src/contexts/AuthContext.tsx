@@ -7,13 +7,17 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser,
-  updateProfile
+  updateProfile,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { User } from '../models/User';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validation';
 import { RecurringPaymentService } from '../services/RecurringPaymentService';
+import UserService from '../services/UserService';
 import { useError } from './ErrorContext';
 
 interface AuthContextType {
@@ -24,6 +28,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>;
+  deleteUserAccount: (password: string) => Promise<boolean>;
   getSavedCredentials: () => Promise<{ email: string; password: string } | null>;
   clearSavedCredentials: () => Promise<void>;
   tryAutoLogin: () => Promise<boolean>;
@@ -51,15 +56,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Firebase auth state değişikliklerini dinle
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // Firebase user'ı uygulama User modeline dönüştür
-        const appUser: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || undefined,
-          photoURL: firebaseUser.photoURL || undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+        setDataLoading(true);
+        // Firestore'dan tam kullanıcı verisini çek
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        let appUser: User;
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          // Firestore'daki Timestamp'i Date objesine çevir
+          const createdAt = userData.createdAt instanceof Timestamp 
+            ? userData.createdAt.toDate() 
+            : new Date();
+          const updatedAt = userData.updatedAt instanceof Timestamp 
+            ? userData.updatedAt.toDate()
+            : new Date();
+
+          appUser = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: userData.displayName || firebaseUser.displayName || '',
+            photoURL: userData.photoURL || firebaseUser.photoURL || undefined,
+            preferences: userData.preferences || {},
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+          };
+        } else {
+          // Bu durum normalde signUp sonrası olmalı, ancak bir fallback olarak ekleyelim
+          appUser = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || undefined,
+            photoURL: firebaseUser.photoURL || undefined,
+            createdAt: new Date(), // Gerçek kayıt zamanı olmadığı için fallback
+            updatedAt: new Date(),
+          };
+        }
+        
         setUser(appUser);
         setLoading(false);
         setDataLoading(false);
@@ -196,35 +230,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         displayName: displayName,
         photoURL: null,
         currency: 'TRY',
+        preferences: {
+          onboardingCompleted: false
+        },
         createdAt: Timestamp.fromDate(new Date()),
         updatedAt: Timestamp.fromDate(new Date()),
-        preferences: {
-          currency: 'TRY',
-          language: 'tr',
-          theme: 'light',
-          notifications: {
-            enabled: true,
-            dailyReminder: false,
-            weeklyReport: true,
-            budgetAlerts: true,
-          },
-          dateFormat: 'DD/MM/YYYY',
-          firstDayOfWeek: 1,
-        },
       };
-
-      await setDoc(doc(db, 'users', userCredential.user.uid), userData);
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      await setDoc(userDocRef, userData);
       
+      // onAuthStateChanged tetiklenecek ve kullanıcıyı set edecek
+      setDataLoading(false);
       return true;
     } catch (error: any) {
       console.error('Sign up error:', error);
-      
-      // Use global error handler for auth errors
       showAuthError(error.code || 'auth/unknown-error');
-      setDataLoading(false); // Error durumunda loading'i false yap
+      setDataLoading(false);
       return false;
     }
-    // finally bloğunu kaldırıyoruz çünkü successful kayıt durumunda onAuthStateChanged loading'i false yapacak
+  };
+
+  const deleteUserAccount = async (password: string): Promise<boolean> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      showError('Oturum bulunamadı. Lütfen tekrar giriş yapın.', 'error', 'Doğrulama Hatası');
+      return false;
+    }
+
+    setDataLoading(true);
+    try {
+      // 1. Re-authenticate user
+      const credential = EmailAuthProvider.credential(currentUser.email, password);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // 2. Delete all user data from Firestore
+      await UserService.deleteAllUserData(currentUser.uid);
+      
+      // 3. Delete user from Firebase Auth
+      await deleteUser(currentUser);
+
+      // onAuthStateChanged will handle the rest (setting user to null)
+      showError('Hesabınız başarıyla silindi.', 'success', 'Başarılı');
+      return true;
+
+    } catch (error: any) {
+      console.error("Failed to delete user account:", error);
+      showAuthError(error.code || 'auth/delete-user-failed');
+      return false;
+    } finally {
+      setDataLoading(false);
+    }
   };
 
   const signOut = async (): Promise<void> => {
@@ -234,7 +289,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await clearSavedCredentials();
     } catch (error) {
       console.error('Sign out error:', error);
-      throw error;
+      showError('Çıkış yapılırken bir hata oluştu.', 'error', 'Hata');
     }
     // onAuthStateChanged otomatik olarak user'ı null yapacak ve loading'i false yapacak
   };
@@ -247,6 +302,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const password = await AsyncStorage.getItem(SAVED_PASSWORD_KEY);
         
         if (email && password) {
+          await clearSavedCredentials();
           return { email, password };
         }
       }
@@ -320,6 +376,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp,
     signOut,
     updateUserProfile,
+    deleteUserAccount,
     getSavedCredentials,
     clearSavedCredentials,
     tryAutoLogin,

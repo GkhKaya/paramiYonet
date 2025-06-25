@@ -111,76 +111,42 @@ class UserService {
     return auth.currentUser?.uid || null;
   }
 
-  async deleteUserAccount(userId: string): Promise<void> {
+  async deleteAllUserData(userId: string): Promise<void> {
+    const collectionsToDelete = [
+      COLLECTIONS.TRANSACTIONS,
+      COLLECTIONS.ACCOUNTS,
+      COLLECTIONS.CATEGORIES,
+      COLLECTIONS.BUDGETS,
+      COLLECTIONS.RECURRING_PAYMENTS,
+      COLLECTIONS.DEBTS,
+    ];
+
+    const batch = writeBatch(db);
+
     try {
-      const batch = writeBatch(db);
-
-      // 1. Kullanıcının tüm işlemlerini sil
-      const transactionsQuery = query(
-        collection(db, 'transactions'),
-        where('userId', '==', userId)
-      );
-      const transactionsSnapshot = await getDocs(transactionsQuery);
-      transactionsSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-
-      // 2. Kullanıcının hesaplarını sil
-      const accountsQuery = query(
-        collection(db, 'accounts'),
-        where('userId', '==', userId)
-      );
-      const accountsSnapshot = await getDocs(accountsQuery);
-      accountsSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-
-      // 3. Kullanıcının kategorilerini sil
-      const categoriesQuery = query(
-        collection(db, 'categories'),
-        where('userId', '==', userId)
-      );
-      const categoriesSnapshot = await getDocs(categoriesQuery);
-      categoriesSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-
-      // 4. Kullanıcının bütçelerini sil
-      const budgetsQuery = query(
-        collection(db, 'budgets'),
-        where('userId', '==', userId)
-      );
-      const budgetsSnapshot = await getDocs(budgetsQuery);
-      budgetsSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-
-      // 5. Kullanıcının tekrarlayan ödemelerini sil
-      const recurringQuery = query(
-        collection(db, 'recurringPayments'),
-        where('userId', '==', userId)
-      );
-      const recurringSnapshot = await getDocs(recurringQuery);
-      recurringSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-
-      // 6. Kullanıcı profilini sil
-      batch.delete(doc(db, COLLECTIONS.USERS, userId));
-
-      // Tüm Firestore verilerini sil
-      await batch.commit();
-
-      // 7. Firebase Auth hesabını sil
-      const currentUser = auth.currentUser;
-      if (currentUser && currentUser.uid === userId) {
-        await deleteUser(currentUser);
+      // Silinecek tüm belgeleri toplu işlem için hazırla
+      for (const collectionName of collectionsToDelete) {
+        const q = query(collection(db, collectionName), where('userId', '==', userId));
+        const snapshot = await getDocs(q);
+        snapshot.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
       }
 
-      console.log('User account and all data deleted successfully');
+      // Ana kullanıcı belgesini de silme işlemine ekle
+      const userDocRef = doc(db, COLLECTIONS.USERS, userId);
+      batch.delete(userDocRef);
+
+      // Toplu silme işlemini gerçekleştir
+      await batch.commit();
+      console.log(`All data for user ${userId} has been deleted.`);
+
     } catch (error) {
-      console.error('Error deleting user account:', error);
-      throw error;
+      console.error('Error deleting all user data:', error);
+      // Hata durumunda, AuthContext'teki `finally` bloğu zaten çalışacağı için
+      // burada tekrar bir hata fırlatmak, kullanıcı arayüzünde çift hata mesajına neden olabilir.
+      // Sadece loglamak yeterli, hata yönetimi context'te yapılıyor.
+      throw error; // Yine de zinciri kırmamak için hatayı yukarı yollayalım.
     }
   }
 }

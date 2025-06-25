@@ -13,7 +13,7 @@ export const PASSWORD_RULES = {
   requireLowercase: true,
   requireNumber: true,
   requireSpecialChar: true,
-  specialChars: '@$!%*?&'
+  specialChars: '@$!%*?&.,'
 };
 
 // Email validation fonksiyonu
@@ -53,7 +53,7 @@ export const validatePassword = (password: string): { isValid: boolean; message?
     errors.push('En az bir sayı içermelidir.');
   }
   
-  if (!/[@$!%*?&]/.test(password)) {
+  if (!/[@$!%*?&.,]/.test(password)) {
     errors.push(`En az bir özel karakter içermelidir (${PASSWORD_RULES.specialChars}).`);
   }
   
