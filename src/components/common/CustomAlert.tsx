@@ -5,7 +5,7 @@ import { COLORS, SPACING, TYPOGRAPHY } from '../../constants/ui';
 
 const { width } = Dimensions.get('window');
 
-export type AlertType = 'success' | 'error' | 'warning' | 'info';
+export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm';
 
 interface CustomAlertProps {
   visible: boolean;
@@ -60,6 +60,13 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
           iconColor: COLORS.PRIMARY,
           iconBg: COLORS.PRIMARY + '20',
           icon: icon || 'information-circle',
+          primaryButtonBg: COLORS.PRIMARY,
+        };
+      case 'confirm':
+        return {
+          iconColor: COLORS.WARNING,
+          iconBg: COLORS.WARNING + '20',
+          icon: icon || 'help-circle',
           primaryButtonBg: COLORS.PRIMARY,
         };
       default:

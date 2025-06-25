@@ -18,6 +18,7 @@ export const COLORS = {
   SUCCESS: '#4CAF50',        // Başarı yeşili
   ERROR: '#F44336',          // Hata kırmızısı
   WARNING: '#FFC107',        // Uyarı sarısı
+  DANGER: '#F44336',          // Tehlike kırmızısı (hata ile aynı olabilir)
   INFO: '#2196F3',           // Bilgi mavisi
   
   // Nötr Renkler (Koyu Tema)
