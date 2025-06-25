@@ -30,50 +30,27 @@ const OnboardingContext = createContext<OnboardingContextType | undefined>(undef
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    id: 'welcome',
-    title: 'Hoş Geldiniz!',
-    description: 'ParamiYönet ile finansal kontrolünüz elinizde. Hadi başlayalım!',
+    id: 'app-features',
+    title: 'ParamiYönet\'e Hoş Geldiniz!',
+    description: 'Finansal yaşamınızı kolaylaştıracak 3 temel özelliğimizi keşfedin.',
     isCompleted: false,
   },
   {
-    id: 'accounts',
-    title: 'Hesaplarınızı Ekleyin',
-    description: 'Banka hesaplarınızı, kredi kartlarınızı ve altın hesaplarınızı ekleyerek başlayın.',
-    component: 'AddAccount',
+    id: 'first-account',
+    title: 'İlk Hesabınızı Oluşturun',
+    description: 'Banka hesabınızı, kredi kartınızı veya nakit hesabınızı ekleyerek başlayın.',
     isCompleted: false,
   },
   {
-    id: 'categories',
-    title: 'Kategoriler',
-    description: 'Harcamalarınızı düzenlemek için kategoriler oluşturun veya mevcut kategorileri kullanın.',
-    component: 'ManageCategories',
-    isCompleted: false,
-  },
-  {
-    id: 'first-transaction',
-    title: 'İlk İşleminizi Ekleyin',
-    description: 'Bir gelir veya gider işlemi ekleyerek uygulamayı deneyimlemeye başlayın.',
-    component: 'AddTransaction',
-    isCompleted: false,
-  },
-  {
-    id: 'budget',
-    title: 'Bütçe Oluşturun',
-    description: 'Aylık bütçenizi belirleyerek harcamalarınızı kontrol altında tutun.',
-    component: 'CreateBudget',
-    isCompleted: false,
-  },
-  {
-    id: 'debts',
-    title: 'Borçlarınızı Takip Edin',
-    description: 'Kredi kartı borçları, kişisel borçlar ve diğer yükümlülüklerinizi kayıt altına alın.',
-    component: 'Debts',
+    id: 'analytics-overview',
+    title: 'Güçlü Analiz Araçları',
+    description: 'Harcamalarınızı analiz edin ve finansal hedeflerinize ulaşın.',
     isCompleted: false,
   },
   {
     id: 'complete',
-    title: 'Tebrikler!',
-    description: 'Artık ParamiYönet\'i kullanmaya hazırsınız. İyi yönetimler!',
+    title: 'Hazırsınız!',
+    description: 'Artık ParamiYönet ile finansal kontrolünüz elinizde. Hadi başlayalım!',
     isCompleted: false,
   },
 ];
@@ -94,17 +71,39 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   // Check if user should see onboarding
   const checkShouldShowOnboarding = async (): Promise<boolean> => {
     try {
-      // Check user preferences first
+      if (!user) {
+        return false;
+      }
+
+      // Check user preferences first - eğer onboarding tamamlanmışsa gösterme
       if (user?.preferences?.onboardingCompleted || user?.onboardingCompleted) {
         return false;
       }
 
+      // Check if user is newly registered (created within last 7 days)
+      if (user?.createdAt) {
+        const userCreatedTime = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+        const now = new Date();
+        const timeDifference = now.getTime() - userCreatedTime.getTime();
+        const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000; // 7 gün
+        
+        // Eğer kullanıcı 7 günden uzun süredir kayıtlıysa onboarding gösterme
+        if (timeDifference > sevenDaysInMs) {
+          return false;
+        }
+      }
+
       // Check local storage as fallback
       const hasSeenOnboarding = await AsyncStorage.getItem('onboarding_completed');
-      return hasSeenOnboarding !== 'true';
+      const onboardingHistory = await AsyncStorage.getItem(`onboarding_completed_${user?.id}`);
+      
+      if (hasSeenOnboarding === 'true' || onboardingHistory === 'true') {
+        return false;
+      }
+      return true;
     } catch (error) {
       console.error('Error checking onboarding status:', error);
-      return true; // Show onboarding on error to be safe
+      return false; // Hata durumunda onboarding gösterme
     }
   };
 
@@ -113,25 +112,23 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
     const initializeOnboarding = async () => {
       if (user) {
         const shouldShow = await checkShouldShowOnboarding();
-        console.log('Should show onboarding:', shouldShow, 'User:', user.email);
         setIsOnboardingVisible(shouldShow);
         setIsOnboardingCompleted(!shouldShow);
+      } else {
+        // User yok ise onboarding gösterme
+        setIsOnboardingVisible(false);
+        setIsOnboardingCompleted(false);
       }
     };
 
     initializeOnboarding();
   }, [user]);
 
-
-
   const nextStep = () => {
-    console.log('nextStep called:', { currentStep, totalSteps });
     if (currentStep < totalSteps - 1) {
       const newStep = currentStep + 1;
-      console.log('Moving to step:', newStep);
       setCurrentStep(newStep);
     } else {
-      console.log('Completing onboarding');
       completeOnboarding();
     }
   };
@@ -145,10 +142,14 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   const skipOnboarding = async () => {
     try {
       await AsyncStorage.setItem('onboarding_completed', 'true');
+      
+      // User-specific onboarding history
+      if (user?.id) {
+        await AsyncStorage.setItem(`onboarding_completed_${user.id}`, 'true');
+      }
+      
       setIsOnboardingVisible(false);
       setIsOnboardingCompleted(true);
-      
-      console.log('Onboarding skipped by user');
     } catch (error) {
       console.error('Error skipping onboarding:', error);
     }
@@ -157,6 +158,20 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
   const completeOnboarding = async () => {
     try {
       await AsyncStorage.setItem('onboarding_completed', 'true');
+      
+      // User-specific onboarding history
+      if (user?.id) {
+        await AsyncStorage.setItem(`onboarding_completed_${user.id}`, 'true');
+        
+        const UserService = (await import('../services/UserService')).default;
+        await UserService.updateUserProfile(user.id, {
+          preferences: {
+            ...user.preferences,
+            onboardingCompleted: true,
+          }
+        });
+      }
+      
       setIsOnboardingVisible(false);
       setIsOnboardingCompleted(true);
       
@@ -164,8 +179,6 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       setSteps(prevSteps => 
         prevSteps.map(step => ({ ...step, isCompleted: true }))
       );
-
-      console.log('Onboarding completed successfully');
     } catch (error) {
       console.error('Error completing onboarding:', error);
     }
@@ -183,7 +196,6 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
       setIsOnboardingCompleted(false);
       setIsOnboardingVisible(true);
       setSteps(ONBOARDING_STEPS);
-      console.log('Onboarding reset for testing');
     } catch (error) {
       console.error('Error resetting onboarding:', error);
     }

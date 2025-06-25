@@ -319,17 +319,17 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                 <View style={styles.headerButtonBackground}>
                   <Ionicons name="close" size={20} color="#FFFFFF" />
                 </View>
-              </TouchableOpacity>
+            </TouchableOpacity>
               
               <View style={styles.headerTitleContainer}>
                 <Text style={styles.modernModalTitle}>
                   {editMode ? 'Düzenle' : 'İşlem Detayı'}
-                </Text>
+            </Text>
                 <Text style={styles.modalSubtitle}>
                   {formatDate(selectedTransaction.date)}
                 </Text>
-              </View>
-              
+          </View>
+
               {!editMode && (
                 <TouchableOpacity 
                   onPress={() => setEditMode(true)} 
@@ -351,11 +351,11 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                   </View>
                 </TouchableOpacity>
               )}
+              </View>
             </View>
-          </View>
 
           <ScrollView style={styles.minimalistContent} showsVerticalScrollIndicator={false}>
-            {editMode ? (
+              {editMode ? (
               // Edit Mode - Compact Layout
               <>
                 {/* Top Row: Amount + Date */}
@@ -364,12 +364,12 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                     <Text style={styles.compactLabel}>Tutar</Text>
                     <TextInput
                       style={styles.compactInput}
-                      value={editForm.amount}
+                  value={editForm.amount}
                       onChangeText={(value: string) => setEditForm(prev => ({ ...prev, amount: value }))}
-                      keyboardType="numeric"
+                  keyboardType="numeric"
                       placeholder="0,00"
                       placeholderTextColor="#666666"
-                    />
+                />
                   </View>
                   
                   <View style={styles.halfWidth}>
@@ -380,34 +380,34 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                     >
                       <Text style={styles.compactDateText}>
                         {formatDate(editForm.date)}
-                      </Text>
+                </Text>
                       <Ionicons name="calendar-outline" size={16} color="#2196F3" />
                     </TouchableOpacity>
                   </View>
-                </View>
+            </View>
 
-                {/* Description */}
+            {/* Description */}
                 <View style={styles.compactSection}>
                   <Text style={styles.compactLabel}>Açıklama</Text>
                   <TextInput
                     style={styles.compactInput}
-                    value={editForm.description}
+                  value={editForm.description}
                     onChangeText={(value: string) => setEditForm(prev => ({ ...prev, description: value }))}
-                    placeholder="İşlem açıklaması"
+                  placeholder="İşlem açıklaması"
                     placeholderTextColor="#666666"
-                  />
-                </View>
+                />
+            </View>
 
                                 {/* Category Selector - AddTransactionScreen Style */}
                 <View style={styles.compactSection}>
                   <Text style={styles.compactLabel}>Kategori</Text>
                   <View style={styles.frequentCategoriesContainer}>
                     {getFrequentCategories().map((category) => (
-                      <TouchableOpacity
+                        <TouchableOpacity
                         key={category.name}
                         style={styles.frequentCategoryItem}
                         onPress={() => setEditForm(prev => ({ ...prev, category: category.name }))}
-                      >
+                        >
                         <View style={[
                           styles.frequentCategoryIcon,
                           { backgroundColor: category.color },
@@ -419,15 +419,15 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                             color="#FFFFFF" 
                           />
                         </View>
-                        <Text style={[
+                          <Text style={[
                           styles.frequentCategoryText,
                           editForm.category === category.name && styles.selectedCategoryText
-                        ]}>
+                          ]}>
                           {category.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                    
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                  
                     {/* Tümünü Gör Butonu */}
                     <TouchableOpacity
                       style={styles.showAllCategoriesButton}
@@ -435,59 +435,59 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                     >
                       <View style={styles.showAllCategoriesIcon}>
                         <Ionicons name="grid-outline" size={20} color="#888888" />
-                      </View>
+                  </View>
                       <Text style={styles.showAllCategoriesText}>Tümü</Text>
                     </TouchableOpacity>
-                  </View>
                 </View>
+            </View>
 
                 {/* Date Picker Modals */}
                 {Platform.OS === 'ios' && showDatePicker && (
-                  <Modal
-                    visible={showDatePicker}
-                    transparent={true}
-                    animationType="slide"
-                    onRequestClose={() => setShowDatePicker(false)}
-                  >
-                    <View style={styles.datePickerOverlay}>
-                      <View style={styles.datePickerContainer}>
-                        <View style={styles.datePickerHeader}>
-                          <TouchableOpacity
-                            onPress={() => setShowDatePicker(false)}
-                            style={styles.datePickerButton}
-                          >
-                            <Text style={styles.datePickerButtonText}>İptal</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => setShowDatePicker(false)}
-                            style={styles.datePickerButton}
-                          >
-                            <Text style={[styles.datePickerButtonText, styles.datePickerDone]}>Tamam</Text>
-                          </TouchableOpacity>
+                      <Modal
+                        visible={showDatePicker}
+                        transparent={true}
+                        animationType="slide"
+                        onRequestClose={() => setShowDatePicker(false)}
+                      >
+                        <View style={styles.datePickerOverlay}>
+                          <View style={styles.datePickerContainer}>
+                            <View style={styles.datePickerHeader}>
+                              <TouchableOpacity
+                                onPress={() => setShowDatePicker(false)}
+                                style={styles.datePickerButton}
+                              >
+                                <Text style={styles.datePickerButtonText}>İptal</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => setShowDatePicker(false)}
+                                style={styles.datePickerButton}
+                              >
+                                <Text style={[styles.datePickerButtonText, styles.datePickerDone]}>Tamam</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                              value={editForm.date}
+                              mode="date"
+                              display="spinner"
+                              onChange={handleDateChange}
+                              textColor="#FFFFFF"
+                              locale="tr-TR"
+                            />
+                          </View>
                         </View>
-                        <DateTimePicker
-                          value={editForm.date}
-                          mode="date"
-                          display="spinner"
-                          onChange={handleDateChange}
-                          textColor="#FFFFFF"
-                          locale="tr-TR"
-                        />
-                      </View>
-                    </View>
-                  </Modal>
+                      </Modal>
                 )}
                 
                 {Platform.OS === 'android' && showDatePicker && (
-                  <DateTimePicker
-                    value={editForm.date}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                  />
-                )}
-              </>
-            ) : (
+                      <DateTimePicker
+                        value={editForm.date}
+                        mode="date"
+                        display="default"
+                        onChange={handleDateChange}
+                      />
+                  )}
+                </>
+              ) : (
               // View Mode - Clean Display
               <View style={styles.viewModeContainer}>
                 <View style={styles.amountDisplayContainer}>
@@ -498,7 +498,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                     <Text style={styles.typeChipText}>
                       {isIncome ? 'Gelir' : 'Gider'}
                     </Text>
-                  </View>
+            </View>
                 </View>
 
                 <View style={styles.infoRow}>
@@ -607,11 +607,11 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
                       {editForm.category === category.name && (
                         <View style={styles.categoryCheckmark}>
                           <Ionicons name="checkmark-circle" size={20} color="#2196F3" />
-                        </View>
-                      )}
+              </View>
+            )}
                     </TouchableOpacity>
                   ))}
-                </View>
+          </View>
               </ScrollView>
             </Pressable>
           </Pressable>

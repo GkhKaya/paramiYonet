@@ -69,12 +69,12 @@ export default function App() {
             <AuthProvider>
               <OnboardingProvider>
                 <NavigationContainer>
-                  <ViewModelProvider>
-                    <AppNavigator />
+              <ViewModelProvider>
+                <AppNavigator />
                     <OnboardingModal />
                   </ViewModelProvider>
-                  <StatusBar style="light" backgroundColor="#000000" />
-                </NavigationContainer>
+                <StatusBar style="light" backgroundColor="#000000" />
+              </NavigationContainer>
               </OnboardingProvider>
             </AuthProvider>
             <ErrorNotification />

@@ -236,7 +236,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Profil"
             subtitle={user?.email || 'Kullanıcı'}
             onPress={() => {
-              navigation.navigate('Profile');
+                navigation.navigate('Profile');
             }}
           />
           <SettingItem
@@ -244,7 +244,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Güvenlik"
             subtitle="Şifre ve güvenlik ayarları"
             onPress={() => {
-              navigation.navigate('Security');
+                navigation.navigate('Security');
             }}
           />
           <SettingItem
@@ -252,7 +252,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Kategoriler"
             subtitle="Özel kategorileri yönet"
             onPress={() => {
-              navigation.navigate('ManageCategories');
+                navigation.navigate('ManageCategories');
             }}
           />
           <SettingItem
@@ -260,7 +260,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Borç Yönetimi"
             subtitle="Verilen ve alınan borçları takip et"
             onPress={() => {
-              navigation.navigate('Debts');
+                navigation.navigate('Debts');
             }}
           />
         </View>
@@ -373,7 +373,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             title="Yardım ve Destek"
             subtitle="SSS ve destek"
             onPress={() => {
-              navigation.navigate('HelpAndSupport');
+                navigation.navigate('HelpAndSupport');
             }}
           />
           <SettingItem

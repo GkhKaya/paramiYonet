@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
 import { useFocusEffect } from '@react-navigation/native';
 import { Card } from '../components/common/Card';
+import CustomAlert, { AlertType } from '../components/common/CustomAlert';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 import { Debt, DebtType, DebtStatus } from '../models/Debt';
 import { DebtViewModel } from '../viewmodels/DebtViewModel';
@@ -29,6 +29,22 @@ const DebtsScreen: React.FC<DebtsScreenProps> = observer(({ navigation }) => {
   const [debtViewModel, setDebtViewModel] = useState<DebtViewModel | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'all' | 'lent' | 'borrowed'>('all');
+  
+  // Custom Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<AlertType>('error');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+
+  // Custom Alert helper
+  const showAlert = (type: AlertType, title: string, message: string, action?: () => void) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setConfirmAction(action ? () => action : null);
+    setAlertVisible(true);
+  };
 
   // Custom hooks
   const { formatCurrency } = useCurrency();
@@ -70,26 +86,22 @@ const DebtsScreen: React.FC<DebtsScreenProps> = observer(({ navigation }) => {
   };
 
   const handleDeleteDebt = (debt: Debt) => {
-    Alert.alert(
+    const deleteAction = async () => {
+      if (debtViewModel) {
+        const success = await debtViewModel.deleteDebt(debt.id);
+        if (success) {
+          showAlert('success', 'Başarılı', 'Borç başarıyla silindi');
+        } else {
+          showAlert('error', 'Hata', 'Borç silinirken hata oluştu');
+        }
+      }
+    };
+
+    showAlert(
+      'warning',
       'Borç Sil',
       `"${debt.personName}" ile olan borcunuzu silmek istediğinizden emin misiniz?`,
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: async () => {
-            if (debtViewModel) {
-              const success = await debtViewModel.deleteDebt(debt.id);
-              if (success) {
-                Alert.alert('Başarılı', 'Borç başarıyla silindi');
-              } else {
-                Alert.alert('Hata', 'Borç silinirken hata oluştu');
-              }
-            }
-          }
-        }
-      ]
+      deleteAction
     );
   };
 
@@ -328,6 +340,31 @@ const DebtsScreen: React.FC<DebtsScreenProps> = observer(({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {renderHeader()}
       {renderContent()}
+      
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        title={alertTitle}
+        message={alertMessage}
+        primaryButtonText={confirmAction ? 'Sil' : 'Tamam'}
+        secondaryButtonText={confirmAction ? 'İptal' : undefined}
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          if (confirmAction) {
+            confirmAction();
+            setConfirmAction(null);
+          }
+        }}
+        onSecondaryPress={confirmAction ? () => {
+          setAlertVisible(false);
+          setConfirmAction(null);
+        } : undefined}
+        onClose={() => {
+          setAlertVisible(false);
+          setConfirmAction(null);
+        }}
+      />
     </SafeAreaView>
   );
 });
