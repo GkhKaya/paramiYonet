@@ -8,7 +8,6 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
-  Alert,
   TextInput,
   StatusBar,
   Platform,
@@ -24,6 +23,7 @@ import { WebLayout } from '../components/layout/WebLayout';
 import { BudgetCard } from '../components/budget/BudgetCard';
 import { BudgetSummary } from '../components/budget/BudgetSummary';
 import { CreateBudgetModal } from '../components/budget/CreateBudgetModal';
+import CustomAlert, { AlertType } from '../components/common/CustomAlert';
 import { COLORS, SPACING, TYPOGRAPHY, CURRENCIES } from '../constants';
 import { TransactionType } from '../models/Transaction';
 import { Account, AccountType } from '../models/Account';
@@ -41,9 +41,10 @@ const isSmallDevice = width < 375;
 
 interface ReportsScreenProps {
   navigation: any;
+  route?: any;
 }
 
-const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) => {
+const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation, route }) => {
   const { user } = useAuth();
   const { transactionViewModel, accountViewModel: globalAccountViewModel } = useViewModels();
   const [reportsViewModel, setReportsViewModel] = useState<ReportsViewModel | null>(null);
@@ -52,6 +53,22 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   const [selectedTab, setSelectedTab] = useState<'overview' | 'analytics' | 'trends' | 'accounts' | 'budgets'>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateBudgetModal, setShowCreateBudgetModal] = useState(false);
+  
+  // Custom Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<AlertType>('error');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+
+  // Custom Alert helper
+  const showAlert = (type: AlertType, title: string, message: string, action?: () => void) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setConfirmAction(action ? () => action : null);
+    setAlertVisible(true);
+  };
   
   // Analytics states
   const [goalAmount, setGoalAmount] = useState<string>('');
@@ -75,6 +92,13 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   const { formatCurrency, currencySymbol, formatInput } = useCurrency();
   const { getDetails } = useCategory();
   const { formatShort, formatMonthYear } = useDate();
+
+  // Handle initial tab from navigation params
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setSelectedTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
 
   // Analytics calculation functions
   const calculateSavingsScore = (income: number, expense: number): number => {
@@ -298,26 +322,22 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
   };
 
   const handleDeleteAccount = (account: Account) => {
-    Alert.alert(
+    const deleteAction = async () => {
+      if (accountViewModel) {
+        const success = await accountViewModel.deleteAccount(account.id);
+        if (success) {
+          showAlert('success', 'Başarılı', 'Hesap başarıyla silindi');
+        } else {
+          showAlert('error', 'Hata', 'Hesap silinirken hata oluştu');
+        }
+      }
+    };
+
+    showAlert(
+      'warning',
       'Hesabı Sil',
       `"${account.name}" hesabını silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`,
-      [
-        { text: 'İptal', style: 'cancel' },
-        {
-          text: 'Sil',
-          style: 'destructive',
-          onPress: async () => {
-            if (accountViewModel) {
-              const success = await accountViewModel.deleteAccount(account.id);
-              if (success) {
-                Alert.alert('Başarılı', 'Hesap başarıyla silindi');
-              } else {
-                Alert.alert('Hata', 'Hesap silinirken hata oluştu');
-              }
-            }
-          }
-        }
-      ]
+      deleteAction
     );
   };
 
@@ -1253,29 +1273,25 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
               key={budget.id}
               budget={budget}
               onEdit={() => {
-                Alert.alert('Bütçe Düzenle', `Bu özellik yakında eklenecektir.`);
+                showAlert('info', 'Bütçe Düzenle', 'Bu özellik yakında eklenecektir.');
               }}
               onDelete={() => {
-                   Alert.alert(
-                     'Bütçeyi Sil',
-                     `"${budget.categoryName}" bütçesini silmek istediğinizden emin misiniz?`,
-                     [
-                       { text: 'İptal', style: 'cancel' },
-                       { 
-                         text: 'Sil', 
-                         style: 'destructive',
-                         onPress: async () => {
-                            const success = await deleteBudget(budget.id);
-                            if (success) {
-                                Alert.alert('Başarılı', 'Bütçe silindi');
-                            } else {
-                                Alert.alert('Hata', 'Bütçe silinirken bir sorun oluştu.');
-                            }
-                         }
-                       }
-                     ]
-                   );
-                 }}
+                const deleteBudgetAction = async () => {
+                  const success = await deleteBudget(budget.id);
+                  if (success) {
+                    showAlert('success', 'Başarılı', 'Bütçe silindi');
+                  } else {
+                    showAlert('error', 'Hata', 'Bütçe silinirken bir sorun oluştu.');
+                  }
+                };
+
+                showAlert(
+                  'warning',
+                  'Bütçeyi Sil',
+                  `"${budget.categoryName}" bütçesini silmek istediğinizden emin misiniz?`,
+                  deleteBudgetAction
+                );
+              }}
             />
           ))
         ) : (
@@ -1371,16 +1387,41 @@ const ReportsScreen: React.FC<ReportsScreenProps> = observer(({ navigation }) =>
             onSubmit={async (data) => {
               const success = await reportsViewModel.budgetViewModel.createBudget(data);
               if (success) {
-                Alert.alert('Başarılı', 'Yeni bütçe başarıyla oluşturuldu.');
+                showAlert('success', 'Başarılı', 'Yeni bütçe başarıyla oluşturuldu.');
                 setShowCreateBudgetModal(false);
               } else {
-                Alert.alert('Hata', reportsViewModel.budgetViewModel.error || 'Bütçe oluşturulurken bir hata oluştu.');
+                showAlert('error', 'Hata', reportsViewModel.budgetViewModel.error || 'Bütçe oluşturulurken bir hata oluştu.');
               }
               return success; 
             }}
             isLoading={reportsViewModel.budgetViewModel.isLoading}
           />
         )}
+
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={alertVisible}
+          type={alertType}
+          title={alertTitle}
+          message={alertMessage}
+          primaryButtonText={confirmAction ? 'Sil' : 'Tamam'}
+          secondaryButtonText={confirmAction ? 'İptal' : undefined}
+          onPrimaryPress={() => {
+            setAlertVisible(false);
+            if (confirmAction) {
+              confirmAction();
+              setConfirmAction(null);
+            }
+          }}
+          onSecondaryPress={confirmAction ? () => {
+            setAlertVisible(false);
+            setConfirmAction(null);
+          } : undefined}
+          onClose={() => {
+            setAlertVisible(false);
+            setConfirmAction(null);
+          }}
+        />
         
       </SafeAreaView>
     </WebLayout>

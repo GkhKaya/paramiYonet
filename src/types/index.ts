@@ -98,7 +98,7 @@ export type MainTabParamList = {
   Dashboard: undefined;
   Transactions: undefined;
   AddTransaction: undefined;
-  Reports: undefined;
+  Reports: { initialTab?: 'overview' | 'analytics' | 'trends' | 'accounts' | 'budgets' } | undefined;
   Settings: undefined;
 };
 

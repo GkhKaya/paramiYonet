@@ -64,7 +64,7 @@ const TabNavigator: React.FC = () => {
               iconName = focused ? 'document-text' : 'document-text-outline';
               break;
             case 'Settings':
-              iconName = focused ? 'person' : 'person-outline';
+              iconName = focused ? 'settings' : 'settings-outline';
               break; 
             default:
               iconName = 'circle';
@@ -144,7 +144,7 @@ const TabNavigator: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          title: 'Ben',
+          title: 'Ayarlar',
         }}
       />
     </Tab.Navigator>

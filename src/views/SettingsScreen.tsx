@@ -240,6 +240,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             }}
           />
           <SettingItem
+            icon="wallet"
+            title="Hesap Oluştur"
+            subtitle="Yeni banka, nakit veya kredi kartı hesabı ekle"
+            onPress={() => {
+                navigation.navigate('Reports', { initialTab: 'accounts' });
+            }}
+          />
+          <SettingItem
             icon="shield-checkmark"
             title="Güvenlik"
             subtitle="Şifre ve güvenlik ayarları"
