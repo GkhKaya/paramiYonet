@@ -23,6 +23,7 @@ export interface AccountItem {
   balance: number;
   isActive: boolean;
   color: string; // Hesap rengi
+  currentDebt?: number; // Kredi kartı borcu
 }
 
 interface AccountsListProps {
@@ -150,9 +151,12 @@ export const AccountsList: React.FC<AccountsListProps> = ({
           <View style={styles.balanceSection}>
             <Text style={[
               styles.balanceAmount,
-              { color: isNegative ? '#F44336' : '#4CAF50' }
+              { color: account.type === 'credit_card' ? '#F44336' : (isNegative ? '#F44336' : '#4CAF50') }
             ]}>
-              {formatCurrency(account.balance)}
+              {account.type === 'credit_card' ? 
+                `- ${formatCurrency((account as any).currentDebt || 0)}` : 
+                formatCurrency(account.balance)
+              }
             </Text>
             
             <View style={styles.actionButtons}>

@@ -546,9 +546,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
                   <View style={styles.accountItemRight}>
                     <Text style={[
                       styles.accountItemBalance,
-                      { color: account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY }
+                      { color: account.type === AccountType.CREDIT_CARD ? 
+                          COLORS.ERROR : 
+                          (account.balance < 0 ? COLORS.ERROR : COLORS.TEXT_PRIMARY) 
+                      }
                     ]}>
-                      {formatAccountBalance(account.balance)}
+                      {account.type === AccountType.CREDIT_CARD ? 
+                        `- ${formatAccountBalance(account.currentDebt || 0)}` : 
+                        formatAccountBalance(account.balance)
+                      }
                     </Text>
                     <View style={styles.accountItemActions}>
                       <TouchableOpacity

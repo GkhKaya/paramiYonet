@@ -6,21 +6,21 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { observer } from 'mobx-react-lite';
-import { Card } from '../components/common/Card';
-import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
+
+import CustomAlert, { AlertType } from '../components/common/CustomAlert';
+
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants/ui';
 import { Account, AccountType } from '../models/Account';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../hooks/useCurrency';
 import {
   calculateMinPayment,
-  calculateMonthlyInterest,
   getCreditCardInterestRates,
 } from '../utils/creditCard';
 
@@ -39,6 +39,7 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
 }) => {
   const { user } = useAuth();
   const [accountViewModel] = useState(() => user?.id ? new AccountViewModel(user.id) : null);
+  const { currencySymbol } = useCurrency();
 
   const creditCard = route?.params?.creditCard;
   
@@ -47,13 +48,27 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
     return null;
   }
 
-  // Form state
-  const [selectedPaymentAccount, setSelectedPaymentAccount] = useState<Account | null>(null);
+  // State
+  const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [paymentType, setPaymentType] = useState<'minimum' | 'full' | 'custom'>('minimum');
-  const [customAmount, setCustomAmount] = useState('');
+  const [amount, setAmount] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { currencySymbol, formatInput } = useCurrency();
+  // Custom Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<AlertType>('error');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+
+  // Custom Alert helper
+  const showAlert = (type: AlertType, title: string, message: string, action?: () => void) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setConfirmAction(action ? () => action : null);
+    setAlertVisible(true);
+  };
 
   // Load accounts
   useEffect(() => {
@@ -62,475 +77,111 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
     }
   }, [accountViewModel]);
 
-  // Kredi kartı dışındaki diğer hesaplar (ödeme yapılabilecek hesaplar)
+  // Hesaplamalar
+  const currentDebt = creditCard.currentDebt || 0;
+  const minPayment = calculateMinPayment(currentDebt);
+  
+  // Ödeme hesapları
   const paymentAccounts = accountViewModel?.accounts.filter(acc => 
     acc.type !== AccountType.CREDIT_CARD && 
     acc.isActive && 
     acc.balance > 0
   ) || [];
 
-  // Hesaplamalar
-  const currentDebt = creditCard.currentDebt || 0;
-  const minPayment = calculateMinPayment(currentDebt);
-  const interestRates = getCreditCardInterestRates(currentDebt);
-  const monthlyInterest = calculateMonthlyInterest(currentDebt);
-
-  // Son ödeme tarihi hesaplama (sonraki ayın due day'i)
-  const calculateDueDate = () => {
-    const today = new Date();
-    const dueDay = creditCard.dueDay || 15;
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, dueDay);
-    return nextMonth.toLocaleDateString('tr-TR', { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
-    });
+  // Ödeme tutarını al
+  const getAmount = () => {
+    if (paymentType === 'minimum') return minPayment;
+    if (paymentType === 'full') return currentDebt;
+    return parseFloat(amount.replace(',', '.')) || 0;
   };
 
-  // Ekstre tarihi hesaplama (sonraki ayın statement day'i)
-  const calculateStatementDate = () => {
-    const today = new Date();
-    const statementDay = creditCard.statementDay || 10;
-    const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, statementDay);
-    return nextMonth.toLocaleDateString('tr-TR', { 
-      day: 'numeric', 
-      month: 'long' 
-    });
+  // Validation kontrolü
+  const isFormValid = () => {
+    if (!selectedAccount) return false;
+    if (paymentType === 'custom' && (!amount || parseFloat(amount.replace(',', '.')) <= 0)) return false;
+    const paymentAmount = getAmount();
+    if (paymentAmount <= 0) return false;
+    if (paymentAmount > (selectedAccount?.balance || 0)) return false;
+    return true;
   };
 
-  // Ödeme tutarını hesapla
-  const getPaymentAmount = (): number => {
-    switch (paymentType) {
-      case 'minimum':
-        return minPayment;
-      case 'full':
-        return currentDebt;
-      case 'custom':
-        return parseFloat(customAmount.replace(',', '.')) || 0;
-      default:
-        return 0;
-    }
-  };
-
+  // Ödeme yap veya validation uyarısı göster
   const handlePayment = async () => {
-    if (!selectedPaymentAccount) {
-      Alert.alert('Hata', 'Lütfen ödeme hesabı seçin');
+    // Validation kontrolleri
+    if (!selectedAccount) {
+      showAlert('warning', 'Eksik Bilgi', 'Lütfen ödeme yapılacak hesabı seçin');
       return;
     }
 
-    const paymentAmount = getPaymentAmount();
-
+    const paymentAmount = getAmount();
+    
+    if (paymentType === 'custom' && (!amount || parseFloat(amount.replace(',', '.')) <= 0)) {
+      showAlert('warning', 'Eksik Bilgi', 'Lütfen geçerli bir ödeme tutarı girin');
+      return;
+    }
+    
     if (paymentAmount <= 0) {
-      Alert.alert('Hata', 'Geçerli bir ödeme tutarı girin');
+      showAlert('error', 'Hata', 'Geçerli tutar girin');
       return;
     }
 
-    if (paymentAmount > currentDebt) {
-      Alert.alert('Hata', 'Ödeme tutarı mevcut borçtan fazla olamaz');
+    if (paymentAmount > selectedAccount.balance) {
+      showAlert('error', 'Yetersiz Bakiye', `Bu hesapta yeterli bakiye bulunmuyor.\n\nMevcut bakiye: ${selectedAccount.balance.toFixed(2)} ${currencySymbol}\nÖdeme tutarı: ${paymentAmount.toFixed(2)} ${currencySymbol}`);
       return;
     }
 
-    if (paymentAmount > selectedPaymentAccount.balance) {
-      Alert.alert('Hata', 'Ödeme hesabında yetersiz bakiye');
-      return;
-    }
-
-    // Asgari ödeme kontrolü
-    if (paymentType === 'custom' && paymentAmount < minPayment && paymentAmount < currentDebt) {
-      Alert.alert(
-        'Uyarı',
-        `Asgari ödeme tutarı ${minPayment.toFixed(2)} ${currencySymbol}. Bu tutardan az ödeme yapmak faiz uygulanmasına neden olabilir. Devam etmek istiyor musunuz?`,
-        [
-          { text: 'İptal', style: 'cancel' },
-          { text: 'Devam Et', onPress: () => processPayment(paymentAmount) }
-        ]
-      );
-      return;
-    }
-
-    processPayment(paymentAmount);
-  };
-
-  const processPayment = async (amount: number) => {
     setLoading(true);
-
+    
     try {
       if (accountViewModel) {
         await accountViewModel.addCreditCardPayment(
           creditCard.id,
-          selectedPaymentAccount!.id,
-          amount,
+          selectedAccount.id,
+          paymentAmount,
           paymentType,
-          `${creditCard.name} borç ödemesi`
+          `${creditCard.name} ödeme`
         );
 
-        Alert.alert('Başarılı', 'Kredi kartı ödemesi yapıldı', [
-          { text: 'Tamam', onPress: () => navigation.goBack() }
-        ]);
+        showAlert('success', 'Başarılı', 'Ödeme başarıyla yapıldı', () => navigation.goBack());
       }
     } catch (error) {
-      console.error('Kredi kartı ödemesi yapılırken hata:', error);
-      Alert.alert('Hata', 'Ödeme yapılırken bir hata oluştu');
+      showAlert('error', 'Hata', 'Ödeme yapılamadı. Lütfen tekrar deneyiniz.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Kredi kartı bilgilerini gösteren gelişmiş kart
-  const CreditCardInfoCard = () => (
-    <Card style={styles.section}>
-      <View style={styles.cardHeaderSection}>
-        <View style={styles.cardTitleRow}>
-          <Ionicons name="card" size={24} color="#FF6B6B" />
-          <Text style={styles.sectionTitle}>Kredi Kartı Bilgileri</Text>
-        </View>
-      </View>
-
-      <View style={styles.creditCardMainInfo}>
-        <View style={[styles.cardIcon, { backgroundColor: creditCard.color }]}>
-          <Ionicons name="card" size={32} color="white" />
-        </View>
-        <View style={styles.cardDetails}>
-          <Text style={styles.cardName}>{creditCard.name}</Text>
-          <Text style={styles.cardSubtitle}>Kredi Kartı</Text>
-        </View>
-      </View>
-
-      {/* Borç Durumu - Ana Vurgu */}
-      <View style={styles.debtStatusCard}>
-        <View style={styles.debtMainInfo}>
-          <Text style={styles.debtLabel}>Mevcut Toplam Borç</Text>
-          <Text style={[styles.debtAmount, { color: currentDebt > 0 ? COLORS.ERROR : COLORS.SUCCESS }]}>
-            {currentDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-          </Text>
-          {currentDebt === 0 ? (
-            <View style={styles.noDebtBadge}>
-              <Ionicons name="checkmark-circle" size={16} color={COLORS.SUCCESS} />
-              <Text style={styles.noDebtText}>Borç bulunmuyor</Text>
-            </View>
-          ) : (
-            <View style={styles.debtWarning}>
-              <Ionicons name="warning" size={16} color="#FF9500" />
-              <Text style={styles.debtWarningText}>Ödeme gerekli</Text>
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Detaylı Bilgiler Grid */}
-      {currentDebt > 0 && (
-        <View style={styles.detailsGrid}>
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Asgari Ödeme</Text>
-            <Text style={styles.detailValue}>
-              {minPayment.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-            </Text>
-            <Text style={styles.detailSubtext}>(%20)</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Aylık Faiz</Text>
-            <Text style={styles.detailValue}>
-              {monthlyInterest.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-            </Text>
-            <Text style={styles.detailSubtext}>(%{interestRates.regular})</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Son Ödeme</Text>
-            <Text style={styles.detailValue}>{calculateDueDate()}</Text>
-            <Text style={styles.detailSubtext}>Tarihi</Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <Text style={styles.detailLabel}>Sonraki Ekstre</Text>
-            <Text style={styles.detailValue}>{calculateStatementDate()}</Text>
-            <Text style={styles.detailSubtext}>Kesim tarihi</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Limit Bilgileri */}
-      <View style={styles.limitInfoSection}>
-        <View style={styles.limitProgressContainer}>
-          <View style={styles.limitLabels}>
-            <Text style={styles.limitLabel}>Kredi Limiti</Text>
-            <Text style={styles.limitAmount}>
-              {(creditCard.limit || 0).toLocaleString('tr-TR')} {currencySymbol}
-            </Text>
-          </View>
-          
-          <View style={styles.progressBar}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { 
-                  width: `${Math.min((currentDebt / (creditCard.limit || 1)) * 100, 100)}%`,
-                  backgroundColor: currentDebt > (creditCard.limit || 0) * 0.8 ? COLORS.ERROR : 
-                                 currentDebt > (creditCard.limit || 0) * 0.5 ? '#FF9500' : COLORS.SUCCESS
-                }
-              ]} 
-            />
-          </View>
-          
-          <View style={styles.limitLabels}>
-            <Text style={styles.availableLabel}>Kullanılabilir</Text>
-            <Text style={styles.availableAmount}>
-              {Math.max(0, (creditCard.limit || 0) - currentDebt).toLocaleString('tr-TR')} {currencySymbol}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </Card>
-  );
-
-  const PaymentTypeSelector = () => (
-    <Card style={styles.section}>
-      <View style={styles.cardHeaderSection}>
-        <View style={styles.cardTitleRow}>
-          <Ionicons name="cash" size={24} color="#4ECDC4" />
-          <Text style={styles.sectionTitle}>Ödeme Türü Seçin</Text>
-        </View>
-      </View>
-      
-      <TouchableOpacity
-        style={[
-          styles.paymentOption,
-          paymentType === 'minimum' && styles.selectedPaymentOption
-        ]}
-        onPress={() => setPaymentType('minimum')}
-      >
-        <View style={styles.paymentOptionContent}>
-          <View style={styles.paymentOptionIcon}>
-            <Ionicons 
-              name="shield-checkmark" 
-              size={24} 
-              color={paymentType === 'minimum' ? COLORS.SUCCESS : COLORS.TEXT_SECONDARY} 
-            />
-          </View>
-          <View style={styles.paymentOptionInfo}>
-            <Text style={styles.paymentOptionTitle}>Asgari Ödeme</Text>
-            <Text style={styles.paymentOptionAmount}>
-              {minPayment.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-            </Text>
-            <Text style={styles.paymentOptionSubtitle}>
-              Yasal minimum ödeme (%20)
-            </Text>
-          </View>
-          {paymentType === 'minimum' && (
-            <Ionicons name="checkmark-circle" size={28} color={COLORS.SUCCESS} />
-          )}
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.paymentOption,
-          paymentType === 'full' && styles.selectedPaymentOption
-        ]}
-        onPress={() => setPaymentType('full')}
-      >
-        <View style={styles.paymentOptionContent}>
-          <View style={styles.paymentOptionIcon}>
-            <Ionicons 
-              name="star" 
-              size={24} 
-              color={paymentType === 'full' ? '#FFD700' : COLORS.TEXT_SECONDARY} 
-            />
-          </View>
-          <View style={styles.paymentOptionInfo}>
-            <Text style={styles.paymentOptionTitle}>Tam Ödeme</Text>
-            <Text style={styles.paymentOptionAmount}>
-              {currentDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-            </Text>
-            <Text style={styles.paymentOptionSubtitle}>
-              Tüm borcu kapatır (Faiz ödemezsiniz)
-            </Text>
-          </View>
-          {paymentType === 'full' && (
-            <Ionicons name="checkmark-circle" size={28} color={COLORS.SUCCESS} />
-          )}
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[
-          styles.paymentOption,
-          paymentType === 'custom' && styles.selectedPaymentOption
-        ]}
-        onPress={() => setPaymentType('custom')}
-      >
-        <View style={styles.paymentOptionContent}>
-          <View style={styles.paymentOptionIcon}>
-            <Ionicons 
-              name="create" 
-              size={24} 
-              color={paymentType === 'custom' ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY} 
-            />
-          </View>
-          <View style={styles.paymentOptionInfo}>
-            <Text style={styles.paymentOptionTitle}>İstediğim Kadar</Text>
-            <Text style={styles.paymentOptionAmount}>
-              {getPaymentAmount() > 0 ? 
-                `${getPaymentAmount().toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${currencySymbol}` : 
-                'Tutar belirleyin'
-              }
-            </Text>
-            <Text style={styles.paymentOptionSubtitle}>
-              Özel tutar belirleyin
-            </Text>
-          </View>
-          {paymentType === 'custom' && (
-            <Ionicons name="checkmark-circle" size={28} color={COLORS.SUCCESS} />
-          )}
-        </View>
-      </TouchableOpacity>
-
-      {paymentType === 'custom' && (
-        <View style={styles.customAmountContainer}>
-          <Text style={styles.inputLabel}>Ödeme Tutarı ({currencySymbol})</Text>
-          <View style={styles.customInputWrapper}>
-            <TextInput
-              style={styles.customAmountInput}
-              value={customAmount}
-              onChangeText={(value) => setCustomAmount(formatInput(value))}
-              placeholder="0,00"
-              placeholderTextColor={COLORS.TEXT_SECONDARY}
-              keyboardType="decimal-pad"
-            />
-            <View style={styles.inputIconContainer}>
-              <Ionicons name="cash" size={20} color={COLORS.PRIMARY} />
-            </View>
-          </View>
-          {parseFloat(customAmount.replace(',', '.')) > 0 && (
-            <View style={styles.customAmountInfo}>
-              <Text style={styles.customAmountNote}>
-                Kalan borç: {(currentDebt - parseFloat(customAmount.replace(',', '.') || '0')).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
-    </Card>
-  );
-
-  const PaymentAccountSelector = () => (
-    <Card style={styles.section}>
-      <View style={styles.cardHeaderSection}>
-        <View style={styles.cardTitleRow}>
-          <Ionicons name="wallet" size={24} color="#9B59B6" />
-          <Text style={styles.sectionTitle}>Ödeme Hesabı Seçin</Text>
-        </View>
-      </View>
-
-      {paymentAccounts.map((account) => {
-        const isSelected = selectedPaymentAccount?.id === account.id;
-        const hasEnoughBalance = account.balance >= getPaymentAmount();
-        
-        return (
-          <TouchableOpacity
-            key={account.id}
-            style={[
-              styles.accountOption,
-              isSelected && styles.selectedAccountOption,
-              !hasEnoughBalance && getPaymentAmount() > 0 && styles.insufficientBalanceOption
-            ]}
-            onPress={() => setSelectedPaymentAccount(account)}
-            disabled={!hasEnoughBalance && getPaymentAmount() > 0}
-          >
-            <View style={styles.accountOptionContent}>
-              <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
-                <Ionicons name={account.icon as any} size={24} color="white" />
-              </View>
-              <View style={styles.accountInfo}>
-                <Text style={[styles.accountName, !hasEnoughBalance && getPaymentAmount() > 0 && styles.disabledText]}>
-                  {account.name}
-                </Text>
-                <Text style={[styles.accountBalance, { 
-                  color: hasEnoughBalance || getPaymentAmount() === 0 ? COLORS.SUCCESS : COLORS.ERROR 
-                }]}>
-                  Bakiye: {account.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-                </Text>
-                {!hasEnoughBalance && getPaymentAmount() > 0 && (
-                  <Text style={styles.insufficientText}>Yetersiz bakiye</Text>
-                )}
-              </View>
-              {isSelected && hasEnoughBalance && (
-                <Ionicons name="checkmark-circle" size={28} color={COLORS.SUCCESS} />
-              )}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-      
-      {paymentAccounts.length === 0 && (
-        <View style={styles.noAccountsContainer}>
-          <Ionicons name="wallet-outline" size={48} color={COLORS.TEXT_SECONDARY} />
-          <Text style={styles.noAccountsText}>Ödeme yapılabilecek hesap bulunamadı</Text>
-          <Text style={styles.noAccountsSubtext}>
-            Önce bakiyesi olan bir hesap oluşturun
-          </Text>
-        </View>
-      )}
-    </Card>
-  );
-
-  // Ödeme özeti kartı
-  const PaymentSummaryCard = () => {
-    if (!selectedPaymentAccount || currentDebt === 0) return null;
-
-    const paymentAmount = getPaymentAmount();
-    const remainingDebt = Math.max(0, currentDebt - paymentAmount);
-    
+  if (currentDebt === 0) {
     return (
-      <Card style={styles.summaryCard}>
-        <View style={styles.summaryHeader}>
-          <Ionicons name="receipt" size={24} color="#E74C3C" />
-          <Text style={styles.summaryTitle}>Ödeme Özeti</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Kredi Kartı Ödemesi</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        <View style={styles.summaryContent}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Ödeme Tutarı:</Text>
-            <Text style={styles.summaryValue}>
-              {paymentAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-            </Text>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Ödeme Hesabı:</Text>
-            <Text style={styles.summaryValue}>{selectedPaymentAccount.name}</Text>
-          </View>
-
-          <View style={styles.summaryDivider} />
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Kalan Borç:</Text>
-            <Text style={[styles.summaryValue, { 
-              color: remainingDebt === 0 ? COLORS.SUCCESS : COLORS.ERROR 
-            }]}>
-              {remainingDebt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol}
-            </Text>
-          </View>
-
-          {remainingDebt === 0 && (
-            <View style={styles.successBadge}>
-              <Ionicons name="checkmark-circle" size={20} color={COLORS.SUCCESS} />
-              <Text style={styles.successText}>Tüm borç kapatılacak</Text>
-            </View>
-          )}
+        <View style={styles.noDebtContainer}>
+          <Ionicons name="checkmark-circle" size={80} color={COLORS.SUCCESS} />
+          <Text style={styles.noDebtTitle}>Borç Yok!</Text>
+          <Text style={styles.noDebtText}>Bu kredi kartında borç bulunmuyor.</Text>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Geri Dön</Text>
+          </TouchableOpacity>
         </View>
-      </Card>
+      </SafeAreaView>
     );
-  };
+  }
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.TEXT_PRIMARY} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Kredi Kartı Ödemesi</Text>
@@ -538,56 +189,169 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <CreditCardInfoCard />
-        
-        {currentDebt > 0 ? (
-          <>
-            <PaymentTypeSelector />
-            <PaymentAccountSelector />
-            <PaymentSummaryCard />
-          </>
-        ) : (
-          <Card style={styles.noDebtCard}>
-            <View style={styles.noDebtContent}>
-              <Ionicons name="checkmark-circle" size={64} color={COLORS.SUCCESS} />
-              <Text style={styles.noDebtTitle}>Harika! 🎉</Text>
-              <Text style={styles.noDebtMessage}>
-                Bu kredi kartında herhangi bir borcunuz bulunmuyor.
-              </Text>
-              <TouchableOpacity
-                style={styles.goBackButton}
-                onPress={() => navigation.goBack()}
-              >
-                <Text style={styles.goBackButtonText}>Geri Dön</Text>
-              </TouchableOpacity>
+        {/* Kredi Kartı Bilgisi */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Kredi Kartı</Text>
+          <View style={styles.cardInfo}>
+            <View style={[styles.cardIcon, { backgroundColor: creditCard.color }]}>
+              <Ionicons name="card" size={24} color="white" />
             </View>
-          </Card>
-        )}
-      </ScrollView>
+            <View>
+              <Text style={styles.cardName}>{creditCard.name}</Text>
+              <Text style={styles.debtAmount}>
+                Borç: {currentDebt.toFixed(2)} {currencySymbol}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-      {selectedPaymentAccount && currentDebt > 0 && getPaymentAmount() > 0 && (
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              loading && styles.submitButtonDisabled
-            ]}
-            onPress={handlePayment}
-            disabled={loading}
+        {/* Ödeme Türü */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Ödeme Türü</Text>
+          
+          {/* Asgari Ödeme */}
+          <TouchableOpacity 
+            style={[styles.option, paymentType === 'minimum' && styles.selectedOption]}
+            onPress={() => setPaymentType('minimum')}
           >
-            {loading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <>
-                <Ionicons name="card" size={20} color="white" style={{ marginRight: 8 }} />
-                <Text style={styles.submitButtonText}>
-                  Ödeme Yap ({getPaymentAmount().toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencySymbol})
-                </Text>
-              </>
+            <View style={styles.optionContent}>
+              <Text style={styles.optionTitle}>Asgari Ödeme</Text>
+              <Text style={styles.optionAmount}>{minPayment.toFixed(2)} {currencySymbol}</Text>
+            </View>
+            {paymentType === 'minimum' && (
+              <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
             )}
           </TouchableOpacity>
+
+          {/* Tam Ödeme */}
+          <TouchableOpacity 
+            style={[styles.option, paymentType === 'full' && styles.selectedOption]}
+            onPress={() => setPaymentType('full')}
+          >
+            <View style={styles.optionContent}>
+              <Text style={styles.optionTitle}>Tam Ödeme</Text>
+              <Text style={styles.optionAmount}>{currentDebt.toFixed(2)} {currencySymbol}</Text>
+            </View>
+            {paymentType === 'full' && (
+              <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+            )}
+          </TouchableOpacity>
+
+          {/* Özel Tutar */}
+          <TouchableOpacity 
+            style={[styles.option, paymentType === 'custom' && styles.selectedOption]}
+            onPress={() => setPaymentType('custom')}
+          >
+            <View style={styles.optionContent}>
+              <Text style={styles.optionTitle}>Özel Tutar</Text>
+              <Text style={styles.optionAmount}>
+                {paymentType === 'custom' && amount ? 
+                  `${parseFloat(amount.replace(',', '.')).toFixed(2)} ${currencySymbol}` : 
+                  'Tutar girin'
+                }
+              </Text>
+            </View>
+            {paymentType === 'custom' && (
+              <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+            )}
+          </TouchableOpacity>
+
+          {/* Custom Amount Input */}
+          {paymentType === 'custom' && (
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Ödeme Tutarı</Text>
+              <TextInput
+                style={styles.input}
+                value={amount}
+                onChangeText={setAmount}
+                placeholder="0.00"
+                placeholderTextColor={COLORS.TEXT_SECONDARY}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          )}
         </View>
-      )}
+
+        {/* Ödeme Hesabı Seçimi */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Ödeme Hesabı</Text>
+          {paymentAccounts.map((account) => (
+            <TouchableOpacity
+              key={account.id}
+              style={[
+                styles.accountOption,
+                selectedAccount?.id === account.id && styles.selectedAccount
+              ]}
+              onPress={() => setSelectedAccount(account)}
+            >
+              <View style={styles.accountContent}>
+                <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                  <Ionicons name={account.icon as any} size={20} color="white" />
+                </View>
+                <View style={styles.accountInfo}>
+                  <Text style={styles.accountName}>{account.name}</Text>
+                  <Text style={styles.accountBalance}>
+                    {account.balance.toFixed(2)} {currencySymbol}
+                  </Text>
+                </View>
+                {selectedAccount?.id === account.id && (
+                  <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+          
+          {paymentAccounts.length === 0 && (
+            <Text style={styles.noAccountText}>Ödeme yapılabilecek hesap yok</Text>
+          )}
+        </View>
+      </ScrollView>
+
+      {/* Ödeme Butonu - Her zaman görünür */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.payButton, 
+            (loading || !isFormValid()) && styles.payButtonDisabled
+          ]}
+          onPress={handlePayment}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <Text style={[
+              styles.payButtonText,
+              !isFormValid() && styles.payButtonTextDisabled
+            ]}>
+              {isFormValid() ? 
+                `Ödeme Yap - ${getAmount().toFixed(2)} ${currencySymbol}` : 
+                'Ödeme Yap'
+              }
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alertVisible}
+        type={alertType}
+        title={alertTitle}
+        message={alertMessage}
+        primaryButtonText="Tamam"
+        onPrimaryPress={() => {
+          setAlertVisible(false);
+          if (confirmAction) {
+            confirmAction();
+            setConfirmAction(null);
+          }
+        }}
+        onClose={() => {
+          setAlertVisible(false);
+          setConfirmAction(null);
+        }}
+      />
     </SafeAreaView>
   );
 });
@@ -605,481 +369,196 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
-    backgroundColor: COLORS.SURFACE,
-  },
-  backButton: {
-    padding: SPACING.sm,
   },
   headerTitle: {
     fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: COLORS.TEXT_PRIMARY,
   },
   placeholder: {
-    width: 40,
+    width: 24,
   },
   content: {
     flex: 1,
-    paddingHorizontal: SPACING.md,
+    padding: SPACING.md,
   },
-  section: {
-    marginVertical: SPACING.sm,
-  },
-  cardHeaderSection: {
+  card: {
+    backgroundColor: COLORS.SURFACE,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
     marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
   },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.xs,
-  },
-  sectionTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
+  cardTitle: {
+    fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '700',
     color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
-  creditCardMainInfo: {
+  cardInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
   },
   cardIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  cardDetails: {
-    flex: 1,
+    marginRight: SPACING.sm,
   },
   cardName: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: '700',
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
     marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '500',
-  },
-  debtStatusCard: {
-    backgroundColor: COLORS.SURFACE,
-    borderRadius: 16,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    borderWidth: 2,
-    borderColor: COLORS.BORDER,
-  },
-  debtMainInfo: {
-    alignItems: 'center',
-  },
-  debtLabel: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '600',
-    marginBottom: SPACING.xs,
   },
   debtAmount: {
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.ERROR,
+    fontWeight: '600',
   },
-  noDebtBadge: {
+  option: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.SUCCESS + '20',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 20,
-  },
-  noDebtText: {
-    color: COLORS.SUCCESS,
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  debtWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF9500' + '20',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 20,
-  },
-  debtWarningText: {
-    color: '#FF9500',
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
-  },
-  detailsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: SPACING.md,
-  },
-  detailItem: {
-    width: '48%',
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 12,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    alignItems: 'center',
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
     borderWidth: 1,
     borderColor: COLORS.BORDER,
-  },
-  detailLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '500',
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  detailValue: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  detailSubtext: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
-  },
-  limitInfoSection: {
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 12,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-  },
-  limitProgressContainer: {
-    width: '100%',
-  },
-  limitLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: SPACING.xs,
   },
-  limitLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '500',
+  selectedOption: {
+    borderColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.PRIMARY + '10',
   },
-  limitAmount: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_PRIMARY,
-    fontWeight: '700',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: COLORS.BORDER,
-    borderRadius: 4,
-    marginVertical: SPACING.sm,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  availableLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '500',
-  },
-  availableAmount: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.SUCCESS,
-    fontWeight: '700',
-  },
-  paymentOption: {
-    borderWidth: 2,
-    borderColor: COLORS.BORDER,
-    borderRadius: 16,
-    marginBottom: SPACING.md,
-    backgroundColor: COLORS.SURFACE,
-  },
-  selectedPaymentOption: {
-    borderColor: COLORS.SUCCESS,
-    backgroundColor: COLORS.SUCCESS + '10',
-  },
-  paymentOptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.lg,
-  },
-  paymentOptionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.BACKGROUND,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
-  },
-  paymentOptionInfo: {
+  optionContent: {
     flex: 1,
   },
-  paymentOptionTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: 4,
-  },
-  paymentOptionAmount: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: '800',
-    color: COLORS.PRIMARY,
-    marginBottom: 4,
-  },
-  paymentOptionSubtitle: {
+  optionTitle: {
     fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '500',
-  },
-  customAmountContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.lg,
-  },
-  inputLabel: {
-    fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
     color: COLORS.TEXT_PRIMARY,
-    marginBottom: SPACING.sm,
+    marginBottom: 2,
   },
-  customInputWrapper: {
-    position: 'relative',
-  },
-  customAmountInput: {
-    borderWidth: 2,
-    borderColor: COLORS.BORDER,
-    borderRadius: 12,
-    padding: SPACING.lg,
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-    backgroundColor: COLORS.BACKGROUND,
-    textAlign: 'center',
-    paddingRight: 50,
-  },
-  inputIconContainer: {
-    position: 'absolute',
-    right: SPACING.md,
-    top: '50%',
-    transform: [{ translateY: -12 }],
-  },
-  customAmountInfo: {
-    marginTop: SPACING.sm,
-    alignItems: 'center',
-  },
-  customAmountNote: {
+  optionAmount: {
     fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    fontStyle: 'italic',
+    color: COLORS.PRIMARY,
+    fontWeight: '500',
+  },
+  inputContainer: {
+    marginTop: SPACING.sm,
+  },
+  inputLabel: {
+    fontSize: TYPOGRAPHY.sizes.sm,
+    fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
+    marginBottom: SPACING.xs,
+  },
+  input: {
+    backgroundColor: COLORS.BACKGROUND,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: BORDER_RADIUS.sm,
+    padding: SPACING.sm,
+    fontSize: TYPOGRAPHY.sizes.md,
+    color: COLORS.TEXT_PRIMARY,
   },
   accountOption: {
-    borderWidth: 2,
+    padding: SPACING.sm,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
     borderColor: COLORS.BORDER,
-    borderRadius: 16,
-    marginBottom: SPACING.md,
-    backgroundColor: COLORS.SURFACE,
+    marginBottom: SPACING.xs,
   },
-  selectedAccountOption: {
-    borderColor: COLORS.SUCCESS,
-    backgroundColor: COLORS.SUCCESS + '10',
+  selectedAccount: {
+    borderColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.PRIMARY + '10',
   },
-  insufficientBalanceOption: {
-    borderColor: COLORS.ERROR + '50',
-    backgroundColor: COLORS.ERROR + '05',
-    opacity: 0.6,
-  },
-  accountOptionContent: {
+  accountContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
   },
   accountIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SPACING.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginRight: SPACING.sm,
   },
   accountInfo: {
     flex: 1,
   },
   accountName: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-    marginBottom: 4,
-  },
-  accountBalance: {
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: '600',
+    color: COLORS.TEXT_PRIMARY,
     marginBottom: 2,
   },
-  insufficientText: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.ERROR,
-    fontWeight: '500',
-  },
-  disabledText: {
-    color: COLORS.TEXT_SECONDARY,
-  },
-  noAccountsContainer: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl,
-  },
-  noAccountsText: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '600',
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: SPACING.md,
-    textAlign: 'center',
-  },
-  noAccountsSubtext: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    color: COLORS.TEXT_SECONDARY,
-    marginTop: SPACING.xs,
-    textAlign: 'center',
-  },
-  summaryCard: {
-    backgroundColor: COLORS.SURFACE,
-    borderWidth: 2,
-    borderColor: COLORS.PRIMARY,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  summaryTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-    marginLeft: SPACING.sm,
-  },
-  summaryContent: {
-    paddingTop: SPACING.sm,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  summaryLabel: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    color: COLORS.TEXT_SECONDARY,
-    fontWeight: '500',
-  },
-  summaryValue: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: '700',
-    color: COLORS.TEXT_PRIMARY,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: COLORS.BORDER,
-    marginVertical: SPACING.sm,
-  },
-  successBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.SUCCESS + '20',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: 20,
-    marginTop: SPACING.sm,
-  },
-  successText: {
+  accountBalance: {
+    fontSize: TYPOGRAPHY.sizes.xs,
     color: COLORS.SUCCESS,
+    fontWeight: '500',
+  },
+  noAccountText: {
+    textAlign: 'center',
     fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: '600',
-    marginLeft: SPACING.xs,
+    color: COLORS.TEXT_SECONDARY,
+    padding: SPACING.lg,
   },
-  noDebtCard: {
-    alignItems: 'center',
-    paddingVertical: SPACING.xl,
+  buttonContainer: {
+    padding: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.BORDER,
   },
-  noDebtContent: {
+  payButton: {
+    backgroundColor: COLORS.PRIMARY,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
+  },
+  payButtonDisabled: {
+    backgroundColor: COLORS.TEXT_SECONDARY,
+  },
+  payButtonText: {
+    color: 'white',
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '700',
+  },
+  payButtonTextDisabled: {
+    color: '#999',
+  },
+  noDebtContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.xl,
   },
   noDebtTitle: {
-    fontSize: TYPOGRAPHY.sizes.xxl,
-    fontWeight: '800',
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: '700',
     color: COLORS.TEXT_PRIMARY,
     marginTop: SPACING.md,
     marginBottom: SPACING.sm,
   },
-  noDebtMessage: {
+  noDebtText: {
     fontSize: TYPOGRAPHY.sizes.md,
     color: COLORS.TEXT_SECONDARY,
     textAlign: 'center',
-    marginBottom: SPACING.xl,
-    lineHeight: 24,
+    marginBottom: SPACING.lg,
   },
-  goBackButton: {
+  backButton: {
     backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: 25,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
   },
-  goBackButtonText: {
+  backButtonText: {
     color: 'white',
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
-  },
-  footer: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.BORDER,
-    backgroundColor: COLORS.SURFACE,
-  },
-  submitButton: {
-    backgroundColor: COLORS.PRIMARY,
-    paddingVertical: SPACING.lg,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    shadowColor: COLORS.PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  submitButtonDisabled: {
-    backgroundColor: COLORS.TEXT_SECONDARY,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  submitButtonText: {
-    color: 'white',
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: '700',
   },
 });
 

@@ -127,9 +127,12 @@ const CleanDashboardScreen: React.FC<CleanDashboardScreenProps> = observer(({ na
       id: account.id,
       name: account.name,
       type: account.type,
-      balance: account.balance,
+      balance: account.type === AccountType.CREDIT_CARD ? 
+        -(account.currentDebt || 0) : 
+        account.balance,
       isActive: account.isActive,
       color: account.color,
+      currentDebt: account.currentDebt, // Kredi kartı borcu bilgisini de ekleyelim
     }));
   };
 
