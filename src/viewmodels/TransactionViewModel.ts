@@ -148,6 +148,7 @@ export class TransactionViewModel {
       clearEditTransactionId: action,
       goToNextMonth: action,
       goToPreviousMonth: action,
+      getTransactionById: action,
     });
 
     this.loadTransactions();
@@ -541,5 +542,43 @@ export class TransactionViewModel {
 
   clearEditTransactionId(): void {
     this.editTransactionId = null;
+  }
+
+  async getTransactionById(transactionId: string): Promise<Transaction | null> {
+    this.isLoading = true;
+    try {
+      const docRef = doc(db, 'transactions', transactionId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Convert Firestore Timestamp to JS Date
+        const transaction: Transaction = {
+          id: docSnap.id,
+          ...data,
+          date: (data.date as Timestamp).toDate(),
+          createdAt: (data.createdAt as Timestamp)?.toDate(),
+          updatedAt: (data.updatedAt as Timestamp)?.toDate(),
+        } as Transaction;
+        
+        runInAction(() => {
+          this.isLoading = false;
+        });
+        return transaction;
+      } else {
+        runInAction(() => {
+          this.error = 'Transaction not found';
+          this.isLoading = false;
+        });
+        return null;
+      }
+    } catch (error) {
+      runInAction(() => {
+        console.error("Error fetching transaction by ID:", error);
+        this.error = "Failed to fetch transaction.";
+        this.isLoading = false;
+      });
+      return null;
+    }
   }
 } 
