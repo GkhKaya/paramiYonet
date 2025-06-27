@@ -58,6 +58,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = observer
     description: '',
     category: '',
     date: new Date(),
+    accountId: '',
   });
 
   const { formatCurrency } = useCurrency();
@@ -88,6 +89,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = observer
         description: selectedTransaction.description,
         category: selectedTransaction.category,
         date: selectedTransaction.date,
+        accountId: selectedTransaction.accountId,
       });
     }
   }, [selectedTransaction, modalVisible]);
@@ -115,6 +117,7 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = observer
       description: editForm.description.trim(),
       category: editForm.category,
       date: editForm.date,
+      accountId: editForm.accountId,
     };
     const success = await transactionViewModel.updateTransaction(selectedTransaction.id, updates);
     if (success) {
@@ -369,6 +372,38 @@ const TransactionDetailScreen: React.FC<TransactionDetailScreenProps> = observer
                       <Text style={styles.showAllCategoriesText}>Tümü</Text>
                     </TouchableOpacity>
                   </View>
+                </View>
+
+                <View style={styles.compactSection}>
+                  <Text style={styles.compactLabel}>Hesap</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.accountScrollView}>
+                    {accountViewModel?.accounts
+                      .filter(acc => acc.type !== 'gold')
+                      .map((account) => (
+                      <TouchableOpacity
+                        key={account.id}
+                        style={[
+                          styles.accountItem,
+                          editForm.accountId === account.id && styles.accountItemSelected,
+                        ]}
+                        onPress={() => setEditForm(prev => ({ ...prev, accountId: account.id }))}
+                      >
+                        <Ionicons 
+                          name={account.icon as any || 'wallet'} 
+                          size={20} 
+                          color={editForm.accountId === account.id ? COLORS.PRIMARY : COLORS.TEXT_SECONDARY}
+                        />
+                        <Text 
+                          style={[
+                            styles.accountItemText,
+                            editForm.accountId === account.id && styles.accountItemTextSelected,
+                          ]}
+                        >
+                          {account.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
 
                 {Platform.OS === 'ios' && showDatePicker && (
@@ -1039,6 +1074,33 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     marginRight: 8,
+  },
+  accountScrollView: {
+    marginBottom: 16,
+  },
+  accountItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginRight: 12,
+  },
+  accountItemSelected: {
+    backgroundColor: 'rgba(33, 150, 243, 0.2)',
+    borderColor: COLORS.PRIMARY,
+  },
+  accountItemText: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  accountItemTextSelected: {
+    color: COLORS.WHITE,
   },
 });
 
