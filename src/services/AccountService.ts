@@ -42,7 +42,7 @@ export class AccountService {
       updatedAt: Timestamp.fromDate(new Date()),
     };
 
-    const docRef = await addDoc(collection(db, this.COLLECTION_NAME), newAccount);
+    const docRef = await addDoc(collection(db, AccountService.COLLECTION_NAME), newAccount);
     return docRef.id;
   }
 
@@ -52,7 +52,7 @@ export class AccountService {
 
     // Simplified query without orderBy to avoid index requirement
     const q = query(
-      collection(db, this.COLLECTION_NAME),
+      collection(db, AccountService.COLLECTION_NAME),
       where('userId', '==', userId),
       where('isActive', '==', true)
     );
@@ -72,7 +72,7 @@ export class AccountService {
   }
 
   async getAccount(accountId: string): Promise<Account | null> {
-    const docRef = doc(db, this.COLLECTION_NAME, accountId);
+    const docRef = doc(db, AccountService.COLLECTION_NAME, accountId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) return null;
@@ -87,21 +87,21 @@ export class AccountService {
   }
 
   async updateAccount(accountId: string, updates: Partial<UpdateAccountRequest>): Promise<void> {
-    await updateDoc(doc(db, this.COLLECTION_NAME, accountId), {
+    await updateDoc(doc(db, AccountService.COLLECTION_NAME, accountId), {
       ...updates,
       updatedAt: Timestamp.fromDate(new Date()),
     });
   }
 
   async deleteAccount(accountId: string): Promise<void> {
-    await updateDoc(doc(db, this.COLLECTION_NAME, accountId), {
+    await updateDoc(doc(db, AccountService.COLLECTION_NAME, accountId), {
       isActive: false,
       updatedAt: Timestamp.fromDate(new Date()),
     });
   }
 
   async updateAccountBalance(accountId: string, newBalance: number): Promise<void> {
-    await updateDoc(doc(db, this.COLLECTION_NAME, accountId), {
+    await updateDoc(doc(db, AccountService.COLLECTION_NAME, accountId), {
       balance: newBalance,
       updatedAt: Timestamp.fromDate(new Date()),
     });
@@ -117,6 +117,18 @@ export class AccountService {
       creditCardBalance: 0,
       savingsBalance: 0,
       investmentBalance: 0,
+      goldBalance: 0,
+      goldSummary: {
+        totalValue: 0,
+        totalProfitLoss: 0,
+        totalProfitLossPercentage: 0,
+        breakdown: {
+          GRA: { quantity: 0, value: 0 },
+          CEYREKALTIN: { quantity: 0, value: 0 },
+          YARIMALTIN: { quantity: 0, value: 0 },
+          TAMALTIN: { quantity: 0, value: 0 },
+        }
+      },
     };
 
     accounts.forEach(account => {
@@ -308,6 +320,7 @@ export class AccountService {
           color: '#007AFF',
           icon: 'card',
           isActive: true,
+          includeInTotalBalance: true,
         },
         {
           userId,
@@ -317,6 +330,7 @@ export class AccountService {
           color: '#2ECC71',
           icon: 'cash',
           isActive: true,
+          includeInTotalBalance: true,
         },
       ];
 

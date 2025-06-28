@@ -1,11 +1,21 @@
 import { makeObservable, observable, action } from 'mobx';
 
+export interface BaseViewModelState {
+  isLoading: boolean;
+  error: string | null;
+}
+
 export abstract class BaseViewModel {
   // Observable state
   isLoading: boolean = false;
   error: string | null = null;
+  protected setState?: any;
+  protected state?: any;
 
-  constructor() {
+  constructor(setState?: any, initialState?: any) {
+    this.setState = setState;
+    this.state = initialState;
+    
     makeObservable(this, {
       isLoading: observable,
       error: observable,

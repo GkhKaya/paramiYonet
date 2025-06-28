@@ -11,6 +11,7 @@ export interface Account {
   isActive: boolean;
   // Altın türleri için yeni yapı
   goldHoldings?: GoldHoldings;
+  goldGrams?: number; // Legacy support for goldGrams
   includeInTotalBalance: boolean;
   // Kredi kartı alanları
   limit?: number;

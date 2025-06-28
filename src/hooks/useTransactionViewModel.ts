@@ -26,16 +26,20 @@ const initialState: TransactionViewModelState = {
   error: null,
   transactions: mockTransactions,
   filteredTransactions: mockTransactions,
+  searchTerm: '',
   searchQuery: '',
   selectedFilter: 'all',
   selectedMonth: new Date(),
+  filters: {},
+  currentMonth: new Date(),
+  editTransactionId: null,
 };
 
 export const useTransactionViewModel = () => {
   const [state, setState] = useState<TransactionViewModelState>(initialState);
 
   const viewModel = useCallback(() => {
-    return new TransactionViewModel(setState, state);
+    return new TransactionViewModel('default-user', setState, state);
   }, [setState, state]);
 
   return {

@@ -16,6 +16,20 @@ import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
 // import { TransactionService } from '../services/TransactionService';
 
+export interface TransactionViewModelState {
+  transactions: Transaction[];
+  filteredTransactions: Transaction[];
+  searchTerm: string;
+  searchQuery?: string; // Legacy support for useTransactionViewModel
+  selectedFilter?: string; // Legacy support for useTransactionViewModel
+  selectedMonth?: Date; // Legacy support for useTransactionViewModel
+  filters: TransactionFilters;
+  currentMonth: Date;
+  isLoading: boolean;
+  error: string | null;
+  editTransactionId: string | null;
+}
+
 export interface MonthlyStats {
   totalIncome: number;
   totalExpense: number;
@@ -125,7 +139,11 @@ export class TransactionViewModel {
   error: string | null = null;
   editTransactionId: string | null = null;
 
-  constructor(private userId: string) {
+  constructor(
+    private userId: string = 'default-user',
+    private setState?: (updater: (prev: TransactionViewModelState) => TransactionViewModelState) => void,
+    private state?: TransactionViewModelState
+  ) {
     makeObservable(this, {
       transactions: observable,
       filteredTransactions: observable,

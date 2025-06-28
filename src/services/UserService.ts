@@ -111,6 +111,26 @@ class UserService {
     return auth.currentUser?.uid || null;
   }
 
+  async deleteUserAccount(userId: string): Promise<void> {
+    const currentUser = auth.currentUser;
+    if (!currentUser || currentUser.uid !== userId) {
+      throw new Error('Unauthorized to delete this account');
+    }
+
+    try {
+      // First delete all user data from Firestore
+      await this.deleteAllUserData(userId);
+      
+      // Then delete the user from Firebase Auth
+      await deleteUser(currentUser);
+      
+      console.log(`User account ${userId} has been completely deleted.`);
+    } catch (error) {
+      console.error('Error deleting user account:', error);
+      throw error;
+    }
+  }
+
   async deleteAllUserData(userId: string): Promise<void> {
     const collectionsToDelete = [
       COLLECTIONS.TRANSACTIONS,

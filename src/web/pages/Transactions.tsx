@@ -338,173 +338,173 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <motion.div {...animations.scaleIn}>
-            <Card sx={{ background: gradients.success, color: 'white' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Toplam Gelir
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                      {formatCurrency(stats.totalIncome)}
-                    </Typography>
-                  </Box>
-                  <TrendingUp sx={{ fontSize: 40, opacity: 0.8 }} />
+      <Box sx={{ 
+        display: 'grid', 
+        gridTemplateColumns: { 
+          xs: '1fr', 
+          sm: 'repeat(2, 1fr)', 
+          md: 'repeat(4, 1fr)' 
+        }, 
+        gap: 3, 
+        mb: 4 
+      }}>
+        <motion.div {...animations.scaleIn}>
+          <Card sx={{ background: gradients.success, color: 'white' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Toplam Gelir
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {formatCurrency(stats.totalIncome)}
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
+                <TrendingUp sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <motion.div {...animations.scaleIn}>
-            <Card sx={{ background: gradients.error, color: 'white' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Toplam Gider
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                      {formatCurrency(stats.totalExpense)}
-                    </Typography>
-                  </Box>
-                  <TrendingDown sx={{ fontSize: 40, opacity: 0.8 }} />
+        <motion.div {...animations.scaleIn}>
+          <Card sx={{ background: gradients.error, color: 'white' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Toplam Gider
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {formatCurrency(stats.totalExpense)}
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
+                <TrendingDown sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <motion.div {...animations.scaleIn}>
-            <Card sx={{ background: stats.netAmount >= 0 ? gradients.primary : gradients.warning, color: 'white' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Net Bakiye
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                      {formatCurrency(stats.netAmount)}
-                    </Typography>
-                  </Box>
-                  <AccountBalance sx={{ fontSize: 40, opacity: 0.8 }} />
+        <motion.div {...animations.scaleIn}>
+          <Card sx={{ background: stats.netAmount >= 0 ? gradients.primary : gradients.warning, color: 'white' }}>
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Net Bakiye
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {formatCurrency(stats.netAmount)}
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
+                <AccountBalance sx={{ fontSize: 40, opacity: 0.8 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Grid item xs={12} sm={6} md={3}>
-          <motion.div {...animations.scaleIn}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      Toplam İşlem
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                      {stats.transactionCount}
-                    </Typography>
-                  </Box>
-                  <Receipt sx={{ fontSize: 40, color: 'primary.main' }} />
+        <motion.div {...animations.scaleIn}>
+          <Card>
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Toplam İşlem
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    {stats.transactionCount}
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Grid>
-      </Grid>
+                <Receipt sx={{ fontSize: 40, color: 'primary.main' }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </Box>
 
       {/* Filters */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                placeholder="İşlem ara..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { 
+              xs: '1fr', 
+              sm: 'repeat(2, 1fr)', 
+              md: '3fr 2fr 2fr 2fr 3fr' 
+            }, 
+            gap: 2, 
+            alignItems: 'center' 
+          }}>
+            <TextField
+              fullWidth
+              placeholder="İşlem ara..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search />
+                  </InputAdornment>
+                ),
+              }}
+            />
             
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Tür</InputLabel>
-                <Select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value as TransactionType | 'all')}
-                  label="Tür"
-                >
-                  <MenuItem value="all">Tümü</MenuItem>
-                  <MenuItem value={TransactionType.INCOME}>Gelir</MenuItem>
-                  <MenuItem value={TransactionType.EXPENSE}>Gider</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth>
+              <InputLabel>Tür</InputLabel>
+              <Select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as TransactionType | 'all')}
+                label="Tür"
+              >
+                <MenuItem value="all">Tümü</MenuItem>
+                <MenuItem value={TransactionType.INCOME}>Gelir</MenuItem>
+                <MenuItem value={TransactionType.EXPENSE}>Gider</MenuItem>
+              </Select>
+            </FormControl>
 
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Kategori</InputLabel>
-                <Select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  label="Kategori"
-                >
-                  <MenuItem value="all">Tümü</MenuItem>
-                  {getUniqueCategories().map(category => (
-                    <MenuItem key={category} value={category}>{category}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth>
+              <InputLabel>Kategori</InputLabel>
+              <Select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                label="Kategori"
+              >
+                <MenuItem value="all">Tümü</MenuItem>
+                {getUniqueCategories().map(category => (
+                  <MenuItem key={category} value={category}>{category}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            <Grid item xs={12} sm={6} md={2}>
-              <FormControl fullWidth>
-                <InputLabel>Tarih</InputLabel>
-                <Select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  label="Tarih"
-                >
-                  <MenuItem value="all">Tümü</MenuItem>
-                  <MenuItem value="today">Bugün</MenuItem>
-                  <MenuItem value="week">Son 7 Gün</MenuItem>
-                  <MenuItem value="month">Son 30 Gün</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+            <FormControl fullWidth>
+              <InputLabel>Tarih</InputLabel>
+              <Select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                label="Tarih"
+              >
+                <MenuItem value="all">Tümü</MenuItem>
+                <MenuItem value="today">Bugün</MenuItem>
+                <MenuItem value="week">Son 7 Gün</MenuItem>
+                <MenuItem value="month">Son 30 Gün</MenuItem>
+              </Select>
+            </FormControl>
 
-            <Grid item xs={12} md={3}>
-              <Stack direction="row" spacing={1}>
-                <Button
-                  variant="outlined"
-                  startIcon={<Refresh />}
-                  onClick={loadTransactions}
-                >
-                  Yenile
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Download />}
-                >
-                  Dışa Aktar
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<Refresh />}
+                onClick={loadTransactions}
+              >
+                Yenile
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+              >
+                Dışa Aktar
+              </Button>
+            </Stack>
+          </Box>
         </CardContent>
       </Card>
 

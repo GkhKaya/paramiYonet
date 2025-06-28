@@ -13,7 +13,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { observer } from 'mobx-react-lite';
@@ -41,6 +41,7 @@ interface AddTransactionScreenProps {
 const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ route, navigation }) => {
   const { user } = useAuth();
   const { accountViewModel, transactionViewModel } = useViewModels();
+  const insets = useSafeAreaInsets();
   
   // States
   const [selectedType, setSelectedType] = useState<TransactionType>(
@@ -490,12 +491,16 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   );
 
   return (
-          <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {renderHeader()}
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+      >
         {renderTypeSelector()}
         
         {/* Ana tutar girişi - En üstte ve büyük */}
@@ -512,7 +517,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       </ScrollView>
 
       {/* Sabit Alt Buton */}
-      <View style={styles.bottomButtonContainer}>
+      <View style={[styles.bottomButtonContainer, { paddingBottom: 15 + insets.bottom }]}>
         <TouchableOpacity 
           style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
           onPress={handleSave} 
@@ -1157,7 +1162,7 @@ const styles = StyleSheet.create({
   },
   // Bottom Button Styles
   scrollContent: {
-    paddingBottom: 100, // Alt buton için alan bırak
+    // paddingBottom dinamik olarak SafeAreaInsets ile ayarlanıyor
   },
   bottomButtonContainer: {
     position: 'absolute',

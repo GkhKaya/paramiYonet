@@ -471,36 +471,32 @@ const CreditCards: React.FC = () => {
                       {/* Payment Details */}
                       {card.currentDebt > 0 && (
                         <Box sx={{ mb: 3 }}>
-                          <Grid container spacing={2}>
-                            <Grid item xs={6}>
-                              <Box sx={{ 
-                                p: 2, 
-                                bgcolor: 'rgba(255, 255, 255, 0.05)', 
-                                borderRadius: 2 
-                              }}>
-                                <Typography variant="caption" sx={{ color: '#bbb' }}>
-                                  Asgari Ödeme
-                                </Typography>
-                                <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
-                                  ₺{minPayment.toFixed(2)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Box sx={{ 
-                                p: 2, 
-                                bgcolor: 'rgba(255, 255, 255, 0.05)', 
-                                borderRadius: 2 
-                              }}>
-                                <Typography variant="caption" sx={{ color: '#bbb' }}>
-                                  Aylık Faiz
-                                </Typography>
-                                <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
-                                  ₺{monthlyInterest.toFixed(2)}
-                                </Typography>
-                              </Box>
-                            </Grid>
-                          </Grid>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                              borderRadius: 2 
+                            }}>
+                              <Typography variant="caption" sx={{ color: '#bbb' }}>
+                                Asgari Ödeme
+                              </Typography>
+                              <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 600 }}>
+                                ₺{minPayment.toFixed(2)}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ 
+                              p: 2, 
+                              bgcolor: 'rgba(255, 255, 255, 0.05)', 
+                              borderRadius: 2 
+                            }}>
+                              <Typography variant="caption" sx={{ color: '#bbb' }}>
+                                Aylık Faiz
+                              </Typography>
+                              <Typography variant="h6" sx={{ color: '#f44336', fontWeight: 600 }}>
+                                ₺{monthlyInterest.toFixed(2)}
+                              </Typography>
+                            </Box>
+                          </Box>
                         </Box>
                       )}
 

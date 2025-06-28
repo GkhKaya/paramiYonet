@@ -243,7 +243,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
       setLogoutDialogOpen(false);
     } catch (error) {
       console.error('Sign out error:', error);
-      alert('Çıkış yapılırken bir hata oluştu.');
+      window.alert('Çıkış yapılırken bir hata oluştu.');
     }
   };
 
@@ -253,7 +253,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
 
   const confirmDeleteAccount = async () => {
     if (!currentUser) {
-      alert('Kullanıcı bulunamadı');
+      window.alert('Kullanıcı bulunamadı');
       return;
     }
 
@@ -274,7 +274,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
         errorMessage = 'İnternet bağlantınızı kontrol edin ve tekrar deneyin.';
       }
       
-      alert(errorMessage);
+      window.alert(errorMessage);
     } finally {
       setDeletingAccount(false);
     }
@@ -485,7 +485,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => onNavigateToProfile ? onNavigateToProfile() : alert('Profil düzenleme yakında gelecek')}
+                    onClick={() => onNavigateToProfile ? onNavigateToProfile() : window.alert('Profil düzenleme yakında gelecek')}
                     sx={{ borderColor: '#2196F3', color: '#2196F3' }}
                   >
                     Düzenle
@@ -521,7 +521,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => onNavigateToCategories ? onNavigateToCategories() : alert('Kategori yönetimi yakında gelecek')}
+                    onClick={() => onNavigateToCategories ? onNavigateToCategories() : window.alert('Kategori yönetimi yakında gelecek')}
                     sx={{ borderColor: '#FF9800', color: '#FF9800' }}
                   >
                     Yönet
@@ -567,7 +567,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
                   <Button
                     variant="outlined"
                     size="small"
-                    onClick={() => alert('Yedekleme özelliği yakında gelecek')}
+                    onClick={() => window.alert('Yedekleme özelliği yakında gelecek')}
                     sx={{ borderColor: '#9C27B0', color: '#9C27B0' }}
                   >
                     Yedekle
@@ -628,7 +628,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => onNavigateToHelp ? onNavigateToHelp() : alert('Destek sayfası yakında gelecek')}
+                  onClick={() => onNavigateToHelp ? onNavigateToHelp() : window.alert('Destek sayfası yakında gelecek')}
                   sx={{ borderColor: '#00BCD4', color: '#00BCD4' }}
                 >
                   Destek
@@ -645,7 +645,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => alert('Gizlilik politikası yakında gelecek')}
+                  onClick={() => window.alert('Gizlilik politikası yakında gelecek')}
                   sx={{ borderColor: '#673AB7', color: '#673AB7' }}
                 >
                   Oku
