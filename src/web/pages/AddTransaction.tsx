@@ -41,6 +41,7 @@ import {
   Check,
   ExpandMore,
   ExpandLess,
+  Schedule,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -81,6 +82,10 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTime, setSelectedTime] = useState<string>(
+    new Date().toTimeString().slice(0, 5) // "HH:MM" format
+  );
+  const [showTimeDropdowns, setShowTimeDropdowns] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedAccount, setSelectedAccount] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -214,6 +219,23 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
     return isNaN(numericValue) ? 0 : numericValue;
   };
 
+  const formatDateTimeForInput = (date: Date): string => {
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const getCombinedDateTime = (): Date => {
+    const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const timeStr = selectedTime; // HH:MM
+    const combinedDateTime = new Date(`${dateStr}T${timeStr}:00`);
+    return combinedDateTime;
+  };
+
   const getFilteredCategories = () => {
     return categories.filter(cat => cat.type === selectedType);
   };
@@ -281,13 +303,13 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
       
       const transactionData = {
         userId: currentUser.uid,
-        amount: getNumericAmount(),
-        description: description || selectedCategory,
-        type: selectedType,
-        category: selectedCategory,
-        categoryIcon: categoryDetails?.icon || 'help-circle-outline',
         accountId: selectedAccount,
-        date: selectedDate,
+        type: selectedType,
+        amount: getNumericAmount(),
+        category: selectedCategory,
+        categoryIcon: categoryDetails?.icon || 'category',
+        description: description.trim(),
+        date: getCombinedDateTime(),
       };
 
       await TransactionService.createTransaction(transactionData);
@@ -299,6 +321,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
       setDescription('');
       setSelectedCategory('');
       setSelectedDate(new Date());
+      setSelectedTime(new Date().toTimeString().slice(0, 5));
       
     } catch (error) {
       console.error('Error saving transaction:', error);
@@ -631,12 +654,114 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
                       value={selectedDate.toISOString().split('T')[0]}
                       onChange={(e) => setSelectedDate(new Date(e.target.value))}
                       InputLabelProps={{ shrink: true }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarToday />
+                          </InputAdornment>
+                        ),
+                      }}
                       sx={{ 
                         '& .MuiOutlinedInput-root': { 
                           borderRadius: 2
                         }
                       }}
                     />
+
+                    {!showTimeDropdowns ? (
+                      <Box>
+                        <TextField
+                          fullWidth
+                          label="Saat"
+                          type="time"
+                          value={selectedTime}
+                          onChange={(e) => setSelectedTime(e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Schedule />
+                              </InputAdornment>
+                            ),
+                            inputProps: {
+                              step: 300, // 5 dakika aralıkları
+                              pattern: "[0-9]{2}:[0-9]{2}",
+                              placeholder: "HH:MM"
+                            }
+                          }}
+                          sx={{ 
+                            '& .MuiOutlinedInput-root': { 
+                              borderRadius: 2
+                            },
+                            '& input[type="time"]': {
+                              fontSize: '1rem',
+                              fontFamily: 'monospace'
+                            }
+                          }}
+                        />
+                        <Button
+                          size="small"
+                          onClick={() => setShowTimeDropdowns(true)}
+                          sx={{ mt: 1, fontSize: '0.75rem' }}
+                        >
+                          Saat seçici çalışmıyor mu? Buraya tıklayın
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box>
+                        <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+                          Saat Seçin
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <FormControl sx={{ minWidth: 80 }}>
+                            <InputLabel size="small">Saat</InputLabel>
+                            <Select
+                              size="small"
+                              value={selectedTime.split(':')[0]}
+                              label="Saat"
+                              onChange={(e) => {
+                                const hour = e.target.value;
+                                const minute = selectedTime.split(':')[1] || '00';
+                                setSelectedTime(`${hour}:${minute}`);
+                              }}
+                            >
+                              {Array.from({ length: 24 }, (_, i) => (
+                                <MenuItem key={i} value={i.toString().padStart(2, '0')}>
+                                  {i.toString().padStart(2, '0')}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                          <Typography>:</Typography>
+                          <FormControl sx={{ minWidth: 80 }}>
+                            <InputLabel size="small">Dakika</InputLabel>
+                            <Select
+                              size="small"
+                              value={selectedTime.split(':')[1] || '00'}
+                              label="Dakika"
+                              onChange={(e) => {
+                                const hour = selectedTime.split(':')[0] || '00';
+                                const minute = e.target.value;
+                                setSelectedTime(`${hour}:${minute}`);
+                              }}
+                            >
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <MenuItem key={i} value={(i * 5).toString().padStart(2, '0')}>
+                                  {(i * 5).toString().padStart(2, '0')}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                        <Button
+                          size="small"
+                          onClick={() => setShowTimeDropdowns(false)}
+                          sx={{ mt: 1, fontSize: '0.75rem' }}
+                        >
+                          Normal saat seçiciye dön
+                        </Button>
+                      </Box>
+                    )}
                     
                     <FormControl fullWidth>
                       <InputLabel>Hesap</InputLabel>

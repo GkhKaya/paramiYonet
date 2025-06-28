@@ -72,7 +72,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   // Custom hooks
   const { formatCurrency, currencySymbol, parseInput } = useCurrency({ maximumFractionDigits: 2, minimumFractionDigits: 2 });
   const { getDetails } = useCategory();
-  const { formatShort, formatMonthYear } = useDate();
+  const { formatShort, formatMonthYear, formatTime } = useDate();
 
   // Edit transaction'ı aç (viewModel'den gelen editTransactionId kontrolü)
   useEffect(() => {
@@ -88,6 +88,10 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
 
   const formatDate = (date: Date) => {
     return formatShort(date);
+  };
+
+  const formatDateTime = (date: Date) => {
+    return `${formatShort(date)} ${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
   };
 
   const formatMonth = (date: Date) => {
@@ -231,7 +235,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
               <View style={styles.transactionInfo}>
                 <Text style={styles.transactionDescription}>{item.description}</Text>
                 <Text style={styles.transactionCategory}>{item.category}</Text>
-                <Text style={styles.transactionDate}>{formatDate(item.date)}</Text>
+                <Text style={styles.transactionDate}>{formatDateTime(item.date)}</Text>
               </View>
             </View>
             <View style={styles.transactionRight}>

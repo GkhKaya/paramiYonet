@@ -58,7 +58,9 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedCard, setSelectedCard] = useState<Account | null>(null);
   const [loading, setLoading] = useState(false);
   const [showAccountPicker, setShowAccountPicker] = useState(false);
@@ -160,6 +162,15 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     return isNaN(numericValue) ? 0 : numericValue;
   };
 
+  const getCombinedDateTime = (): Date => {
+    const combinedDate = new Date(selectedDate);
+    combinedDate.setHours(selectedTime.getHours());
+    combinedDate.setMinutes(selectedTime.getMinutes());
+    combinedDate.setSeconds(0);
+    combinedDate.setMilliseconds(0);
+    return combinedDate;
+  };
+
   // Custom Alert helper
   const scrollToDescription = () => {
     setTimeout(() => {
@@ -211,7 +222,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
       category: selectedCategory,
       categoryIcon: categoryDetails?.icon || 'help-circle-outline',
       accountId: selectedCard.id,
-      date: selectedDate,
+      date: getCombinedDateTime(),
     };
 
     let success = false;
@@ -438,9 +449,18 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
           <Text style={styles.detailButtonText}>{formatShort(selectedDate)}</Text>
         </TouchableOpacity>
         
-        {availableAccounts.length > 0 && (
+        <TouchableOpacity style={styles.detailButton} onPress={() => setShowTimePicker(true)}>
+          <Ionicons name="time-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.detailButtonText}>
+            {selectedTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {availableAccounts.length > 0 && (
+        <View style={styles.detailsRow}>
           <TouchableOpacity 
-            style={styles.detailButton}
+            style={[styles.detailButton, { flex: 1 }]}
             onPress={() => setShowAccountPicker(true)}
           >
             <Ionicons name="wallet-outline" size={20} color="#FFFFFF" />
@@ -449,8 +469,8 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             </Text>
             <Ionicons name="chevron-down" size={16} color="#888888" />
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Düzenli Ödeme Seçeneği */}
       <View style={styles.recurringSection}>
@@ -788,6 +808,101 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
             onChange={(event, date) => {
               setShowDatePicker(false);
               if (date) setSelectedDate(date);
+            }}
+          />
+        )
+      )}
+
+      {/* Time Picker */}
+      {showTimePicker && (
+        Platform.OS === 'web' ? (
+          <Modal
+            visible={showTimePicker}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => setShowTimePicker(false)}
+          >
+            <Pressable style={styles.modalBackdrop} onPress={() => setShowTimePicker(false)}>
+              <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Saat Seç</Text>
+                  <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                    <Ionicons name="close" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.modalContent}>
+                  <input
+                    type="time"
+                    value={selectedTime.toTimeString().slice(0, 5)}
+                    onChange={(e) => {
+                      const [hours, minutes] = e.target.value.split(':');
+                      const newTime = new Date(selectedTime);
+                      newTime.setHours(parseInt(hours));
+                      newTime.setMinutes(parseInt(minutes));
+                      setSelectedTime(newTime);
+                      setShowTimePicker(false);
+                    }}
+                    style={{
+                      backgroundColor: '#2A2A2A',
+                      border: '1px solid #444444',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      color: '#FFFFFF',
+                      fontSize: '16px',
+                      width: '100%',
+                    }}
+                  />
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
+        ) : Platform.OS === 'ios' ? (
+          <Modal
+            visible={showTimePicker}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowTimePicker(false)}
+          >
+            <View style={styles.iosDatePickerBackdrop}>
+              <View style={styles.iosDatePickerContainer}>
+                <View style={styles.iosDatePickerHeader}>
+                  <TouchableOpacity 
+                    onPress={() => setShowTimePicker(false)}
+                    style={styles.iosDatePickerButton}
+                  >
+                    <Text style={styles.iosDatePickerButtonText}>İptal</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.iosDatePickerTitle}>Saat Seç</Text>
+                  <TouchableOpacity 
+                    onPress={() => setShowTimePicker(false)}
+                    style={styles.iosDatePickerButton}
+                  >
+                    <Text style={[styles.iosDatePickerButtonText, styles.iosDatePickerDoneButton]}>Tamam</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.iosDatePickerContent}>
+                  <DateTimePicker
+                    value={selectedTime}
+                    mode="time"
+                    display="spinner"
+                    textColor="#FFFFFF"
+                    themeVariant="dark"
+                    onChange={(event, time) => {
+                      if (time) setSelectedTime(time);
+                    }}
+                  />
+                </View>
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={selectedTime}
+            mode="time"
+            display="default"
+            onChange={(event, time) => {
+              setShowTimePicker(false);
+              if (time) setSelectedTime(time);
             }}
           />
         )
