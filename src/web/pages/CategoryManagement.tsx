@@ -80,6 +80,24 @@ const SlideTransition = React.forwardRef(function Transition(
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
+// Memoized Preview Card Component
+const CategoryPreviewCard = React.memo(({ name, icon, color }: { name: string; icon: string; color: string }) => {
+  const iconComponent = getCategoryIcon(icon);
+  return (
+    <Paper elevation={3} sx={{ p: 2, borderRadius: 2, background: `linear-gradient(45deg, ${color} 30%, ${color}E6 90%)` }}>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <Avatar sx={{ bgcolor: 'white', color: color }}>
+          {iconComponent}
+        </Avatar>
+        <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold', flexGrow: 1 }}>
+          {name || 'Kategori Adı'}
+        </Typography>
+        <Chip label="Önizleme" color="default" size="small" sx={{ color: 'white', bgcolor: 'rgba(255, 255, 255, 0.2)' }} />
+      </Stack>
+    </Paper>
+  );
+});
+
 // Kategori renkleri
 const CATEGORY_COLORS = [
   '#FF3030', '#FF1744', '#E91E63', '#9C27B0', '#673AB7',
@@ -109,6 +127,13 @@ const AVAILABLE_ICONS = [
   { name: 'shopping-cart', icon: <ShoppingCart />, label: 'Alışveriş' },
   { name: 'more-horiz', icon: <MoreHoriz />, label: 'Diğer' },
 ];
+
+// Helper to get the icon component from name
+// Moved outside to prevent re-creation on render
+const getIconComponent = (iconName: string) => {
+  const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
+  return icon ? icon.icon : <MoreHoriz />;
+};
 
 interface CategoryManagementProps {}
 
@@ -217,6 +242,19 @@ const CategoryManagement: React.FC<CategoryManagementProps> = () => {
     setDeleteDialogOpen(true);
   };
 
+  const handleFormChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleIconChange = React.useCallback((icon: string) => {
+    setFormData(prev => ({ ...prev, icon }));
+  }, []);
+
+  const handleColorChange = React.useCallback((color: string) => {
+    setFormData(prev => ({ ...prev, color }));
+  }, []);
+
   const validateForm = () => {
     const errors: {[key: string]: string} = {};
     
@@ -252,7 +290,7 @@ const CategoryManagement: React.FC<CategoryManagementProps> = () => {
   };
 
   const handleSubmitEdit = async () => {
-    if (!validateForm() || !selectedCategory) return;
+    if (!validateForm() || !currentUser || !selectedCategory) return;
     
     setSubmitting(true);
     try {
@@ -273,24 +311,19 @@ const CategoryManagement: React.FC<CategoryManagementProps> = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || !currentUser) return;
     
     setSubmitting(true);
     try {
       await CategoryService.deleteCategory(selectedCategory.id);
       setDeleteDialogOpen(false);
       await loadCategories();
+      setSelectedCategory(null);
     } catch (error) {
       console.error('Error deleting category:', error);
     } finally {
       setSubmitting(false);
     }
-  };
-
-  // Get icon from name
-  const getIconComponent = (iconName: string) => {
-    const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
-    return icon ? icon.icon : <MoreHoriz />;
   };
 
   const CategoryCard = ({ category, isCustom }: { category: Category; isCustom: boolean }) => (
@@ -372,157 +405,6 @@ const CategoryManagement: React.FC<CategoryManagementProps> = () => {
         </CardContent>
       </Card>
     </Fade>
-  );
-
-  const CategoryModal = ({ 
-    open, 
-    onClose, 
-    title, 
-    onSubmit 
-  }: { 
-    open: boolean; 
-    onClose: () => void; 
-    title: string; 
-    onSubmit: () => void; 
-  }) => (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      TransitionComponent={SlideTransition}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{
-        sx: {
-          background: 'linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: 3,
-        },
-      }}
-    >
-      <DialogTitle sx={{ color: '#fff', fontWeight: 700, pb: 1 }}>
-        {title}
-      </DialogTitle>
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 2 }}>
-          <TextField
-            label="Kategori Adı"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            error={!!formErrors.name}
-            helperText={formErrors.name}
-            fullWidth
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                color: '#fff',
-                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
-                '&.Mui-focused fieldset': { borderColor: '#2196F3' },
-              },
-              '& .MuiInputLabel-root': { color: '#bbb' },
-            }}
-          />
-          
-          <FormControl fullWidth>
-            <InputLabel 
-              sx={{ 
-                color: '#bbb',
-                '&.Mui-focused': { color: '#2196F3' },
-                '&.MuiInputLabel-shrink': { color: '#2196F3' }
-              }}
-            >
-              İkon Seç
-            </InputLabel>
-            <Select
-              value={formData.icon}
-              label="İkon Seç"
-              onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-              sx={{
-                color: '#fff',
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#2196F3' },
-                '& .MuiSelect-icon': { color: '#bbb' },
-              }}
-            >
-              {AVAILABLE_ICONS.map((icon) => (
-                <MenuItem key={icon.name} value={icon.name} sx={{ color: '#fff' }}>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {icon.icon}
-                    <Typography>{icon.label}</Typography>
-                  </Stack>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <Box>
-            <Typography variant="body2" sx={{ color: '#bbb', mb: 2 }}>
-              Renk Seç
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {CATEGORY_COLORS.map((color) => (
-                <IconButton
-                  key={color}
-                  onClick={() => setFormData({ ...formData, color })}
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: color,
-                    border: formData.color === color ? '3px solid #fff' : '1px solid rgba(255, 255, 255, 0.2)',
-                    '&:hover': { transform: 'scale(1.1)' },
-                  }}
-                />
-              ))}
-            </Box>
-          </Box>
-          
-          {/* Preview */}
-          <Paper
-            sx={{
-              p: 2,
-              bgcolor: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: 2,
-            }}
-          >
-            <Typography variant="body2" sx={{ color: '#bbb', mb: 1 }}>
-              Önizleme
-            </Typography>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Avatar sx={{ bgcolor: formData.color, color: '#fff' }}>
-                {getIconComponent(formData.icon)}
-              </Avatar>
-              <Typography variant="h6" sx={{ color: '#fff' }}>
-                {formData.name || 'Kategori Adı'}
-              </Typography>
-            </Stack>
-          </Paper>
-          
-          {formErrors.submit && (
-            <Alert severity="error" sx={{ bgcolor: 'rgba(244, 67, 54, 0.1)' }}>
-              {formErrors.submit}
-            </Alert>
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ p: 3 }}>
-        <Button onClick={onClose} sx={{ color: '#bbb' }}>
-          İptal
-        </Button>
-        <Button
-          onClick={onSubmit}
-          variant="contained"
-          disabled={submitting}
-          startIcon={submitting ? <CircularProgress size={16} /> : <Save />}
-          sx={{
-            bgcolor: '#2196F3',
-            '&:hover': { bgcolor: '#1976D2' },
-          }}
-        >
-          {submitting ? 'Kaydediliyor...' : 'Kaydet'}
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 
   if (loading) {
@@ -724,21 +606,33 @@ const CategoryManagement: React.FC<CategoryManagementProps> = () => {
         </Zoom>
 
         {/* Modals */}
-        <CategoryModal
+        <CategoryModal 
           open={createModalOpen}
           onClose={() => setCreateModalOpen(false)}
           title="Yeni Kategori Oluştur"
           onSubmit={handleSubmitCreate}
+          formData={formData}
+          formErrors={formErrors}
+          submitting={submitting}
+          handleFormChange={handleFormChange}
+          handleIconChange={handleIconChange}
+          handleColorChange={handleColorChange}
         />
 
-        <CategoryModal
+        <CategoryModal 
           open={editModalOpen}
           onClose={() => setEditModalOpen(false)}
-          title="Kategori Düzenle"
+          title="Kategoriyi Düzenle"
           onSubmit={handleSubmitEdit}
+          formData={formData}
+          formErrors={formErrors}
+          submitting={submitting}
+          handleFormChange={handleFormChange}
+          handleIconChange={handleIconChange}
+          handleColorChange={handleColorChange}
         />
 
-        {/* Delete Dialog */}
+        {/* Delete Confirmation Dialog */}
         <Dialog
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
@@ -776,6 +670,150 @@ const CategoryManagement: React.FC<CategoryManagementProps> = () => {
         </Dialog>
       </Box>
     </Box>
+  );
+};
+
+// ====================================================================================
+// STANDALONE MODAL COMPONENT
+// Moved outside of the main component to prevent re-mounting on every render
+// ====================================================================================
+interface CategoryModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  onSubmit: () => void;
+  formData: {
+    name: string;
+    icon: string;
+    color: string;
+    type: TransactionType;
+  };
+  formErrors: { [key: string]: string };
+  submitting: boolean;
+  handleFormChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  handleIconChange: (icon: string) => void;
+  handleColorChange: (color: string) => void;
+}
+
+const CategoryModal = ({ 
+  open, 
+  onClose, 
+  title, 
+  onSubmit,
+  formData,
+  formErrors,
+  submitting,
+  handleFormChange,
+  handleIconChange,
+  handleColorChange
+}: CategoryModalProps) => {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      TransitionComponent={SlideTransition}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{ sx: { borderRadius: 4 } }}
+    >
+      <DialogTitle>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6" fontWeight="bold">{title}</Typography>
+          <IconButton onClick={onClose}>
+            <Close />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={3} sx={{ pt: 1 }}>
+          {/* Preview Card */}
+          <CategoryPreviewCard name={formData.name} icon={formData.icon} color={formData.color} />
+
+          {/* Form Fields */}
+          <TextField
+            fullWidth
+            autoFocus
+            label="Kategori Adı"
+            name="name"
+            value={formData.name}
+            onChange={handleFormChange}
+            error={!!formErrors.name}
+            helperText={formErrors.name}
+            variant="outlined"
+          />
+          
+          {/* Icon Selection */}
+          <Box>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+              İkon Seç
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, maxHeight: 150, overflowY: 'auto' }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 1 }}>
+                {AVAILABLE_ICONS.map(({ name, icon }) => (
+                  <IconButton
+                    key={name}
+                    onClick={() => handleIconChange(name)}
+                    sx={{
+                      border: formData.icon === name ? `2px solid ${formData.color}` : '2px solid transparent',
+                      borderRadius: '25%',
+                      p: 0.5,
+                      transition: 'border 0.2s ease-in-out',
+                      width: '100%',
+                      height: '40px'
+                    }}
+                  >
+                    {icon}
+                  </IconButton>
+                ))}
+              </Box>
+            </Paper>
+          </Box>
+
+          {/* Color Selection */}
+          <Box>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium' }}>
+              Renk Seç
+            </Typography>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(32px, 1fr))', gap: 1 }}>
+                {CATEGORY_COLORS.map(color => (
+                  <IconButton
+                    key={color}
+                    onClick={() => handleColorChange(color)}
+                    sx={{
+                      width: '100%',
+                      height: 32,
+                      bgcolor: color,
+                      border: formData.color === color ? '3px solid #fff' : '3px solid transparent',
+                      boxShadow: formData.color === color ? `0 0 0 2px ${color}` : 'none',
+                      transition: 'border 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                      borderRadius: '50%',
+                      '&:hover': {
+                        transform: 'scale(1.1)',
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
+            </Paper>
+          </Box>
+
+          {formErrors.submit && <Alert severity="error">{formErrors.submit}</Alert>}
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ p: '16px 24px' }}>
+        <Button onClick={onClose} variant="outlined" color="secondary">İptal</Button>
+        <Button
+          onClick={onSubmit}
+          variant="contained"
+          color="primary"
+          disabled={submitting}
+          startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <Save />}
+        >
+          {submitting ? 'Kaydediliyor...' : 'Kaydet'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

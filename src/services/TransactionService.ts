@@ -40,9 +40,9 @@ export class TransactionService {
           type: data.type as TransactionType,
           amount: data.amount,
           description: data.description,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
+          date: data.date?.toDate() ?? new Date(),
+          createdAt: data.createdAt?.toDate() ?? new Date(),
+          updatedAt: data.updatedAt?.toDate() ?? new Date(),
         });
       });
 
@@ -79,9 +79,9 @@ export class TransactionService {
           type: data.type as TransactionType,
           amount: data.amount,
           description: data.description,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
+          date: data.date?.toDate() ?? new Date(),
+          createdAt: data.createdAt?.toDate() ?? new Date(),
+          updatedAt: data.updatedAt?.toDate() ?? new Date(),
         });
       });
 
@@ -123,9 +123,9 @@ export class TransactionService {
           type: data.type as TransactionType,
           amount: data.amount,
           description: data.description,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt.toDate(),
+          date: data.date?.toDate() ?? new Date(),
+          createdAt: data.createdAt?.toDate() ?? new Date(),
+          updatedAt: data.updatedAt?.toDate() ?? new Date(),
         });
       });
 

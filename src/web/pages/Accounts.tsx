@@ -43,8 +43,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { gradients, animations } from '../styles/theme';
 import { useAuth } from '../contexts/AuthContext';
-import { Account, AccountType, GoldType, GoldHolding } from '../../models/Account';
+import { Account, AccountType, GoldType, GoldHolding, GoldHoldings } from '../../models/Account';
 import { AccountService } from '../../services/AccountService';
+import GoldPriceService from '../../services/GoldPriceService';
 import { formatCurrency } from '../../utils/formatters';
 import GoldAccountDetail from './GoldAccountDetail';
 
@@ -88,99 +89,18 @@ const AccountsPage: React.FC = () => {
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [currentUser]);
 
   const loadAccounts = async () => {
     if (!currentUser) return;
     
+    setLoading(true);
     try {
-      setLoading(true);
       const accountsData = await AccountService.getUserAccounts(currentUser.uid);
-      
-      if (accountsData.length > 0) {
-
-        setAccounts(accountsData);
-      } else {
-        // Mock data if no Firebase data
-        const mockGoldHoldings = {
-          [GoldType.GRAM]: [
-            { type: GoldType.GRAM, quantity: 10, initialPrice: 1850, purchaseDate: new Date('2024-01-15') },
-            { type: GoldType.GRAM, quantity: 5, initialPrice: 1920, purchaseDate: new Date('2024-02-20') },
-            { type: GoldType.GRAM, quantity: 3, initialPrice: 1780, purchaseDate: new Date('2024-01-05') }
-          ],
-          [GoldType.QUARTER]: [
-            { type: GoldType.QUARTER, quantity: 2, initialPrice: 450, purchaseDate: new Date('2024-02-10') },
-            { type: GoldType.QUARTER, quantity: 1, initialPrice: 465, purchaseDate: new Date('2024-03-01') }
-          ],
-          [GoldType.HALF]: [
-            { type: GoldType.HALF, quantity: 1, initialPrice: 900, purchaseDate: new Date('2024-01-25') }
-          ]
-        };
-
-        const mockAccounts: Account[] = [
-          {
-            id: 'mock-1',
-            userId: currentUser.uid,
-            name: 'Ana Hesap',
-            type: 'debit_card' as AccountType,
-            balance: 25430,
-            color: '#10b981',
-            icon: 'bank',
-            isActive: true,
-            includeInTotalBalance: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: 'mock-2',
-            userId: currentUser.uid,
-            name: 'Kredi Kartı',
-            type: 'credit_card' as AccountType,
-            balance: -8500,
-            color: '#ef4444',
-            icon: 'credit-card',
-            isActive: true,
-            includeInTotalBalance: true,
-            limit: 15000,
-            currentDebt: 8500,
-            statementDay: 15,
-            dueDay: 5,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: 'mock-3',
-            userId: currentUser.uid,
-            name: 'Altın Hesabı',
-            type: 'gold' as AccountType,
-            balance: 45000,
-            color: '#fbbf24',
-            icon: 'gold',
-            isActive: true,
-            includeInTotalBalance: true,
-            goldHoldings: mockGoldHoldings,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: 'mock-4',
-            userId: currentUser.uid,
-            name: 'Tasarruf Hesabı',
-            type: 'savings' as AccountType,
-            balance: 12000,
-            color: '#6366f1',
-            icon: 'savings',
-            isActive: true,
-            includeInTotalBalance: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ];
-        
-        setAccounts(mockAccounts);
-      }
+      setAccounts(accountsData);
     } catch (error) {
       console.error('Error loading accounts:', error);
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -279,6 +199,89 @@ const AccountsPage: React.FC = () => {
   const getCreditCardUsage = (account: Account) => {
     if (account.type !== 'credit_card' || !account.limit) return 0;
     return ((account.currentDebt || 0) / account.limit) * 100;
+  };
+
+  const handleCreateAccount = async () => {
+    if (!currentUser || !newAccountName) {
+      console.error("Validation failed: Missing account name");
+      return;
+    }
+    
+    if (newAccountType !== AccountType.GOLD && !newAccountBalance) {
+        console.error("Validation failed: Missing account balance");
+        return;
+    }
+
+    try {
+      let finalGoldHoldings: GoldHoldings | undefined = undefined;
+      let finalBalance = parseFloat(newAccountBalance) || 0;
+
+      if (newAccountType === AccountType.GOLD) {
+        const goldPriceService = GoldPriceService.getInstance();
+        const currentGoldPrices = await goldPriceService.getAllGoldPrices();
+        
+        const holdingsArray = Object.entries(goldQuantities)
+          .filter(([, value]) => parseFloat(value) > 0)
+          .map(([key, value]) => ({
+            type: key as GoldType,
+            quantity: parseFloat(value),
+            initialPrice: currentGoldPrices.prices[key as GoldType] || 0,
+          }));
+
+        if (holdingsArray.length > 0) {
+            finalGoldHoldings = holdingsArray.reduce((acc, holding) => {
+              if (!acc[holding.type]) {
+                acc[holding.type] = [];
+              }
+              acc[holding.type]!.push(holding);
+              return acc;
+            }, {} as GoldHoldings);
+    
+            finalBalance = holdingsArray.reduce((total, holding) => {
+                return total + (holding.quantity * holding.initialPrice);
+            }, 0);
+        } else {
+            console.error("Validation failed: No gold quantities specified for gold account");
+            return;
+        }
+      }
+
+      const newAccountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'icon' | 'isActive' | 'goldGrams'> = {
+        userId: currentUser.uid,
+        name: newAccountName,
+        type: newAccountType,
+        balance: finalBalance,
+        color: newAccountColor,
+        includeInTotalBalance: includeInTotal,
+        // credit card specific fields
+        limit: newAccountType === AccountType.CREDIT_CARD ? parseFloat(creditLimit) : undefined,
+        currentDebt: newAccountType === AccountType.CREDIT_CARD ? parseFloat(currentDebt) : 0,
+        statementDay: newAccountType === AccountType.CREDIT_CARD ? parseInt(statementDay, 10) : undefined,
+        dueDay: newAccountType === AccountType.CREDIT_CARD ? parseInt(dueDay, 10) : undefined,
+        // gold specific fields
+        goldHoldings: finalGoldHoldings,
+      };
+
+      await AccountService.createAccount(newAccountData);
+
+      // Reset form and close dialog
+      setCreateDialogOpen(false);
+      setNewAccountName('');
+      setNewAccountType(AccountType.DEBIT_CARD);
+      setNewAccountBalance('');
+      setNewAccountColor('#10b981');
+      setIncludeInTotal(true);
+      setCreditLimit('');
+      setCurrentDebt('');
+      setStatementDay('1');
+      setDueDay('10');
+      setGoldQuantities({ GRA: '', CEYREKALTIN: '', YARIMALTIN: '', TAMALTIN: '' });
+      
+      loadAccounts();
+
+    } catch (error) {
+      console.error("Error creating account:", error);
+    }
   };
 
   if (loading) {
@@ -1245,43 +1248,13 @@ const AccountsPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setCreateDialogOpen(false);
-            // Reset form
-            setNewAccountName('');
-                         setNewAccountType(AccountType.DEBIT_CARD);
-            setNewAccountBalance('');
-            setNewAccountColor('#10b981');
-            setIncludeInTotal(true);
-            setGoldQuantities({ GRA: '', CEYREKALTIN: '', YARIMALTIN: '', TAMALTIN: '' });
-            setCreditLimit('');
-            setCurrentDebt('');
-            setStatementDay('1');
-            setDueDay('10');
-          }}>
-            İptal
-          </Button>
-          <Button 
-            onClick={() => {
-              // TODO: Implement create functionality
-              console.log('Create account:', {
-                name: newAccountName,
-                type: newAccountType,
-                balance: newAccountBalance,
-                color: newAccountColor,
-                includeInTotal,
-                goldQuantities,
-                creditLimit,
-                currentDebt,
-                statementDay,
-                dueDay
-              });
-              setCreateDialogOpen(false);
-            }}
+          <Button onClick={() => setCreateDialogOpen(false)}>İptal</Button>
+          <Button
+            onClick={handleCreateAccount}
             variant="contained"
-            disabled={!newAccountName.trim()}
+            color="primary"
           >
-            Oluştur
+            Kaydet
           </Button>
         </DialogActions>
       </Dialog>

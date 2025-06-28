@@ -94,7 +94,7 @@ const calculateMonthlyData = (transactions: Transaction[]): ChartDataItem[] => {
     
     const expense = monthTransactions
       .filter(t => t.type === TransactionType.EXPENSE)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      .reduce((sum, t) => sum + t.amount, 0);
 
     monthlyData.push({
       name: monthName,
@@ -159,50 +159,34 @@ const Dashboard: React.FC = () => {
         const accountsData = await AccountService.getUserAccounts(currentUser.uid);
         setAccounts(accountsData);
 
-        // Calculate total balance (only include accounts that are marked to be included)
+        // Calculate total balance
         const total = accountsData
           .filter(account => account.includeInTotalBalance)
           .reduce((sum, account) => sum + account.balance, 0);
         setTotalBalance(total);
 
-        // Load recent transactions
+        // Load all transactions for calculations
         const transactionsData = await TransactionService.getUserTransactions(currentUser.uid);
-        setTransactions(transactionsData.slice(0, 5)); // Get last 5 transactions
+        
+        // Set recent transactions for the list (last 5)
+        setTransactions(transactionsData.slice(0, 5)); 
 
-        // Calculate chart data for last 6 months
+        // Calculate chart data for the last 6 months
         const chartDataCalculated = calculateMonthlyData(transactionsData);
         setChartData(chartDataCalculated);
 
-        // Calculate category breakdown for current month
+        // Calculate category breakdown for the current month
         const categoryDataCalculated = calculateCategoryData(transactionsData);
-        console.log('Category data calculated:', categoryDataCalculated);
-        
-        // Eğer veri yoksa dummy data ekle
-        if (categoryDataCalculated.length === 0) {
-          const dummyCategories: CategoryDataItem[] = [
-            { name: 'Gıda', value: 1500, color: '#ef4444' },
-            { name: 'Ulaşım', value: 800, color: '#f59e0b' },
-            { name: 'Eğlence', value: 600, color: '#6366f1' },
-          ];
-          setCategoryData(dummyCategories);
-        } else {
-          setCategoryData(categoryDataCalculated);
-        }
+        setCategoryData(categoryDataCalculated);
 
-        // Calculate current month expense
-        const now = new Date();
-        const currentMonthTransactions = transactionsData.filter(transaction => {
-          const transactionDate = transaction.date;
-          return transactionDate.getMonth() === now.getMonth() && 
-                 transactionDate.getFullYear() === now.getFullYear();
-        });
-        
-        const currentExpense = currentMonthTransactions
+        // Calculate total expense for the card
+        const totalExpense = transactionsData
           .filter(t => t.type === TransactionType.EXPENSE)
-          .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        setCurrentMonthExpense(currentExpense);
+          .reduce((sum, t) => sum + t.amount, 0);
+        setCurrentMonthExpense(totalExpense);
 
         // Calculate monthly change (compare with previous month)
+        const now = new Date();
         const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const previousMonthTransactions = transactionsData.filter(transaction => {
           const transactionDate = transaction.date;
@@ -211,121 +195,34 @@ const Dashboard: React.FC = () => {
         });
         
         const previousMonthBalance = previousMonthTransactions.reduce((sum, t) => {
-          return sum + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount));
+          return sum + (t.type === TransactionType.INCOME ? t.amount : -t.amount);
         }, 0);
         
-        const currentMonthBalance = currentMonthTransactions.reduce((sum, t) => {
-          return sum + (t.type === TransactionType.INCOME ? t.amount : -Math.abs(t.amount));
+        const currentMonthAllTransactions = transactionsData.filter(transaction => {
+            const transactionDate = transaction.date;
+            return transactionDate.getMonth() === now.getMonth() &&
+                   transactionDate.getFullYear() === now.getFullYear();
+        });
+
+        const currentMonthBalance = currentMonthAllTransactions.reduce((sum, t) => {
+          return sum + (t.type === TransactionType.INCOME ? t.amount : -t.amount);
         }, 0);
         
-        const change = previousMonthBalance !== 0 ? 
-          ((currentMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100 : 0;
+        const change = previousMonthBalance !== 0 
+          ? ((currentMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100 
+          : (currentMonthBalance !== 0 ? 100 : 0);
         setMonthlyChange(change);
+
       } catch (error) {
         console.error('Error loading dashboard data:', error);
-        
-        // Show mock data if Firebase fails or no data exists
-        const mockAccounts: Account[] = [
-          {
-            id: 'mock-1',
-            userId: currentUser.uid,
-            name: 'Ana Hesap',
-            type: 'debit_card' as any,
-            balance: 25430,
-            color: '#10b981',
-            icon: 'bank',
-            isActive: true,
-            includeInTotalBalance: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: 'mock-2',
-            userId: currentUser.uid,
-            name: 'Kredi Kartı',
-            type: 'credit_card' as any,
-            balance: -8500,
-            color: '#ef4444',
-            icon: 'credit-card',
-            isActive: true,
-            includeInTotalBalance: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            id: 'mock-3',
-            userId: currentUser.uid,
-            name: 'Altın Hesabı',
-            type: 'gold' as any,
-            balance: 18300,
-            color: '#fbbf24',
-            icon: 'gold',
-            isActive: true,
-            includeInTotalBalance: true,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ];
-
-        const mockTransactions: Transaction[] = [
-          {
-            id: 'mock-trans-1',
-            userId: currentUser.uid,
-            accountId: 'mock-1',
-            amount: 2500,
-            description: 'Maaş',
-            category: 'Gelir',
-            categoryIcon: '💰',
-            type: TransactionType.INCOME,
-            date: new Date('2024-01-15'),
-            createdAt: new Date('2024-01-15'),
-            updatedAt: new Date('2024-01-15'),
-          },
-          {
-            id: 'mock-trans-2',
-            userId: currentUser.uid,
-            accountId: 'mock-1',
-            amount: 150,
-            description: 'Market Alışverişi',
-            category: 'Gıda',
-            categoryIcon: '🛒',
-            type: TransactionType.EXPENSE,
-            date: new Date('2024-01-14'),
-            createdAt: new Date('2024-01-14'),
-            updatedAt: new Date('2024-01-14'),
-          },
-        ];
-
-        setAccounts(mockAccounts);
-        setTotalBalance(mockAccounts
-          .filter(account => account.includeInTotalBalance)
-          .reduce((sum, account) => sum + account.balance, 0));
-        setTransactions(mockTransactions);
-
-        // Mock veriler için de grafik verilerini hesapla
-        const chartDataCalculated = calculateMonthlyData(mockTransactions);
-        setChartData(chartDataCalculated);
-
-        const categoryDataCalculated = calculateCategoryData(mockTransactions);
-        
-        // Mock veriler için dummy kategoriler ekle
-        if (categoryDataCalculated.length === 0) {
-          const dummyCategories: CategoryDataItem[] = [
-            { name: 'Gıda', value: 150, color: '#ef4444' },
-            { name: 'Ulaşım', value: 100, color: '#f59e0b' },
-            { name: 'Yemek', value: 80, color: '#f97316' },
-          ];
-          setCategoryData(dummyCategories);
-        } else {
-          setCategoryData(categoryDataCalculated);
-        }
-
-        // Mock veriler için bu ay harcama ve aylık değişim
-        const mockCurrentExpense = mockTransactions
-          .filter(t => t.type === TransactionType.EXPENSE)
-          .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-        setCurrentMonthExpense(mockCurrentExpense);
-        setMonthlyChange(12.5); // Mock değer
+        // Hata durumunda state'leri sıfırla
+        setAccounts([]);
+        setTransactions([]);
+        setTotalBalance(0);
+        setCurrentMonthExpense(0);
+        setMonthlyChange(0);
+        setChartData([]);
+        setCategoryData([]);
       } finally {
         setLoading(false);
         setGlobalLoading(false);
@@ -426,26 +323,11 @@ const Dashboard: React.FC = () => {
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          Bu Ay Harcama
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          Toplam Harcama
                         </Typography>
-                        <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
+                        <Typography variant="h5" component="div" sx={{ fontWeight: 'bold' }}>
                           {formatCurrency(currentMonthExpense)}
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={65}
-                          sx={{
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            '& .MuiLinearProgress-bar': {
-                              backgroundColor: '#ef4444',
-                            },
-                          }}
-                        />
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                          Bütçenin %65'i kullanıldı
                         </Typography>
                       </Box>
                       <Avatar sx={{ bgcolor: 'error.main' }}>
@@ -558,15 +440,13 @@ const Dashboard: React.FC = () => {
           <motion.div {...animations.fadeIn}>
             <Card>
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Son İşlemler
-                  </Typography>
-                  <Button size="small" endIcon={<Add />}>
-                    Yeni
-                  </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <ListItemText 
+                    primary="Son İşlemler" 
+                    secondary="En son yaptığınız 5 işlem"
+                  />
                 </Box>
-                <List sx={{ p: 0 }}>
+                <List dense>
                   {transactions.map((transaction, index) => (
                     <React.Fragment key={transaction.id}>
                       <ListItem sx={{ px: 0 }}>

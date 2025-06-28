@@ -1,19 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
-  User,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile
+  User as FirebaseUser,
+  getAuth
 } from 'firebase/auth';
-import { auth } from '../../config/firebase';
 import { useError } from '../../contexts/ErrorContext';
+import UserService from '../../services/UserService';
+import { User } from '../../models/User';
+
+const auth = getAuth();
 
 interface AuthContextType {
-  currentUser: User | null;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (email: string, password: string, displayName: string) => Promise<void>;
+  currentUser: FirebaseUser | null;
+  user: User | null; // App-specific user data from Firestore
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
+  register: (email: string, password: string, displayName: string) => Promise<boolean>;
   logout: () => Promise<void>;
   loading: boolean;
   loginLoading: boolean;
@@ -34,109 +34,78 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null); // App-specific user
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
   const { showAuthError } = useError();
 
-  const login = async (email: string, password: string, rememberMe?: boolean): Promise<void> => {
-    try {
-      setLoginLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
-      
-      // Eğer "beni hatırla" seçildiyse bilgileri kaydet
-      if (rememberMe) {
-        localStorage.setItem('paramiyonet_remember_me', 'true');
-        localStorage.setItem('paramiyonet_saved_email', email);
-        localStorage.setItem('paramiyonet_saved_password', password);
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (fbUser) => {
+      setCurrentUser(fbUser);
+      if (fbUser) {
+        try {
+          const appUser = await UserService.getUserProfile(fbUser.uid);
+          setUser(appUser ?? null);
+        } catch (error) {
+          console.error("Failed to fetch user profile:", error);
+          setUser(null);
+        }
       } else {
-        // "Beni hatırla" seçilmediyse kayıtlı bilgileri temizle
-        localStorage.removeItem('paramiyonet_remember_me');
-        localStorage.removeItem('paramiyonet_saved_email');
-        localStorage.removeItem('paramiyonet_saved_password');
+        setUser(null);
       }
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
+
+  const login = async (email: string, password: string, rememberMe?: boolean): Promise<boolean> => {
+    setLoginLoading(true);
+    try {
+      await UserService.login(email, password);
+      // "remember me" logic is handled by firebase persistence now
+      return true;
     } catch (error: any) {
       console.error('Login error:', error);
       showAuthError(error.code || 'auth/unknown-error');
+      return false;
+    } finally {
       setLoginLoading(false);
-      throw error;
     }
-    // Successful login durumunda onAuthStateChanged loginLoading'i false yapacak
   };
 
-  const register = async (email: string, password: string, displayName: string): Promise<void> => {
+  const register = async (email: string, password: string, displayName: string): Promise<boolean> => {
+    setLoginLoading(true);
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      if (result.user) {
-        await updateProfile(result.user, { displayName });
+      const newUser = await UserService.register(email, password, displayName);
+      if (newUser) {
+        setUser(newUser);
+        return true;
       }
+      return false;
     } catch (error: any) {
       console.error('Registration error:', error);
-      showAuthError(error.code || 'auth/unknown-error');
-      throw error;
+      showAuthError(error.code || 'auth/registration-failed');
+      return false;
+    } finally {
+      setLoginLoading(false);
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
-      // Kayıtlı bilgileri temizle
-      localStorage.removeItem('paramiyonet_remember_me');
-      localStorage.removeItem('paramiyonet_saved_email');
-      localStorage.removeItem('paramiyonet_saved_password');
-      
-      await signOut(auth);
+      await UserService.logout();
+      setUser(null);
+      setCurrentUser(null);
     } catch (error) {
       console.error('Logout error:', error);
-      throw error;
     }
   };
 
-  useEffect(() => {
-    let isInitialLoad = true;
-    let isAutoLoginAttempted = false;
-    
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-        setLoading(false);
-        setLoginLoading(false);
-        isInitialLoad = false;
-      } else {
-        // Sadece ilk yüklemede ve daha önce denenmemişse auto-login dene
-        if (isInitialLoad && !isAutoLoginAttempted) {
-          isAutoLoginAttempted = true;
-          try {
-            const rememberMe = localStorage.getItem('paramiyonet_remember_me');
-            if (rememberMe === 'true') {
-              const email = localStorage.getItem('paramiyonet_saved_email');
-              const password = localStorage.getItem('paramiyonet_saved_password');
-              
-              if (email && password) {
-                console.log('Attempting auto-login...');
-                await signInWithEmailAndPassword(auth, email, password);
-                return; // onAuthStateChanged tekrar tetiklenecek
-              }
-            }
-          } catch (error) {
-            console.error('Auto-login failed:', error);
-            // Hatalı kayıtlı bilgileri temizle
-            localStorage.removeItem('paramiyonet_remember_me');
-            localStorage.removeItem('paramiyonet_saved_email');
-            localStorage.removeItem('paramiyonet_saved_password');
-          }
-        }
-        
-        setCurrentUser(null);
-        setLoading(false);
-        isInitialLoad = false;
-      }
-    });
-
-    return unsubscribe;
-  }, []);
-
   const value: AuthContextType = {
     currentUser,
+    user,
     login,
     register,
     logout,

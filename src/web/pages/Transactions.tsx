@@ -88,7 +88,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
 
   useEffect(() => {
     loadTransactions();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     applyFilters();
@@ -97,123 +97,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
   const loadTransactions = async () => {
     if (!currentUser) return;
     
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Try to load from Firebase
       const firebaseTransactions = await TransactionService.getUserTransactions(currentUser.uid);
-      
-      if (firebaseTransactions.length > 0) {
-        setTransactions(firebaseTransactions);
-        calculateStats(firebaseTransactions);
-      } else {
-        // Use mock data if no Firebase data
-        const mockTransactions: Transaction[] = [
-          {
-            id: '1',
-            userId: currentUser.uid,
-            amount: 2500,
-            description: 'Maaş',
-            category: 'Gelir',
-            categoryIcon: '💰',
-            type: TransactionType.INCOME,
-            accountId: 'account-1',
-            date: new Date('2024-01-15'),
-            createdAt: new Date('2024-01-15'),
-            updatedAt: new Date('2024-01-15'),
-          },
-          {
-            id: '2',
-            userId: currentUser.uid,
-            amount: 150,
-            description: 'Market Alışverişi',
-            category: 'Gıda',
-            categoryIcon: '🛒',
-            type: TransactionType.EXPENSE,
-            accountId: 'account-1',
-            date: new Date('2024-01-14'),
-            createdAt: new Date('2024-01-14'),
-            updatedAt: new Date('2024-01-14'),
-          },
-          {
-            id: '3',
-            userId: currentUser.uid,
-            amount: 80,
-            description: 'Benzin',
-            category: 'Ulaşım',
-            categoryIcon: '⛽',
-            type: TransactionType.EXPENSE,
-            accountId: 'account-1',
-            date: new Date('2024-01-13'),
-            createdAt: new Date('2024-01-13'),
-            updatedAt: new Date('2024-01-13'),
-          },
-          {
-            id: '4',
-            userId: currentUser.uid,
-            amount: 1200,
-            description: 'Kira',
-            category: 'Ev',
-            categoryIcon: '🏠',
-            type: TransactionType.EXPENSE,
-            accountId: 'account-1',
-            date: new Date('2024-01-01'),
-            createdAt: new Date('2024-01-01'),
-            updatedAt: new Date('2024-01-01'),
-          },
-          {
-            id: '5',
-            userId: currentUser.uid,
-            amount: 300,
-            description: 'Freelance Proje',
-            category: 'Gelir',
-            categoryIcon: '💻',
-            type: TransactionType.INCOME,
-            accountId: 'account-1',
-            date: new Date('2024-01-10'),
-            createdAt: new Date('2024-01-10'),
-            updatedAt: new Date('2024-01-10'),
-          },
-        ];
-        
-        setTransactions(mockTransactions);
-        calculateStats(mockTransactions);
-      }
+      setTransactions(firebaseTransactions);
+      calculateStats(firebaseTransactions);
     } catch (error) {
       console.error('Error loading transactions:', error);
-      
-      // Fallback to mock data on error
-      const mockTransactions: Transaction[] = [
-        {
-          id: '1',
-          userId: currentUser.uid,
-          amount: 2500,
-          description: 'Maaş',
-          category: 'Gelir',
-          categoryIcon: '💰',
-          type: TransactionType.INCOME,
-          accountId: 'account-1',
-          date: new Date('2024-01-15'),
-          createdAt: new Date('2024-01-15'),
-          updatedAt: new Date('2024-01-15'),
-        },
-        {
-          id: '2',
-          userId: currentUser.uid,
-          amount: 150,
-          description: 'Market Alışverişi',
-          category: 'Gıda',
-          categoryIcon: '🛒',
-          type: TransactionType.EXPENSE,
-          accountId: 'account-1',
-          date: new Date('2024-01-14'),
-          createdAt: new Date('2024-01-14'),
-          updatedAt: new Date('2024-01-14'),
-        },
-      ];
-      
-      setTransactions(mockTransactions);
-      calculateStats(mockTransactions);
+      setTransactions([]);
+      calculateStats([]);
     } finally {
       setLoading(false);
     }

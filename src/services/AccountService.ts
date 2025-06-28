@@ -19,9 +19,10 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  Timestamp 
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
-import { AccountType } from '../models/Account';
+import { AccountType, GoldType, GoldHolding } from '../models/Account';
 
 export class AccountService {
   private static readonly COLLECTION_NAME = 'accounts';
@@ -212,19 +213,34 @@ export class AccountService {
     }
   }
 
-  static async createAccount(accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt'>): Promise<Account> {
+  static async createAccount(accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'icon' | 'isActive'>): Promise<Account> {
     try {
       const now = new Date();
       
-      const docRef = await addDoc(collection(db, AccountService.COLLECTION_NAME), {
-        ...accountData,
+      // Create a clean object to send to Firestore, removing any undefined fields
+      const cleanData: { [key: string]: any } = {};
+      Object.keys(accountData).forEach(key => {
+        const value = (accountData as any)[key];
+        if (value !== undefined) {
+          cleanData[key] = value;
+        }
+      });
+
+      const dataToSave = {
+        ...cleanData,
+        isActive: true, // Always active on creation
+        icon: accountData.type, // Use account type as icon for now
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now),
-      });
+      };
+
+      const docRef = await addDoc(collection(db, AccountService.COLLECTION_NAME), dataToSave);
 
       return {
         id: docRef.id,
         ...accountData,
+        isActive: dataToSave.isActive,
+        icon: dataToSave.icon,
         createdAt: now,
         updatedAt: now,
       };
@@ -344,6 +360,96 @@ export class AccountService {
     } catch (error) {
       console.error('Error creating default accounts:', error);
       throw new Error('Varsayılan hesaplar oluşturulamadı');
+    }
+  }
+
+  static async sellGold(
+    userId: string,
+    goldAccountId: string,
+    targetAccountId: string,
+    goldType: GoldType,
+    quantityToSell: number,
+    pricePerUnit: number
+  ): Promise<void> {
+    const totalSaleValue = quantityToSell * pricePerUnit;
+
+    const goldAccountRef = doc(db, this.COLLECTION_NAME, goldAccountId);
+    const targetAccountRef = doc(db, this.COLLECTION_NAME, targetAccountId);
+
+    // This part is complex and requires a transaction to ensure atomicity.
+    // However, Firestore transactions (runTransaction) are complex to implement here.
+    // A batch write is a simpler alternative for now.
+    const batch = writeBatch(db);
+
+    try {
+      const goldAccountSnap = await getDoc(goldAccountRef);
+      const targetAccountSnap = await getDoc(targetAccountRef);
+
+      if (!goldAccountSnap.exists() || !targetAccountSnap.exists()) {
+        throw new Error('One or both accounts not found');
+      }
+
+      const goldAccount = goldAccountSnap.data() as Account;
+      const targetAccount = targetAccountSnap.data() as Account;
+
+      // 1. Update Gold Account Holdings
+      const updatedHoldings = { ...goldAccount.goldHoldings };
+      const holdingsForType = updatedHoldings[goldType as keyof typeof updatedHoldings];
+
+      if (!holdingsForType || holdingsForType.reduce((sum: number, h: GoldHolding) => sum + h.quantity, 0) < quantityToSell) {
+        throw new Error('Insufficient gold to sell');
+      }
+
+      let remainingToSell = quantityToSell;
+      const newHoldingsForType: GoldHolding[] = [];
+
+      // Sell from oldest holdings first (FIFO)
+      holdingsForType.sort((a: GoldHolding, b: GoldHolding) => new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime());
+
+      for (const holding of holdingsForType) {
+        if (remainingToSell <= 0) {
+          newHoldingsForType.push(holding);
+          continue;
+        }
+
+        if (holding.quantity >= remainingToSell) {
+          newHoldingsForType.push({ ...holding, quantity: holding.quantity - remainingToSell });
+          remainingToSell = 0;
+        } else {
+          remainingToSell -= holding.quantity;
+          // This holding is fully sold, so we don't add it back
+        }
+      }
+      
+      updatedHoldings[goldType as keyof typeof updatedHoldings] = newHoldingsForType.filter(h => h.quantity > 0);
+
+      batch.update(goldAccountRef, { goldHoldings: updatedHoldings, updatedAt: serverTimestamp() });
+
+      // 2. Update Target Account Balance
+      const newBalance = (targetAccount.balance || 0) + totalSaleValue;
+      batch.update(targetAccountRef, { balance: newBalance, updatedAt: serverTimestamp() });
+
+      // 3. Create Income Transaction for the sale
+      const transactionRef = doc(collection(db, 'transactions'));
+      batch.set(transactionRef, {
+        userId,
+        accountId: targetAccountId,
+        type: 'income',
+        amount: totalSaleValue,
+        category: 'Altın Satışı',
+        categoryIcon: 'trending-up',
+        description: `${quantityToSell} ${goldType} altın satışı`,
+        date: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      // Commit the batch
+      await batch.commit();
+
+    } catch (error) {
+      console.error("Error selling gold:", error);
+      throw error;
     }
   }
 }

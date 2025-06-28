@@ -28,9 +28,10 @@ import {
   Schedule,
   Assessment,
   AttachMoney,
+  Sell,
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
-import { Account, GoldType, GoldHolding, GoldHoldings } from '../../models/Account';
+import { Account, GoldType, GoldHolding, GoldHoldings, AccountType } from '../../models/Account';
 import { formatCurrency } from '../../utils/formatters';
 import { useAuth } from '../contexts/AuthContext';
 import { AccountService } from '../../services/AccountService';
@@ -119,9 +120,35 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
   const [priceSource, setPriceSource] = useState('');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
+  // States for selling gold
+  const [sellGoldModalVisible, setSellGoldModalVisible] = useState(false);
+  const [sellingGold, setSellingGold] = useState(false);
+  const [goldTypeToSell, setGoldTypeToSell] = useState<GoldType>(GoldType.GRAM);
+  const [quantityToSell, setQuantityToSell] = useState('');
+  const [targetAccountId, setTargetAccountId] = useState<string>('');
+  const [userAccounts, setUserAccounts] = useState<Account[]>([]);
+  const [sellError, setSellError] = useState<string>('');
+
   useEffect(() => {
     loadGoldDetails();
+    fetchUserAccounts();
   }, [account]);
+
+  const fetchUserAccounts = async () => {
+    if (currentUser) {
+      try {
+        const accounts = await AccountService.getUserAccounts(currentUser.uid);
+        // Filter for non-gold accounts to transfer funds to
+        const filteredAccounts = accounts.filter(acc => acc.type !== AccountType.GOLD && acc.id !== account.id);
+        setUserAccounts(filteredAccounts);
+        if (filteredAccounts.length > 0) {
+          setTargetAccountId(filteredAccounts[0].id);
+        }
+      } catch (error) {
+        console.error("Error fetching user accounts:", error);
+      }
+    }
+  };
 
   const loadGoldDetails = async (isRefresh = false) => {
     if (isRefresh) {
@@ -247,45 +274,36 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
     setAddingGold(true);
     try {
       const currentPrice = currentGoldPrices.prices[selectedGoldType];
-      const now = new Date();
       
-      // Mevcut goldHoldings'i kopyala
-      const currentHoldings = { ...(account.goldHoldings || {}) };
-      
-      // Yeni holding ekle
-      if (!currentHoldings[selectedGoldType]) {
-        currentHoldings[selectedGoldType] = [];
-      }
-      
-      currentHoldings[selectedGoldType]!.push({
+      const newHolding: GoldHolding = {
         type: selectedGoldType,
         quantity: quantityToAdd,
         initialPrice: currentPrice,
-        purchaseDate: now
-      });
+        purchaseDate: new Date(),
+      };
 
-      // Firebase'de hesabı güncelle
+      const updatedHoldings: GoldHoldings = JSON.parse(JSON.stringify(account.goldHoldings || {}));
+      
+      if (!updatedHoldings[selectedGoldType]) {
+        updatedHoldings[selectedGoldType] = [];
+      }
+      
+      updatedHoldings[selectedGoldType]!.push(newHolding);
+
       if (currentUser) {
         await AccountService.updateAccount(account.id, {
-          goldHoldings: currentHoldings,
+          goldHoldings: updatedHoldings,
         });
       }
-
-      // Update account locally
+      
       const updatedAccount = {
         ...account,
-        goldHoldings: currentHoldings,
+        goldHoldings: updatedHoldings,
       };
 
       onAccountUpdate(updatedAccount);
-      
-      // Detayları yeniden hesapla
-      const updatedDetails = calculateGoldDetails(updatedAccount, currentGoldPrices.prices);
-      setGoldDetails(updatedDetails);
-      
       setAddGoldModalVisible(false);
       setGoldQuantity('');
-      
     } catch (error) {
       console.error('Altın eklenirken hata:', error);
     } finally {
@@ -299,6 +317,55 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
 
   const getProfitLossColor = (amount: number) => {
     return amount >= 0 ? '#10b981' : '#ef4444';
+  };
+
+  const handleSellGold = async () => {
+    if (!currentUser || !currentGoldPrices) {
+      setSellError('Güncel veriler yüklenemedi. Lütfen sayfayı yenileyin.');
+      return;
+    }
+    if (!quantityToSell.trim() || !targetAccountId) {
+      setSellError('Lütfen tüm alanları doldurun.');
+      return;
+    }
+
+    const quantity = parseFloat(quantityToSell);
+    const totalAvailable = goldDetails?.breakdown.find(b => b.type === goldTypeToSell)?.quantity || 0;
+
+    if (isNaN(quantity) || quantity <= 0) {
+      setSellError('Geçerli bir miktar girin.');
+      return;
+    }
+
+    if (quantity > totalAvailable) {
+      setSellError(`Satmak için yeterli ${getGoldTypeName(goldTypeToSell)} yok. Mevcut: ${totalAvailable}`);
+      return;
+    }
+
+    setSellingGold(true);
+    setSellError('');
+
+    try {
+      await AccountService.sellGold(
+        currentUser.uid,
+        account.id,
+        targetAccountId,
+        goldTypeToSell,
+        quantity,
+        currentGoldPrices.prices[goldTypeToSell]
+      );
+
+      // Refresh data after sale
+      setSellGoldModalVisible(false);
+      setQuantityToSell('');
+      loadGoldDetails(true); // Refresh all details
+      // Optionally show a success message
+    } catch (error) {
+      console.error('Altın satılırken hata:', error);
+      setSellError((error as Error).message || 'Bilinmeyen bir hata oluştu.');
+    } finally {
+      setSellingGold(false);
+    }
   };
 
   if (loading) {
@@ -375,12 +442,38 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
           >
             {refreshing ? <CircularProgress size={20} /> : <Refresh />}
           </IconButton>
-          <IconButton
-            onClick={() => setAddGoldModalVisible(true)}
-            sx={{ color: '#fbbf24' }}
+          <Button
+            startIcon={<Sell />}
+            onClick={() => setSellGoldModalVisible(true)}
+            variant="outlined"
+            size="small"
+            sx={{
+              color: '#ef4444',
+              borderColor: '#ef4444',
+              '&:hover': {
+                backgroundColor: '#ef444410',
+                borderColor: '#ef4444',
+              },
+            }}
           >
-            <Add />
-          </IconButton>
+            Sat
+          </Button>
+          <Button
+            startIcon={<Add />}
+            onClick={() => setAddGoldModalVisible(true)}
+            variant="outlined"
+            size="small"
+            sx={{
+              color: '#10b981',
+              borderColor: '#10b981',
+              '&:hover': {
+                backgroundColor: '#10b98110',
+                borderColor: '#10b981',
+              },
+            }}
+          >
+            Ekle
+          </Button>
         </Box>
       </Box>
 
@@ -579,7 +672,7 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
                                   border: '1px solid rgba(251,191,36,0.2)'
                                 }}
                               >
-                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(6, 1fr)' }, gap: 2, alignItems: 'center' }}>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(5, 1fr)' }, gap: 2, alignItems: 'center' }}>
                                   <Box>
                                     <Typography variant="caption" color="text.secondary">
                                       Miktar
@@ -594,14 +687,6 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
                                     </Typography>
                                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                       {formatCurrency(holding.initialPrice)}
-                                    </Typography>
-                                  </Box>
-                                  <Box>
-                                    <Typography variant="caption" color="text.secondary">
-                                      Alış Tarihi
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                      {formatDate(new Date(holding.purchaseDate))}
                                     </Typography>
                                   </Box>
                                   <Box>
@@ -773,6 +858,102 @@ const GoldAccountDetail: React.FC<GoldAccountDetailProps> = ({
             sx={{ bgcolor: '#fbbf24', '&:hover': { bgcolor: '#f59e0b' } }}
           >
             {addingGold ? <CircularProgress size={20} /> : 'Ekle'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Altın Satma Modal */}
+      <Dialog 
+        open={sellGoldModalVisible} 
+        onClose={() => setSellGoldModalVisible(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Altın Sat</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            {sellError && <Alert severity="error" sx={{ mb: 2 }}>{sellError}</Alert>}
+            
+            <TextField
+              fullWidth
+              select
+              label="Satılacak Altın Türü"
+              value={goldTypeToSell}
+              onChange={(e) => {
+                setGoldTypeToSell(e.target.value as GoldType);
+                setSellError('');
+              }}
+              sx={{ mb: 3 }}
+            >
+              {GOLD_TYPES.filter(gt => goldDetails?.breakdown.some(b => b.type === gt.type && b.quantity > 0)).map((goldType) => (
+                <MenuItem key={goldType.type} value={goldType.type}>
+                  {goldType.label} (Mevcut: {goldDetails?.breakdown.find(b => b.type === goldType.type)?.quantity || 0} {goldType.unit})
+                </MenuItem>
+              ))}
+            </TextField>
+            
+            <TextField
+              fullWidth
+              label="Satılacak Miktar"
+              type="number"
+              value={quantityToSell}
+              onChange={(e) => {
+                setQuantityToSell(e.target.value);
+                setSellError('');
+              }}
+              placeholder="0"
+              error={!!sellError}
+              InputProps={{
+                endAdornment: (
+                  <Typography variant="body2" color="text.secondary">
+                    {GOLD_TYPES.find(gt => gt.type === goldTypeToSell)?.unit}
+                  </Typography>
+                )
+              }}
+              sx={{ mb: 3 }}
+            />
+
+            <TextField
+              fullWidth
+              select
+              label="Aktarılacak Hesap"
+              value={targetAccountId}
+              onChange={(e) => setTargetAccountId(e.target.value)}
+              sx={{ mb: 3 }}
+              disabled={userAccounts.length === 0}
+            >
+              {userAccounts.length === 0 ? (
+                <MenuItem value="" disabled>Para aktarılacak başka hesap bulunamadı.</MenuItem>
+              ) : (
+                userAccounts.map((acc) => (
+                  <MenuItem key={acc.id} value={acc.id}>
+                    {acc.name} ({formatCurrency(acc.balance)})
+                  </MenuItem>
+                ))
+              )}
+            </TextField>
+            
+            <Alert severity="info">
+              <Typography variant="body2">
+                Güncel Satış Fiyatı: {currentGoldPrices ? formatCurrency(currentGoldPrices.prices[goldTypeToSell]) : '---'}
+              </Typography>
+              <Typography variant="body2">
+                Toplam Tutar: {currentGoldPrices && quantityToSell && !isNaN(parseFloat(quantityToSell)) ? formatCurrency(currentGoldPrices.prices[goldTypeToSell] * parseFloat(quantityToSell)) : formatCurrency(0)}
+              </Typography>
+            </Alert>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSellGoldModalVisible(false)}>
+            İptal
+          </Button>
+          <Button 
+            onClick={handleSellGold}
+            variant="contained"
+            color="error"
+            disabled={!quantityToSell.trim() || !targetAccountId || sellingGold}
+          >
+            {sellingGold ? <CircularProgress size={20} /> : 'Satışı Onayla'}
           </Button>
         </DialogActions>
       </Dialog>
