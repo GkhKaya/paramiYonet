@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +43,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const { user } = useAuth();
   const { accountViewModel, transactionViewModel } = useViewModels();
   const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
   
   // States
   const [selectedType, setSelectedType] = useState<TransactionType>(
@@ -154,6 +156,13 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   };
 
   // Custom Alert helper
+  const scrollToDescription = () => {
+    setTimeout(() => {
+      // Sadece açıklama alanına odaklanıldığında scroll yap
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
   const showAlert = (type: AlertType, title: string, message: string) => {
     setAlertType(type);
     setAlertTitle(title);
@@ -258,7 +267,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
@@ -348,7 +357,12 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
     
     return (
       <View style={styles.quickAmountSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickAmountContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          contentContainerStyle={styles.quickAmountContainer}
+          keyboardShouldPersistTaps="always"
+        >
           {quickAmounts.map((quickAmount) => (
             <TouchableOpacity
               key={quickAmount}
@@ -483,6 +497,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
         style={styles.descriptionCompactInput}
         value={description}
         onChangeText={setDescription}
+        onFocus={scrollToDescription}
         placeholder="Açıklama (opsiyonel)"
         placeholderTextColor="#666666"
         maxLength={100}
@@ -491,52 +506,62 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
-      {renderHeader()}
-      
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 + insets.bottom }]}
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? -50 : 0}
       >
-        {renderTypeSelector()}
+        {renderHeader()}
         
-        {/* Ana tutar girişi - En üstte ve büyük */}
-        {renderAmountInput()}
-        
-        {/* Hızlı tutar butonları */}
-        {renderQuickAmountButtons()}
-        
-        {/* Kategori seçimi - Kompakt */}
-        {renderCategorySelector()}
-        
-        {/* Detaylar - Kompakt */}
-        {renderDetailsSection()}
-      </ScrollView>
-
-      {/* Sabit Alt Buton */}
-      <View style={[styles.bottomButtonContainer, { paddingBottom: 15 + insets.bottom }]}>
-        <TouchableOpacity 
-          style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
-          onPress={handleSave} 
-          disabled={loading}
-          activeOpacity={0.8}
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.content} 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 70 }]}
+          keyboardShouldPersistTaps="always"
+          scrollEnabled={true}
+          nestedScrollEnabled={true}
         >
-          {loading ? (
-            <>
-              <ActivityIndicator size="small" color="#FFFFFF" />
-              <Text style={styles.saveButtonText}>Kaydediliyor...</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-              <Text style={styles.saveButtonText}>Kaydet</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+          {renderTypeSelector()}
+          
+          {/* Ana tutar girişi - En üstte ve büyük */}
+          {renderAmountInput()}
+          
+          {/* Hızlı tutar butonları */}
+          {renderQuickAmountButtons()}
+          
+          {/* Kategori seçimi - Kompakt */}
+          {renderCategorySelector()}
+          
+          {/* Detaylar - Kompakt */}
+          {renderDetailsSection()}
+        </ScrollView>
+
+        {/* Sabit Alt Buton */}
+        <View style={[styles.bottomButtonContainer, { paddingBottom: insets.bottom }]}>
+          <TouchableOpacity 
+            style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+            onPress={handleSave} 
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>Kaydediliyor...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                <Text style={styles.saveButtonText}>Kaydet</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
 
       {/* All Categories Modal */}
       <Modal
@@ -553,7 +578,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 <Ionicons name="close" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.categoriesModalContent}>
+            <ScrollView 
+              style={styles.categoriesModalContent}
+              keyboardShouldPersistTaps="always"
+            >
               <View style={styles.categoriesModalGrid}>
                 {/* Kategori Ekleme Butonu */}
                 <TouchableOpacity
@@ -627,7 +655,10 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
                 <Ionicons name="close" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.accountModalContent}>
+            <ScrollView 
+              style={styles.accountModalContent}
+              keyboardShouldPersistTaps="always"
+            >
               {/* Kullanıcı hesapları */}
               {availableAccounts.map((account) => (
                 <TouchableOpacity
@@ -780,13 +811,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  keyboardContainer: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingTop: Platform.OS === 'android' ? 24 : 50,
     borderBottomWidth: 1,
     borderBottomColor: '#1A1A1A',
   },
@@ -1171,7 +1204,7 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#121212',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingTop: 15,
     borderTopWidth: 1,
     borderTopColor: '#2A2A2A',
   },
