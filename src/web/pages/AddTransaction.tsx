@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -99,11 +99,14 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, o
   // UI states
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-  useEffect(() => {
-    loadData();
-  }, [currentUser]);
+  // Helper to format date correctly for the input
+  const formatDateForInput = (date: Date) => {
+    const offset = date.getTimezoneOffset();
+    const adjustedDate = new Date(date.getTime() - (offset*60*1000));
+    return adjustedDate.toISOString().split('T')[0];
+  };
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!currentUser) return;
     
     try {
@@ -185,7 +188,16 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, o
       console.error('Error loading data:', error);
       showSnackbar('Veri yüklenirken hata oluştu', 'error');
     }
-  };
+  }, [currentUser]);
+
+  useEffect(() => {
+    // Always start with current date/time when component mounts
+    const now = new Date();
+    setSelectedDate(now);
+    setSelectedTime(now.toTimeString().slice(0, 5));
+    
+    loadData();
+  }, [loadData]);
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({ open: true, message, severity });
@@ -326,8 +338,10 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, o
       setAmount('');
       setDescription('');
       setSelectedCategory('');
-      setSelectedDate(new Date());
-      setSelectedTime(new Date().toTimeString().slice(0, 5));
+      // Always use current date/time for reset
+      const now = new Date();
+      setSelectedDate(now);
+      setSelectedTime(now.toTimeString().slice(0, 5));
       
     } catch (error) {
       console.error('Error saving transaction:', error);
@@ -657,8 +671,15 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, o
                       fullWidth
                       label="Tarih"
                       type="date"
-                      value={selectedDate.toISOString().split('T')[0]}
-                      onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                      value={formatDateForInput(selectedDate)}
+                      onChange={(e) => {
+                        // Create date object from YYYY-MM-DD string in a way that avoids timezone shifts
+                        const dateString = e.target.value;
+                        const [year, month, day] = dateString.split('-').map(Number);
+                        // Using UTC to prevent the browser from shifting the date based on its timezone
+                        const newDate = new Date(Date.UTC(year, month - 1, day));
+                        setSelectedDate(newDate);
+                      }}
                       InputLabelProps={{ shrink: true }}
                       InputProps={{
                         startAdornment: (
