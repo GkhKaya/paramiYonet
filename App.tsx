@@ -10,6 +10,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { ViewModelProvider } from './src/contexts/ViewModelContext';
 import { ErrorProvider } from './src/contexts/ErrorContext';
 import { OnboardingProvider } from './src/contexts/OnboardingContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import WebApp from './src/web/WebApp';
 import ErrorNotification from './src/components/common/ErrorNotification';
@@ -68,13 +69,15 @@ export default function App() {
           <ErrorProvider>
             <AuthProvider>
               <OnboardingProvider>
-                <NavigationContainer>
-              <ViewModelProvider>
-                <AppNavigator />
-                    <OnboardingModal />
-                  </ViewModelProvider>
-                <StatusBar style="light" backgroundColor="#000000" />
-              </NavigationContainer>
+                <ThemeProvider>
+                  <NavigationContainer>
+                    <ViewModelProvider>
+                      <AppNavigator />
+                      <OnboardingModal />
+                    </ViewModelProvider>
+                    <StatusBar style="light" backgroundColor="#000000" />
+                  </NavigationContainer>
+                </ThemeProvider>
               </OnboardingProvider>
             </AuthProvider>
             <ErrorNotification />

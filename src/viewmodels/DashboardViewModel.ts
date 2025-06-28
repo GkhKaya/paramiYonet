@@ -5,16 +5,15 @@ import { BaseViewModel, BaseViewModelState } from './BaseViewModel';
 export interface DashboardViewModelState extends BaseViewModelState {
   accounts: Account[];
   recentTransactions: Transaction[];
-  totalBalance: number;
   monthlyIncome: number;
   monthlyExpense: number;
-  user: {
+  userProfile: {
     name: string;
     email: string;
   } | null;
 }
 
-export class DashboardViewModel extends BaseViewModel {
+export class DashboardViewModel extends BaseViewModel<DashboardViewModelState> {
   constructor(setState: (state: DashboardViewModelState) => void, initialState: DashboardViewModelState) {
     super(setState, initialState);
   }
@@ -33,25 +32,8 @@ export class DashboardViewModel extends BaseViewModel {
     return this.state.accounts?.reduce((total: number, account: Account) => total + account.balance, 0) || 0;
   };
 
-  // Quick actions
-  navigateToAddIncome = () => {
-
-    // Navigation logic will be handled by the screen
-  };
-
-  navigateToAddExpense = () => {
-
-    // Navigation logic will be handled by the screen
-  };
-
-  navigateToTransactions = () => {
-
-    // Navigation logic will be handled by the screen
-  };
-
-  navigateToReports = () => {
-
-    // Navigation logic will be handled by the screen
+  getAccountById = (accountId: string): Account | undefined => {
+    return this.state.accounts.find((acc: Account) => acc.id === accountId);
   };
 
   // Data loading methods
@@ -104,8 +86,8 @@ export class DashboardViewModel extends BaseViewModel {
   selectAccount = (accountId: string) => {
     const account = this.state.accounts.find((acc: Account) => acc.id === accountId);
     if (account) {
-  
-      // Handle account selection logic
+      // TODO: Navigation or state update logic
+      console.log('Selected Account:', account.name);
     }
   };
 
@@ -117,16 +99,7 @@ export class DashboardViewModel extends BaseViewModel {
     })}`;
   };
 
-  getGreeting = (): string => {
-    const hour = new Date().getHours();
-    const userName = this.state.user?.name || 'Kullanıcı';
-    
-    if (hour < 12) {
-      return `Günaydın, ${userName}`;
-    } else if (hour < 18) {
-      return `İyi günler, ${userName}`;
-    } else {
-      return `İyi akşamlar, ${userName}`;
-    }
+  getTransactionIcon = (transaction: Transaction): string => {
+    return transaction.type === TransactionType.INCOME ? 'arrow-up' : 'arrow-down';
   };
 } 

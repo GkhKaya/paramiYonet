@@ -1,13 +1,15 @@
 export interface User {
   id: string;
   email: string;
-  displayName?: string;
-  photoURL?: string | null;
-  currency?: string;
+  name: string;
+  currency: string;
+  currencySymbol: string;
+  currencyFormat: string;
+  language: string;
+  profilePictureUrl?: string;
   createdAt: Date;
   updatedAt: Date;
-  preferences?: UserPreferences;
-  onboardingCompleted?: boolean;
+  onboardingCompleted: boolean;
 }
 
 export interface UserPreferences {

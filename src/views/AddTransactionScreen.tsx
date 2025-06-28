@@ -27,6 +27,10 @@ import { useViewModels } from '../contexts/ViewModelContext';
 import { useCurrency, useCategory, useDate } from '../hooks';
 import { RecurringPaymentService } from '../services/RecurringPaymentService';
 import CustomAlert, { AlertType } from '../components/common/CustomAlert';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { useTheme } from '@react-navigation/native';
+import { CurrencyCode } from '../utils/currency';
+import useWebAmountInput from '../hooks/useWebAmountInput';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,6 +48,7 @@ const AddTransactionScreen: React.FC<AddTransactionScreenProps> = observer(({ ro
   const { accountViewModel, transactionViewModel } = useViewModels();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
+  const { colors } = useTheme();
   
   // States
   const [selectedType, setSelectedType] = useState<TransactionType>(
