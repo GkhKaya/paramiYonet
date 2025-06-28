@@ -136,20 +136,6 @@ export const createCommonQuickActions = (
       color: '#4CAF50',
       onPress: onAddIncome,
     },
-    // Üçüncü: İşlemleri görme
-    {
-      icon: 'list',
-      title: 'İşlemler',
-      color: '#FF9800',
-      onPress: onViewTransactions,
-    },
-    // Dördüncü: Raporları inceleme
-    {
-      icon: 'bar-chart',
-      title: 'Raporlar',
-      color: '#9C27B0',
-      onPress: onViewReports,
-    },
     // Beşinci: Yeni hesap (daha az sıklıkta)
     {
       icon: 'wallet',
