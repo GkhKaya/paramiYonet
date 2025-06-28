@@ -9,7 +9,9 @@ import {
   where, 
   orderBy, 
   limit,
-  Timestamp 
+  Timestamp,
+  writeBatch,
+  getDoc
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
@@ -143,16 +145,46 @@ export class TransactionService {
   static async createTransaction(transactionData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
     try {
       const now = new Date();
+      const batch = writeBatch(db);
       
-      const docRef = await addDoc(collection(db, this.COLLECTION_NAME), {
+      // Create transaction document
+      const transactionRef = doc(collection(db, this.COLLECTION_NAME));
+      batch.set(transactionRef, {
         ...transactionData,
         date: Timestamp.fromDate(transactionData.date),
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now),
       });
 
+      // Update account balance
+      const accountRef = doc(db, 'accounts', transactionData.accountId);
+      const accountDoc = await getDoc(accountRef);
+      
+      if (!accountDoc.exists()) {
+        throw new Error('Hesap bulunamadı');
+      }
+
+      const accountData = accountDoc.data();
+      const currentBalance = accountData.balance || 0;
+      
+      // Calculate new balance based on transaction type
+      let newBalance: number;
+      if (transactionData.type === TransactionType.INCOME) {
+        newBalance = currentBalance + transactionData.amount;
+      } else {
+        newBalance = currentBalance - transactionData.amount;
+      }
+
+      batch.update(accountRef, { 
+        balance: newBalance,
+        updatedAt: Timestamp.fromDate(now)
+      });
+
+      // Execute batch write
+      await batch.commit();
+
       return {
-        id: docRef.id,
+        id: transactionRef.id,
         ...transactionData,
         createdAt: now,
         updatedAt: now,
@@ -166,10 +198,22 @@ export class TransactionService {
   // Update an existing transaction
   static async updateTransaction(id: string, updates: Partial<Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
     try {
-      const docRef = doc(db, this.COLLECTION_NAME, id);
+      const now = new Date();
+      const batch = writeBatch(db);
+      
+      const transactionRef = doc(db, this.COLLECTION_NAME, id);
+      
+      // Get current transaction to calculate balance difference
+      const currentTransactionDoc = await getDoc(transactionRef);
+      if (!currentTransactionDoc.exists()) {
+        throw new Error('İşlem bulunamadı');
+      }
+      
+      const currentTransaction = currentTransactionDoc.data();
+      
       const updateData: any = {
         ...updates,
-        updatedAt: Timestamp.fromDate(new Date()),
+        updatedAt: Timestamp.fromDate(now),
       };
 
       // Convert date to Timestamp if provided
@@ -177,7 +221,45 @@ export class TransactionService {
         updateData.date = Timestamp.fromDate(updates.date);
       }
 
-      await updateDoc(docRef, updateData);
+      batch.update(transactionRef, updateData);
+
+      // Update account balance if amount or type changed
+      if (updates.amount !== undefined || updates.type !== undefined) {
+        const accountId = updates.accountId || currentTransaction.accountId;
+        const accountRef = doc(db, 'accounts', accountId);
+        const accountDoc = await getDoc(accountRef);
+        
+        if (!accountDoc.exists()) {
+          throw new Error('Hesap bulunamadı');
+        }
+
+        const accountData = accountDoc.data();
+        let currentBalance = accountData.balance || 0;
+        
+        // Revert old transaction effect
+        if (currentTransaction.type === TransactionType.INCOME) {
+          currentBalance -= currentTransaction.amount;
+        } else {
+          currentBalance += currentTransaction.amount;
+        }
+        
+        // Apply new transaction effect
+        const newAmount = updates.amount !== undefined ? updates.amount : currentTransaction.amount;
+        const newType = updates.type !== undefined ? updates.type : currentTransaction.type;
+        
+        if (newType === TransactionType.INCOME) {
+          currentBalance += newAmount;
+        } else {
+          currentBalance -= newAmount;
+        }
+
+        batch.update(accountRef, { 
+          balance: currentBalance,
+          updatedAt: Timestamp.fromDate(now)
+        });
+      }
+
+      await batch.commit();
     } catch (error) {
       console.error('Error updating transaction:', error);
       throw new Error('İşlem güncellenemedi');
@@ -187,8 +269,46 @@ export class TransactionService {
   // Delete a transaction
   static async deleteTransaction(id: string): Promise<void> {
     try {
-      const docRef = doc(db, this.COLLECTION_NAME, id);
-      await deleteDoc(docRef);
+      const now = new Date();
+      const batch = writeBatch(db);
+      
+      const transactionRef = doc(db, this.COLLECTION_NAME, id);
+      
+      // Get transaction to revert its balance effect
+      const transactionDoc = await getDoc(transactionRef);
+      if (!transactionDoc.exists()) {
+        throw new Error('İşlem bulunamadı');
+      }
+      
+      const transactionData = transactionDoc.data();
+      
+      // Delete transaction
+      batch.delete(transactionRef);
+      
+      // Revert account balance
+      const accountRef = doc(db, 'accounts', transactionData.accountId);
+      const accountDoc = await getDoc(accountRef);
+      
+      if (!accountDoc.exists()) {
+        throw new Error('Hesap bulunamadı');
+      }
+
+      const accountData = accountDoc.data();
+      let currentBalance = accountData.balance || 0;
+      
+      // Revert transaction effect
+      if (transactionData.type === TransactionType.INCOME) {
+        currentBalance -= transactionData.amount;
+      } else {
+        currentBalance += transactionData.amount;
+      }
+
+      batch.update(accountRef, { 
+        balance: currentBalance,
+        updatedAt: Timestamp.fromDate(now)
+      });
+
+      await batch.commit();
     } catch (error) {
       console.error('Error deleting transaction:', error);
       throw new Error('İşlem silinemedi');

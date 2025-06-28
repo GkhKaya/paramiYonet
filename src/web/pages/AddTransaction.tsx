@@ -59,6 +59,7 @@ import { getCategoryIcon } from '../utils/categoryIcons';
 interface AddTransactionProps {
   onClose: () => void;
   defaultType?: 'income' | 'expense';
+  onSuccess?: () => void;
 }
 
 const quickAmounts = [
@@ -70,7 +71,7 @@ const quickAmounts = [
   { value: 2500, label: '2.500₺' },
 ];
 
-const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType }) => {
+const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, onSuccess }) => {
   const { currentUser } = useAuth();
   const { setLoading: setGlobalLoading } = useLoading();
   const theme = useTheme();
@@ -315,6 +316,11 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType })
       await TransactionService.createTransaction(transactionData);
       
       showSnackbar('İşlem başarıyla kaydedildi', 'success');
+      
+      // Call onSuccess callback to refresh parent data
+      if (onSuccess) {
+        onSuccess();
+      }
       
       // Reset form for quick next entry
       setAmount('');

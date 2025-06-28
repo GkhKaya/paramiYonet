@@ -125,7 +125,17 @@ const AppContent: React.FC = () => {
       case 'help':
         return <HelpSupport />;
       case 'add-transaction':
-        return <AddTransaction onClose={() => navigateToPage('dashboard')} />;
+        return <AddTransaction 
+          onClose={() => navigateToPage('dashboard')} 
+          onSuccess={() => {
+            // Refresh the page or navigate back to dashboard
+            navigateToPage('dashboard');
+            // Force a page reload to refresh all data
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+          }}
+        />;
       default:
         return <Dashboard />;
     }
