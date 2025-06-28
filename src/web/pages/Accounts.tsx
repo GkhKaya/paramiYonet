@@ -207,8 +207,9 @@ const AccountsPage: React.FC = () => {
       return;
     }
     
-    if (newAccountType !== AccountType.GOLD && !newAccountBalance) {
-        console.error("Validation failed: Missing account balance");
+    const isStandardAccount = newAccountType !== AccountType.GOLD && newAccountType !== AccountType.CREDIT_CARD;
+    if (isStandardAccount && !newAccountBalance) {
+        console.error("Validation failed: Missing account balance for this account type");
         return;
     }
 
@@ -226,6 +227,7 @@ const AccountsPage: React.FC = () => {
             type: key as GoldType,
             quantity: parseFloat(value),
             initialPrice: currentGoldPrices.prices[key as GoldType] || 0,
+            purchaseDate: new Date(),
           }));
 
         if (holdingsArray.length > 0) {
@@ -253,17 +255,22 @@ const AccountsPage: React.FC = () => {
         balance: finalBalance,
         color: newAccountColor,
         includeInTotalBalance: includeInTotal,
-        // credit card specific fields
-        limit: newAccountType === AccountType.CREDIT_CARD ? parseFloat(creditLimit) : undefined,
-        currentDebt: newAccountType === AccountType.CREDIT_CARD ? parseFloat(currentDebt) : 0,
-        statementDay: newAccountType === AccountType.CREDIT_CARD ? parseInt(statementDay, 10) : undefined,
-        dueDay: newAccountType === AccountType.CREDIT_CARD ? parseInt(dueDay, 10) : undefined,
-        // gold specific fields
-        goldHoldings: finalGoldHoldings,
       };
 
-      await AccountService.createAccount(newAccountData);
+      if (newAccountType === AccountType.CREDIT_CARD) {
+        newAccountData.limit = parseFloat(creditLimit) || 0;
+        newAccountData.currentDebt = parseFloat(currentDebt) || 0;
+        newAccountData.statementDay = parseInt(statementDay, 10) || 1;
+        newAccountData.dueDay = parseInt(dueDay, 10) || 10;
+        newAccountData.balance = -(parseFloat(currentDebt) || 0);
+      }
+      
+      if (finalGoldHoldings) {
+        newAccountData.goldHoldings = finalGoldHoldings;
+      }
 
+      await AccountService.createAccount(newAccountData);
+      
       // Reset form and close dialog
       setCreateDialogOpen(false);
       setNewAccountName('');

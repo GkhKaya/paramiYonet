@@ -217,10 +217,22 @@ export class AccountService {
     try {
       const now = new Date();
       
+      const dataWithDefaults = { ...accountData };
+
+      // Set defaults for Credit Card if not provided
+      if (dataWithDefaults.type === AccountType.CREDIT_CARD) {
+        dataWithDefaults.limit = dataWithDefaults.limit ?? 5000;
+        dataWithDefaults.currentDebt = dataWithDefaults.currentDebt ?? 0;
+        dataWithDefaults.statementDay = dataWithDefaults.statementDay ?? 1;
+        dataWithDefaults.dueDay = dataWithDefaults.dueDay ?? 10;
+        // Balance for a credit card is the negative of the debt
+        dataWithDefaults.balance = -Math.abs(dataWithDefaults.currentDebt);
+      }
+      
       // Create a clean object to send to Firestore, removing any undefined fields
       const cleanData: { [key: string]: any } = {};
-      Object.keys(accountData).forEach(key => {
-        const value = (accountData as any)[key];
+      Object.keys(dataWithDefaults).forEach(key => {
+        const value = (dataWithDefaults as any)[key];
         if (value !== undefined) {
           cleanData[key] = value;
         }
@@ -238,7 +250,7 @@ export class AccountService {
 
       return {
         id: docRef.id,
-        ...accountData,
+        ...dataWithDefaults,
         isActive: dataToSave.isActive,
         icon: dataToSave.icon,
         createdAt: now,
