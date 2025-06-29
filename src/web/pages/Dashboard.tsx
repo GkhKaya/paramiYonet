@@ -465,10 +465,10 @@ const Dashboard: React.FC = () => {
                             variant="body2"
                             sx={{
                               fontWeight: 600,
-                              color: transaction.amount > 0 ? 'success.main' : 'error.main'
+                              color: transaction.type === TransactionType.INCOME ? 'success.main' : 'error.main'
                             }}
                           >
-                            {transaction.amount > 0 ? '+' : ''}
+                            {transaction.type === TransactionType.INCOME ? '+' : '-'}
                             {formatCurrency(transaction.amount)}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
