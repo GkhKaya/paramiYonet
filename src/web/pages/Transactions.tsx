@@ -178,13 +178,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
   const confirmDelete = async () => {
     if (selectedTransaction) {
       try {
-        const updatedTransactions = transactions.filter(t => t.id !== selectedTransaction.id);
-        setTransactions(updatedTransactions);
-        calculateStats(updatedTransactions);
+        await TransactionService.deleteTransaction(selectedTransaction.id);
+        // Reload transactions from the server to ensure consistency
+        await loadTransactions();
         setDeleteDialogOpen(false);
         setSelectedTransaction(null);
       } catch (error) {
         console.error('Error deleting transaction:', error);
+        // You might want to show a user-facing error message here
       }
     }
   };

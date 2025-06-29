@@ -59,6 +59,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
       setTransactionViewModel(transactionVm);
       setAccountViewModel(accountVm);
       
+      // Process due recurring payments first
+      const processRecurringPayments = async () => {
+        try {
+          await RecurringPaymentService.processRecurringPayments(user.id);
+        } catch (error) {
+          console.error('Düzenli ödemeler işlenirken hata:', error);
+        }
+      };
+      
+      processRecurringPayments();
+      
       // Load initial data
       transactionVm.loadTransactions();
       accountVm.loadAccounts();
@@ -66,6 +77,27 @@ const DashboardScreen: React.FC<DashboardScreenProps> = observer(({ navigation }
       setTransactionViewModel(null);
       setAccountViewModel(null);
     }
+  }, [user?.id]);
+
+  // Periodic check for recurring payments every 24 hours
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const processRecurringPayments = async () => {
+      try {
+        await RecurringPaymentService.processRecurringPayments(user.id);
+      } catch (error) {
+        console.error('Periyodik düzenli ödeme kontrolü hatası:', error);
+      }
+    };
+
+    // Set up interval for every 24 hours (86400000 ms) - once per day
+    const interval = setInterval(processRecurringPayments, 86400000);
+
+    // Cleanup
+    return () => {
+      clearInterval(interval);
+    };
   }, [user?.id]);
 
   // Refresh data when screen gains focus

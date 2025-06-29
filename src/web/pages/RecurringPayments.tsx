@@ -81,6 +81,7 @@ const RecurringPayments: React.FC = () => {
     accountId: '',
     frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
     startDate: new Date().toISOString().split('T')[0],
+    startTime: new Date().toTimeString().slice(0, 5),
     reminderDays: 3,
     autoCreateTransaction: true,
   });
@@ -89,6 +90,45 @@ const RecurringPayments: React.FC = () => {
     if (currentUser) {
       loadData();
     }
+  }, [currentUser]);
+
+  // Automatic processing of due payments every 24 hours on this page
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const processRecurringPayments = async () => {
+      try {
+        await RecurringPaymentService.processRecurringPayments(currentUser.uid);
+        // Reload data to show updated payment statuses
+        await loadData();
+      } catch (error) {
+        console.error('Otomatik düzenli ödeme kontrolü hatası:', error);
+      }
+    };
+
+    // Set up interval for every 24 hours (86400000 ms) - once per day
+    const interval = setInterval(processRecurringPayments, 86400000);
+
+    // Also check when page gains focus (but only once per day)
+    const lastCheckKey = `lastRecurringCheck_${currentUser.uid}`;
+    const handleFocus = () => {
+      const lastCheck = localStorage.getItem(lastCheckKey);
+      const now = new Date().getTime();
+      
+      // Only check if more than 24 hours have passed since last check
+      if (!lastCheck || (now - parseInt(lastCheck)) > 86400000) {
+        processRecurringPayments();
+        localStorage.setItem(lastCheckKey, now.toString());
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    // Cleanup
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [currentUser]);
 
   const loadData = async () => {
@@ -119,6 +159,21 @@ const RecurringPayments: React.FC = () => {
     setRefreshing(false);
   };
 
+  const handleProcessDuePayments = async () => {
+    if (!currentUser) return;
+    
+    setGlobalLoading(true, 'Vadesini dolmuş ödemeler işleniyor...');
+    try {
+      await RecurringPaymentService.processRecurringPayments(currentUser.uid);
+      showSnackbar('Vadesini dolmuş ödemeler işlendi.');
+      await loadData();
+    } catch (error) {
+      showSnackbar('Ödemeler işlenirken hata oluştu.');
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
   const showSnackbar = (message: string) => {
     setSnackbarMessage(message);
     setSnackbarOpen(true);
@@ -133,6 +188,7 @@ const RecurringPayments: React.FC = () => {
       accountId: '',
       frequency: 'monthly',
       startDate: new Date().toISOString().split('T')[0],
+      startTime: new Date().toTimeString().slice(0, 5),
       reminderDays: 3,
       autoCreateTransaction: true,
     });
@@ -174,8 +230,8 @@ const RecurringPayments: React.FC = () => {
         categoryIcon: category?.icon || 'Receipt',
         accountId: formData.accountId,
         frequency: formData.frequency,
-        startDate: new Date(formData.startDate),
-        nextPaymentDate: new Date(formData.startDate),
+        startDate: new Date(`${formData.startDate}T${formData.startTime}`),
+        nextPaymentDate: new Date(`${formData.startDate}T${formData.startTime}`),
         isActive: true,
         autoCreateTransaction: formData.autoCreateTransaction,
         reminderDays: formData.reminderDays,
@@ -208,6 +264,7 @@ const RecurringPayments: React.FC = () => {
 
   const handleEditClick = () => {
     if (selectedPayment) {
+      const startDateTime = new Date(selectedPayment.startDate);
       setFormData({
         name: selectedPayment.name,
         description: selectedPayment.description || '',
@@ -215,7 +272,8 @@ const RecurringPayments: React.FC = () => {
         category: selectedPayment.category,
         accountId: selectedPayment.accountId,
         frequency: selectedPayment.frequency,
-        startDate: new Date(selectedPayment.startDate).toISOString().split('T')[0],
+        startDate: startDateTime.toISOString().split('T')[0],
+        startTime: startDateTime.toTimeString().slice(0, 5),
         reminderDays: selectedPayment.reminderDays,
         autoCreateTransaction: selectedPayment.autoCreateTransaction,
       });
@@ -280,7 +338,7 @@ const RecurringPayments: React.FC = () => {
             categoryIcon: category?.icon || 'Receipt',
             accountId: formData.accountId,
             frequency: formData.frequency,
-            startDate: new Date(formData.startDate),
+            startDate: new Date(`${formData.startDate}T${formData.startTime}`),
             reminderDays: formData.reminderDays,
             autoCreateTransaction: formData.autoCreateTransaction,
         };
@@ -357,11 +415,26 @@ const RecurringPayments: React.FC = () => {
   const getStatusText = (payment: RecurringPayment): string => {
     if (!payment.isActive) return 'Pasif';
     const paymentDate = new Date(payment.nextPaymentDate);
-    if (paymentDate < new Date()) return 'Gecikmiş';
-    const daysUntil = Math.ceil((paymentDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntil === 0) return 'Bugün';
-    if (daysUntil === 1) return 'Yarın';
-    return `${daysUntil} gün sonra`;
+    const now = new Date();
+    
+    if (paymentDate < now) return 'Gecikmiş';
+    
+    const diffInMinutes = Math.ceil((paymentDate.getTime() - now.getTime()) / (1000 * 60));
+    const diffInHours = Math.ceil(diffInMinutes / 60);
+    const diffInDays = Math.ceil((paymentDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Same day payments - show hours/minutes
+    if (paymentDate.toDateString() === now.toDateString()) {
+      if (diffInMinutes <= 60) {
+        return `${diffInMinutes} dakika sonra`;
+      } else {
+        return `${diffInHours} saat sonra`;
+      }
+    }
+    
+    // Different day payments
+    if (diffInDays === 1) return 'Yarın';
+    return `${diffInDays} gün sonra`;
   };
 
   const renderPaymentCard = (payment: RecurringPayment) => {
@@ -421,7 +494,13 @@ const RecurringPayments: React.FC = () => {
           </Box>
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'text.secondary' }}>
              <Typography variant="body2">
-              Sonraki Ödeme: {new Date(payment.nextPaymentDate).toLocaleDateString()}
+              Sonraki Ödeme: {new Date(payment.nextPaymentDate).toLocaleString('tr-TR', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
             </Typography>
             <Typography variant="body2">
               Hesap: {account?.name || 'Bilinmiyor'}
@@ -684,6 +763,14 @@ const RecurringPayments: React.FC = () => {
             />
 
             <TextField
+              label="Başlangıç Saati"
+              type="time"
+              value={formData.startTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+              fullWidth
+            />
+
+            <TextField
               label="Hatırlatma (gün öncesi)"
               value={formData.reminderDays}
               onChange={(e) => setFormData(prev => ({ ...prev, reminderDays: parseInt(e.target.value) || 0 }))}
@@ -803,6 +890,14 @@ const RecurringPayments: React.FC = () => {
             />
 
             <TextField
+              label="Başlangıç Saati"
+              type="time"
+              value={formData.startTime}
+              onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
+              fullWidth
+            />
+
+            <TextField
               label="Hatırlatma (gün öncesi)"
               value={formData.reminderDays}
               onChange={(e) => setFormData(prev => ({ ...prev, reminderDays: parseInt(e.target.value) || 0 }))}
@@ -866,6 +961,27 @@ const RecurringPayments: React.FC = () => {
         onClose={() => setSnackbarOpen(false)}
         message={snackbarMessage}
       />
+
+      {/* New Action Buttons */}
+      <motion.div {...animations.scaleIn}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2, justifyContent: 'flex-end' }}>
+          <Button
+            onClick={handleProcessDuePayments}
+            variant="outlined"
+            sx={{
+              borderRadius: 3,
+              borderColor: '#f59e0b',
+              color: '#f59e0b',
+              '&:hover': {
+                borderColor: '#d97706',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              }
+            }}
+          >
+            Vadesini Dolmuş Ödemeleri İşle
+          </Button>
+        </Box>
+      </motion.div>
     </Box>
   );
 };

@@ -207,6 +207,7 @@ export class RecurringPaymentService {
         break;
     }
     
+    // Preserve the original time
     return next;
   }
 
@@ -289,8 +290,7 @@ export class RecurringPaymentService {
   // Process all due recurring payments for a user
   static async processRecurringPayments(userId: string): Promise<void> {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Start of today
+      const now = new Date(); // Current date and time
       
       const q = query(
         collection(db, this.COLLECTION_NAME),
@@ -305,10 +305,9 @@ export class RecurringPaymentService {
       querySnapshot.forEach((doc) => {
         const data = doc.data();
         const nextPaymentDate = data.nextPaymentDate.toDate();
-        nextPaymentDate.setHours(0, 0, 0, 0);
         
-        // Check if payment is due (nextPaymentDate <= today)
-        if (nextPaymentDate <= today) {
+        // Check if payment is due (nextPaymentDate <= now) - includes exact time comparison
+        if (nextPaymentDate <= now) {
           duePayments.push({
             id: doc.id,
             userId: data.userId,
@@ -342,9 +341,9 @@ export class RecurringPaymentService {
             userId: payment.userId,
             amount: payment.amount,
             description: payment.description || payment.name,
-            type: payment.amount > 0 ? TransactionType.INCOME : TransactionType.EXPENSE,
+            type: TransactionType.EXPENSE,
             category: payment.category,
-            categoryIcon: payment.categoryIcon || 'help-circle-outline',
+            categoryIcon: payment.categoryIcon || 'Receipt',
             accountId: payment.accountId,
             date: payment.nextPaymentDate,
           };

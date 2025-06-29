@@ -32,6 +32,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
 import { TransactionService } from '../../services/TransactionService';
 import { AccountService } from '../../services/AccountService';
+import { RecurringPaymentService } from '../../services/RecurringPaymentService';
 import { Transaction, TransactionType } from '../../models/Transaction';
 import { Account } from '../../models/Account';
 import { formatCurrency } from '../../utils/formatters';
@@ -155,6 +156,13 @@ const Dashboard: React.FC = () => {
       setLoading(true);
       setGlobalLoading(true, 'Dashboard verileri yükleniyor...');
       try {
+        // Process due recurring payments first
+        try {
+          await RecurringPaymentService.processRecurringPayments(currentUser.uid);
+        } catch (error) {
+          console.error('Düzenli ödemeler işlenirken hata:', error);
+        }
+
         // Load accounts
         const accountsData = await AccountService.getUserAccounts(currentUser.uid);
         setAccounts(accountsData);
@@ -198,19 +206,17 @@ const Dashboard: React.FC = () => {
           return sum + (t.type === TransactionType.INCOME ? t.amount : -t.amount);
         }, 0);
         
-        const currentMonthAllTransactions = transactionsData.filter(transaction => {
-            const transactionDate = transaction.date;
-            return transactionDate.getMonth() === now.getMonth() &&
-                   transactionDate.getFullYear() === now.getFullYear();
+        const currentMonthTransactions = transactionsData.filter(transaction => {
+          const transactionDate = transaction.date;
+          return transactionDate.getMonth() === now.getMonth() && 
+                 transactionDate.getFullYear() === now.getFullYear();
         });
-
-        const currentMonthBalance = currentMonthAllTransactions.reduce((sum, t) => {
+        
+        const currentMonthBalance = currentMonthTransactions.reduce((sum, t) => {
           return sum + (t.type === TransactionType.INCOME ? t.amount : -t.amount);
         }, 0);
         
-        const change = previousMonthBalance !== 0 
-          ? ((currentMonthBalance - previousMonthBalance) / Math.abs(previousMonthBalance)) * 100 
-          : (currentMonthBalance !== 0 ? 100 : 0);
+        const change = currentMonthBalance - previousMonthBalance;
         setMonthlyChange(change);
 
       } catch (error) {
@@ -229,7 +235,46 @@ const Dashboard: React.FC = () => {
       }
     };
 
-    loadData();
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser, setGlobalLoading]);
+
+  // Periodic check for recurring payments every 5 minutes
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const processRecurringPayments = async () => {
+      try {
+        await RecurringPaymentService.processRecurringPayments(currentUser.uid);
+      } catch (error) {
+        console.error('Periyodik düzenli ödeme kontrolü hatası:', error);
+      }
+    };
+
+    // Set up interval for every 24 hours (86400000 ms) - once per day
+    const interval = setInterval(processRecurringPayments, 86400000);
+
+    // Also check when page gains focus (but only once per day)
+    const lastCheckKey = `lastRecurringCheck_${currentUser.uid}`;
+    const handleFocus = () => {
+      const lastCheck = localStorage.getItem(lastCheckKey);
+      const now = new Date().getTime();
+      
+      // Only check if more than 24 hours have passed since last check
+      if (!lastCheck || (now - parseInt(lastCheck)) > 86400000) {
+        processRecurringPayments();
+        localStorage.setItem(lastCheckKey, now.toString());
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    // Cleanup
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [currentUser]);
 
   if (loading) {
