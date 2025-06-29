@@ -10,6 +10,8 @@
  * Bu dosya backward compatibility için tutulmaktadır.
  */
 
+import { AccountType } from '../models/Account';
+
 /**
  * Para miktarını Türk Lirası formatında gösterir
  * @param amount - Formatlanacak miktar (sayı)
@@ -154,4 +156,28 @@ export const formatLargeNumber = (num: number): string => {
  */
 export const formatPercentage = (value: number, decimals: number = 1): string => {
   return `%${value.toFixed(decimals)}`;
+};
+
+/**
+ * Hesap tipini okunabilir metne çevirir
+ * @param type - Hesap tipi (AccountType)
+ * @returns Okunabilir hesap tipi adı
+ */
+export const getAccountTypeName = (type: AccountType): string => {
+  switch (type) {
+    case AccountType.CASH:
+      return 'Nakit';
+    case AccountType.DEBIT_CARD:
+      return 'Banka Kartı';
+    case AccountType.CREDIT_CARD:
+      return 'Kredi Kartı';
+    case AccountType.SAVINGS:
+      return 'Tasarruf Hesabı';
+    case AccountType.INVESTMENT:
+      return 'Yatırım Hesabı';
+    case AccountType.GOLD:
+      return 'Altın Hesabı';
+    default:
+      return 'Diğer Hesap';
+  }
 }; 

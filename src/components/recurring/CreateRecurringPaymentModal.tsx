@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,682 +11,588 @@ import {
   Switch,
   StatusBar,
   Platform,
+  KeyboardAvoidingView,
+  Pressable,
+  LayoutAnimation,
+  UIManager,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { Button } from '../common/Button';
 import { DEFAULT_EXPENSE_CATEGORIES } from '../../models/Category';
-import { Account } from '../../models/Account';
+import { Account, AccountType } from '../../models/Account';
+import { observer } from 'mobx-react-lite';
+import { useViewModels } from '../../contexts/ViewModelContext';
+import { useTheme } from '@react-navigation/native';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../../constants';
+import { getAccountTypeName } from '../../utils/formatters';
+import CustomAlert from '../common/CustomAlert';
+import { useCurrency } from '../../hooks';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Category } from '../../models/Category';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const { width } = Dimensions.get('window');
+const TOTAL_STEPS = 3;
+
+const getAccountIcon = (type: AccountType): string => {
+  switch (type) {
+    case AccountType.CASH:
+      return 'cash-outline';
+    case AccountType.CREDIT_CARD:
+      return 'card-outline';
+    case AccountType.DEBIT_CARD:
+      return 'card-outline';
+    case AccountType.SAVINGS:
+      return 'wallet-outline';
+    case AccountType.INVESTMENT:
+      return 'analytics-outline';
+    default:
+      return 'help-circle-outline';
+  }
+};
 
 interface CreateRecurringPaymentModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (paymentData: {
-    name: string;
-    description?: string;
-    amount: number;
-    category: string;
-    accountId: string;
-    frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-    startDate: Date;
-    endDate?: Date;
-    reminderDays: number;
-    autoCreateTransaction: boolean;
-  }) => Promise<boolean>;
-  accounts: Account[];
-  isLoading: boolean;
+  onSaveSuccess: () => void;
+  paymentToEdit?: any;
 }
 
-export const CreateRecurringPaymentModal: React.FC<CreateRecurringPaymentModalProps> = ({
+const FREQUENCY_OPTIONS = [
+  { label: 'Günlük', value: 'daily' },
+  { label: 'Haftalık', value: 'weekly' },
+  { label: 'Aylık', value: 'monthly' },
+  { label: 'Yıllık', value: 'yearly' },
+];
+
+const CreateRecurringPaymentModal: React.FC<CreateRecurringPaymentModalProps> = observer(({
   visible,
   onClose,
-  onSubmit,
-  accounts,
-  isLoading,
+  onSaveSuccess,
+  paymentToEdit,
 }) => {
-  const [name, setName] = useState<string>('');
-  const [description, setDescription] = useState<string>('');
-  const [amount, setAmount] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [selectedAccount, setSelectedAccount] = useState<string>('');
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
-  const [startDate, setStartDate] = useState<Date>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [hasEndDate, setHasEndDate] = useState<boolean>(false);
-  const [reminderDays, setReminderDays] = useState<string>('3');
-  const [autoCreateTransaction, setAutoCreateTransaction] = useState<boolean>(true);
-  const [showStartDatePicker, setShowStartDatePicker] = useState<boolean>(false);
-  const [showEndDatePicker, setShowEndDatePicker] = useState<boolean>(false);
+  const { colors } = useTheme();
+  const viewModels = useViewModels();
+  const { formatCurrency } = useCurrency();
 
-  const resetForm = () => {
-    setName('');
-    setDescription('');
-    setAmount('');
-    setSelectedCategory('');
-    setSelectedAccount('');
-    setFrequency('monthly');
-    setStartDate(new Date());
-    setEndDate(undefined);
-    setHasEndDate(false);
-    setReminderDays('3');
-    setAutoCreateTransaction(true);
+  const [currentStep, setCurrentStep] = useState(1);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const [formData, setFormData] = useState({
+    name: '',
+    amount: '',
+    category: '',
+    accountId: '',
+    frequency: 'monthly',
+    startDate: new Date(),
+    autoCreate: true,
+  });
+
+  const [showPicker, setShowPicker] = useState<null | 'category' | 'account' | 'date' | 'time'> (null);
+  const [alert, setAlert] = useState<{
+    visible: boolean;
+    type: 'success' | 'error';
+    title: string;
+    message: string;
+  }>({ visible: false, type: 'error', title: '', message: '' });
+
+  const resetState = () => {
+    setCurrentStep(1);
+    setFormData({
+      name: '',
+      amount: '',
+      category: '',
+      accountId: '',
+      frequency: 'monthly',
+      startDate: new Date(),
+      autoCreate: true,
+    });
+    slideAnim.setValue(0);
   };
 
   const handleClose = () => {
-    resetForm();
+    resetState();
     onClose();
   };
 
-  const handleSubmit = async () => {
-    // Validations
-    if (!name.trim()) {
-      Alert.alert('Hata', 'Lütfen ödeme adını girin');
-      return;
+  useEffect(() => {
+    if (visible) {
+      resetState();
+      if (paymentToEdit) {
+        setFormData({
+          name: paymentToEdit.name,
+          amount: paymentToEdit.amount.toString(),
+          category: paymentToEdit.category,
+          accountId: paymentToEdit.accountId,
+          frequency: paymentToEdit.frequency,
+          startDate: paymentToEdit.startDate.toDate(),
+          autoCreate: paymentToEdit.autoCreateTransaction,
+        });
+      }
     }
+  }, [visible, paymentToEdit]);
 
-    if (!selectedCategory) {
-      Alert.alert('Hata', 'Lütfen bir kategori seçin');
-      return;
+  const handleInputChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const goToStep = (step: number) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    Animated.timing(slideAnim, {
+      toValue: -(width * (step - 1)),
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    setCurrentStep(step);
+  };
+  
+  const handleNext = () => {
+    if (currentStep < TOTAL_STEPS) {
+      goToStep(currentStep + 1);
+    } else {
+      handleSave();
     }
+  };
 
-    if (!selectedAccount) {
-      Alert.alert('Hata', 'Lütfen bir hesap seçin');
-      return;
+  const handleBack = () => {
+    if (currentStep > 1) {
+      goToStep(currentStep - 1);
     }
+  };
 
+  const selectedCategory = useMemo(() => {
+    return viewModels?.categoryViewModel?.expenseCategories.find(c => c.name === formData.category);
+  }, [formData.category, viewModels?.categoryViewModel]);
+
+  const selectedAccount = useMemo(() => {
+    return viewModels?.accountViewModel?.accounts.find(a => a.id === formData.accountId);
+  }, [formData.accountId, viewModels?.accountViewModel]);
+
+  const handleSave = async () => {
+    if (!viewModels?.recurringPaymentViewModel) return;
+
+    const { name, amount, category, accountId, frequency, startDate, autoCreate } = formData;
     const numericAmount = parseFloat(amount.replace(',', '.'));
-    if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Hata', 'Lütfen geçerli bir tutar girin');
-      return;
-    }
 
-    const numericReminderDays = parseInt(reminderDays);
-    if (isNaN(numericReminderDays) || numericReminderDays < 0) {
-      Alert.alert('Hata', 'Lütfen geçerli bir hatırlatma gün sayısı girin');
-      return;
-    }
-
-    try {
-      const success = await onSubmit({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        amount: numericAmount,
-        category: selectedCategory,
-        accountId: selectedAccount,
-        frequency,
-        startDate,
-        endDate: hasEndDate ? endDate : undefined,
-        reminderDays: numericReminderDays,
-        autoCreateTransaction,
+    if (!name || numericAmount <= 0 || !category || !accountId) {
+      setAlert({
+        visible: true,
+        type: 'error',
+        title: 'Eksik Bilgi',
+        message: 'Lütfen tüm zorunlu alanları doldurun.',
       });
+      return;
+    }
 
-      if (success) {
-        resetForm();
-        onClose();
+    const transactionDate = new Date(startDate);
+
+    const paymentData = {
+      name: name.trim(),
+      amount: numericAmount,
+      category,
+      categoryIcon: selectedCategory?.icon || 'help-circle-outline',
+      accountId,
+      frequency,
+      startDate: transactionDate,
+      nextPaymentDate: transactionDate,
+      autoCreateTransaction: autoCreate,
+      isActive: true,
+      reminderDays: 1,
+    };
+
+    let success = false;
+    try {
+      if (paymentToEdit) {
+        // success = await viewModels.recurringPaymentViewModel.updateRecurringPayment(paymentToEdit.id, paymentData);
+      } else {
+        success = await viewModels.recurringPaymentViewModel.createRecurringPayment(paymentData as any);
       }
     } catch (error) {
-      console.error('Error creating recurring payment:', error);
+       console.error("Error creating recurring payment:", error);
+       success = false;
+    }
+
+    if (success) {
+      setAlert({
+        visible: true,
+        type: 'success',
+        title: 'Başarılı',
+        message: `Düzenli ödeme başarıyla ${paymentToEdit ? 'güncellendi' : 'oluşturuldu'}.`,
+      });
+      setTimeout(() => {
+        onSaveSuccess();
+        setAlert({ ...alert, visible: false });
+      }, 1500);
+    } else {
+       setAlert({
+        visible: true,
+        type: 'error',
+        title: 'Hata',
+        message: 'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.',
+      });
     }
   };
 
-  const formatAmount = (text: string) => {
-    // Remove non-numeric characters except comma and dot
-    const cleaned = text.replace(/[^0-9.,]/g, '');
-    setAmount(cleaned);
-  };
+  const renderHeader = () => (
+    <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+        <Ionicons name="close" size={26} color={colors.text} />
+      </TouchableOpacity>
+      <Text style={[styles.headerTitle, { color: colors.text }]}>
+        {paymentToEdit ? 'Düzenli Ödemeyi Düzenle' : 'Yeni Düzenli Ödeme'}
+      </Text>
+      <View style={{ width: 26 }} />
+    </View>
+  );
 
-  const getFrequencyLabel = (freq: string): string => {
-    const labels: { [key: string]: string } = {
-      daily: 'Günlük',
-      weekly: 'Haftalık',
-      monthly: 'Aylık',
-      yearly: 'Yıllık',
-    };
-    return labels[freq] || freq;
-  };
+  const renderProgressBar = () => (
+    <View style={styles.progressContainer}>
+      <View style={[styles.progressBar, { width: `${(100 / TOTAL_STEPS) * currentStep}%`, backgroundColor: colors.primary }]} />
+    </View>
+  );
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Düzenli Ödeme Ekle</Text>
-          <View style={styles.placeholder} />
-        </View>
+  const renderStep1 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={[styles.stepTitle, {color: colors.text}]}>Ödeme Adı ve Tutarı</Text>
+      <TextInput
+        style={[styles.input, { color: colors.text, backgroundColor: colors.card, borderColor: colors.border }]}
+        placeholder="Örn: Netflix, Kira..."
+        placeholderTextColor={`${colors.text}80`}
+        value={formData.name}
+        onChangeText={(v) => handleInputChange('name', v)}
+      />
+      <TextInput
+        style={[styles.input, { color: colors.text, backgroundColor: colors.card, borderColor: colors.border, marginTop: SPACING.md }]}
+        placeholder="Tutar"
+        placeholderTextColor={`${colors.text}80`}
+        keyboardType="numeric"
+        value={formData.amount}
+        onChangeText={(v) => handleInputChange('amount', v)}
+      />
+    </View>
+  );
+  
+  const renderStep2 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={[styles.stepTitle, {color: colors.text}]}>Kategori ve Hesap</Text>
+      <TouchableOpacity style={[styles.selector, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => setShowPicker('category')}>
+        <Text style={{color: colors.text}}>{selectedCategory?.name || 'Kategori Seç'}</Text>
+        <Ionicons name="chevron-down" size={20} color={colors.text} />
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.selector, { backgroundColor: colors.card, borderColor: colors.border, marginTop: SPACING.md }]} onPress={() => setShowPicker('account')}>
+        <Text style={{color: colors.text}}>{selectedAccount?.name || 'Hesap Seç'}</Text>
+        <Ionicons name="chevron-down" size={20} color={colors.text} />
+      </TouchableOpacity>
+    </View>
+  );
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Payment Name */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Ödeme Adı *</Text>
-            <TextInput
-              style={styles.textInput}
-              value={name}
-              onChangeText={setName}
-              placeholder="Örn: Netflix Aboneliği"
-              placeholderTextColor="#666666"
-              returnKeyType="next"
-            />
-          </View>
-
-          {/* Description */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Açıklama</Text>
-            <TextInput
-              style={styles.textInput}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Opsiyonel açıklama"
-              placeholderTextColor="#666666"
-              returnKeyType="next"
-            />
-          </View>
-
-          {/* Amount */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tutar *</Text>
-            <View style={styles.amountContainer}>
-              <Text style={styles.currencySymbol}>₺</Text>
-              <TextInput
-                style={styles.amountInput}
-                value={amount}
-                onChangeText={formatAmount}
-                placeholder="0.00"
-                placeholderTextColor="#666666"
-                keyboardType="numeric"
-                returnKeyType="next"
-              />
-            </View>
-          </View>
-
-          {/* Category Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Kategori *</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoryScroll}
-            >
-              {DEFAULT_EXPENSE_CATEGORIES.map((category) => (
-                <TouchableOpacity
-                  key={category.name}
+  const renderStep3 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={[styles.stepTitle, {color: colors.text}]}>Sıklık ve Zamanlama</Text>
+      
+      {/* Frequency Selector */}
+      <View style={styles.frequencyContainer}>
+          {FREQUENCY_OPTIONS.map(opt => (
+              <TouchableOpacity
+                  key={opt.value}
                   style={[
-                    styles.categoryButton,
-                    selectedCategory === category.name && {
-                      backgroundColor: '#2196F310',
-                      borderColor: '#2196F3',
-                    }
+                      styles.frequencyButton,
+                      { 
+                          backgroundColor: formData.frequency === opt.value ? colors.primary : colors.card,
+                          borderColor: formData.frequency === opt.value ? colors.primary : colors.border,
+                      },
                   ]}
-                  onPress={() => setSelectedCategory(category.name)}
-                >
-                  <CategoryIcon
-                    iconName={category.icon}
-                    color={selectedCategory === category.name ? '#2196F3' : '#666666'}
-                    size="small"
-                  />
+                  onPress={() => handleInputChange('frequency', opt.value)}
+              >
                   <Text style={[
-                    styles.categoryText,
-                    selectedCategory === category.name && { color: '#2196F3' }
+                      styles.frequencyText,
+                      { color: formData.frequency === opt.value ? COLORS.WHITE : colors.text }
                   ]}>
-                    {category.name}
+                      {opt.label}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Account Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Hesap *</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.accountScroll}
-            >
-              {accounts.map((account) => (
-                <TouchableOpacity
-                  key={account.id}
-                  style={[
-                    styles.accountButton,
-                    selectedAccount === account.id && {
-                      backgroundColor: '#2196F310',
-                      borderColor: '#2196F3',
-                    }
-                  ]}
-                  onPress={() => setSelectedAccount(account.id)}
-                >
-                  <Text style={[
-                    styles.accountText,
-                    selectedAccount === account.id && { color: '#2196F3' }
-                  ]}>
-                    {account.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Frequency Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tekrar Sıklığı</Text>
-            <View style={styles.frequencyButtons}>
-              {['daily', 'weekly', 'monthly', 'yearly'].map((freq) => (
-                <TouchableOpacity
-                  key={freq}
-                  style={[
-                    styles.frequencyButton,
-                    frequency === freq && {
-                      backgroundColor: '#2196F310',
-                      borderColor: '#2196F3',
-                    }
-                  ]}
-                  onPress={() => setFrequency(freq as any)}
-                >
-                  <Text style={[
-                    styles.frequencyText,
-                    frequency === freq && { color: '#2196F3' }
-                  ]}>
-                    {getFrequencyLabel(freq)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Date Selection */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Başlangıç Tarihi</Text>
-            <TouchableOpacity
-              style={styles.dateButton}
-              onPress={() => setShowStartDatePicker(true)}
-            >
-              <Ionicons name="calendar" size={20} color="#666666" />
-              <Text style={styles.dateText}>
-                {startDate.toLocaleDateString('tr-TR')}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.endDateContainer}>
-              <View style={styles.switchContainer}>
-                <Switch
-                  value={hasEndDate}
-                  onValueChange={setHasEndDate}
-                  trackColor={{ false: '#333333', true: '#2196F350' }}
-                  thumbColor={hasEndDate ? '#2196F3' : '#666666'}
-                />
-                <Text style={styles.switchLabel}>Bitiş Tarihi Ekle</Text>
-              </View>
-
-              {hasEndDate && (
-                <TouchableOpacity
-                  style={styles.dateButton}
-                  onPress={() => setShowEndDatePicker(true)}
-                >
-                  <Ionicons name="calendar" size={20} color="#666666" />
-                  <Text style={styles.dateText}>
-                    {endDate?.toLocaleDateString('tr-TR') || 'Seçiniz'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
-          {/* Reminder Days */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Hatırlatma (Gün)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={reminderDays}
-              onChangeText={setReminderDays}
-              placeholder="3"
-              placeholderTextColor="#666666"
-              keyboardType="numeric"
-              returnKeyType="next"
-            />
-          </View>
-
-          {/* Auto Create Transaction */}
-          <View style={styles.section}>
-            <View style={styles.switchContainer}>
-              <Switch
-                value={autoCreateTransaction}
-                onValueChange={setAutoCreateTransaction}
-                trackColor={{ false: '#333333', true: '#2196F350' }}
-                thumbColor={autoCreateTransaction ? '#2196F3' : '#666666'}
-              />
-              <Text style={styles.switchLabel}>
-                Otomatik İşlem Oluştur
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-
-        {/* Submit Button */}
-        <View style={styles.footer}>
-          <Button
-            title="Kaydet"
-            onPress={handleSubmit}
-            loading={isLoading}
-            disabled={isLoading}
-          />
-        </View>
-
-        {/* Date Pickers */}
-        {showStartDatePicker && (
-          Platform.OS === 'ios' ? (
-            <Modal
-              visible={showStartDatePicker}
-              transparent={true}
-              animationType="slide"
-              onRequestClose={() => setShowStartDatePicker(false)}
-            >
-              <View style={styles.iosDatePickerBackdrop}>
-                <View style={styles.iosDatePickerContainer}>
-                  <View style={styles.iosDatePickerHeader}>
-                    <TouchableOpacity 
-                      onPress={() => setShowStartDatePicker(false)}
-                      style={styles.iosDatePickerButton}
-                    >
-                      <Text style={styles.iosDatePickerButtonText}>İptal</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.iosDatePickerTitle}>Başlangıç Tarihi</Text>
-                    <TouchableOpacity 
-                      onPress={() => setShowStartDatePicker(false)}
-                      style={styles.iosDatePickerButton}
-                    >
-                      <Text style={[styles.iosDatePickerButtonText, styles.iosDatePickerDoneButton]}>Tamam</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.iosDatePickerContent}>
-                    <DateTimePicker
-                      value={startDate}
-                      mode="date"
-                      display="spinner"
-                      textColor="#FFFFFF"
-                      themeVariant="dark"
-                      onChange={(event, selectedDate) => {
-                        if (selectedDate) setStartDate(selectedDate);
-                      }}
-                    />
-                  </View>
-                </View>
-              </View>
-            </Modal>
-          ) : (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display="default"
-              onChange={(event, selectedDate) => {
-                setShowStartDatePicker(false);
-                if (selectedDate) {
-                  setStartDate(selectedDate);
-                }
-              }}
-            />
-          )
-        )}
-
-        {showEndDatePicker && (
-          Platform.OS === 'ios' ? (
-            <Modal
-              visible={showEndDatePicker}
-              transparent={true}
-              animationType="slide"
-              onRequestClose={() => setShowEndDatePicker(false)}
-            >
-              <View style={styles.iosDatePickerBackdrop}>
-                <View style={styles.iosDatePickerContainer}>
-                  <View style={styles.iosDatePickerHeader}>
-                    <TouchableOpacity 
-                      onPress={() => setShowEndDatePicker(false)}
-                      style={styles.iosDatePickerButton}
-                    >
-                      <Text style={styles.iosDatePickerButtonText}>İptal</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.iosDatePickerTitle}>Bitiş Tarihi</Text>
-                    <TouchableOpacity 
-                      onPress={() => setShowEndDatePicker(false)}
-                      style={styles.iosDatePickerButton}
-                    >
-                      <Text style={[styles.iosDatePickerButtonText, styles.iosDatePickerDoneButton]}>Tamam</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.iosDatePickerContent}>
-                    <DateTimePicker
-                      value={endDate || new Date()}
-                      mode="date"
-                      display="spinner"
-                      textColor="#FFFFFF"
-                      themeVariant="dark"
-                      onChange={(event, selectedDate) => {
-                        if (selectedDate) setEndDate(selectedDate);
-                      }}
-                    />
-                  </View>
-                </View>
-              </View>
-            </Modal>
-          ) : (
-            <DateTimePicker
-              value={endDate || new Date()}
-              mode="date"
-              display="default"
-              onChange={(event, selectedDate) => {
-                setShowEndDatePicker(false);
-                if (selectedDate) {
-                  setEndDate(selectedDate);
-                }
-              }}
-            />
-          )
-        )}
+              </TouchableOpacity>
+          ))}
       </View>
+
+      {/* Date and Time Pickers */}
+      <TouchableOpacity style={[styles.selector, { backgroundColor: colors.card, borderColor: colors.border, marginTop: SPACING.xl }]} onPress={() => setShowPicker('date')}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <Ionicons name="calendar-outline" size={20} color={colors.text} style={{marginRight: SPACING.md}}/>
+              <Text style={{color: colors.text}}>Başlangıç Tarihi</Text>
+          </View>
+          <Text style={{color: colors.text}}>{formData.startDate.toLocaleDateString('tr-TR')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.selector, { backgroundColor: colors.card, borderColor: colors.border, marginTop: SPACING.md }]} onPress={() => setShowPicker('time')}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <Ionicons name="time-outline" size={20} color={colors.text} style={{marginRight: SPACING.md}}/>
+              <Text style={{color: colors.text}}>İşlem Saati</Text>
+          </View>
+          <Text style={{color: colors.text}}>{formData.startDate.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</Text>
+      </TouchableOpacity>
+
+       {/* Auto-create switch */}
+      <View style={[styles.switchContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={{color: colors.text}}>İşlemi Otomatik Oluştur</Text>
+          <Switch
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={COLORS.WHITE}
+              ios_backgroundColor={colors.border}
+              onValueChange={val => handleInputChange('autoCreate', val)}
+              value={formData.autoCreate}
+          />
+      </View>
+    </View>
+  );
+
+  const renderItemPicker = (
+    title: string,
+    items: any[],
+    renderItem: (item: any) => React.ReactNode,
+    onClosePress: () => void
+  ) => (
+    <Modal visible={true} transparent animationType="fade">
+      <Pressable style={styles.pickerBackdrop} onPress={onClosePress}>
+        <Pressable style={[styles.pickerContainer, { backgroundColor: colors.card }]}>
+           <Text style={[styles.pickerTitle, { color: colors.text, borderBottomColor: colors.border }]}>{title}</Text>
+          <ScrollView>
+            {items.map(item => renderItem(item))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
-};
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={handleClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+          {renderHeader()}
+          {renderProgressBar()}
+          
+          <Animated.View style={{flexDirection: 'row', width: width * TOTAL_STEPS, transform: [{translateX: slideAnim}]}}>
+            {renderStep1()}
+            {renderStep2()}
+            {renderStep3()}
+          </Animated.View>
+
+          <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
+            {currentStep > 1 && <Button title="Geri" onPress={handleBack} variant="secondary" />}
+            <Button
+              title={currentStep === TOTAL_STEPS ? 'Kaydet' : 'İleri'}
+              onPress={handleNext}
+              loading={viewModels?.recurringPaymentViewModel?.isLoading || false}
+              variant="primary"
+              style={{ flex: 1, marginLeft: currentStep > 1 ? SPACING.md : 0 }}
+            />
+          </View>
+        </SafeAreaView>
+
+        {/* Pickers */}
+        {showPicker === 'category' && renderItemPicker(
+          "Kategori Seç",
+          viewModels?.categoryViewModel?.expenseCategories || [],
+          (cat: Category) => (
+            <TouchableOpacity key={cat.id} style={[styles.pickerItem, { borderBottomColor: colors.border }]} onPress={() => {
+              handleInputChange('category', cat.name);
+              setShowPicker(null);
+            }}>
+              <CategoryIcon iconName={cat.icon} color={colors.primary} size="medium"/>
+              <Text style={[styles.pickerItemText, {color: colors.text}]}>{cat.name}</Text>
+            </TouchableOpacity>
+          ),
+          () => setShowPicker(null)
+        )}
+
+        {showPicker === 'account' && renderItemPicker(
+          "Hesap Seç",
+          viewModels?.accountViewModel?.accounts.filter(acc => acc.type !== AccountType.GOLD && acc.isActive) || [],
+          (acc: Account) => (
+            <TouchableOpacity key={acc.id} style={[styles.pickerItem, { borderBottomColor: colors.border }]} onPress={() => {
+              handleInputChange('accountId', acc.id);
+              setShowPicker(null);
+            }}>
+              <Ionicons name={acc.type === AccountType.CASH ? 'cash-outline' : 'card-outline'} size={24} color={colors.primary} />
+              <View style={{ flex: 1, marginLeft: SPACING.md }}>
+                <Text style={[styles.pickerItemText, {color: colors.text}]}>{acc.name}</Text>
+                <Text style={{color: colors.text, opacity: 0.6}}>{getAccountTypeName(acc.type)}</Text>
+              </View>
+              <Text style={[styles.pickerItemText, {color: colors.text}]}>{formatCurrency(acc.balance, { currency: acc.currency })}</Text>
+            </TouchableOpacity>
+          ),
+          () => setShowPicker(null)
+        )}
+        
+        {showPicker === 'date' && (
+          <DateTimePicker
+            value={formData.startDate}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowPicker(null);
+              if (date) {
+                const newDate = new Date(formData.startDate);
+                newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                handleInputChange('startDate', newDate);
+              }
+            }}
+          />
+        )}
+
+        {showPicker === 'time' && (
+          <DateTimePicker
+            value={formData.startDate}
+            mode="time"
+            display="default"
+            onChange={(event, time) => {
+              setShowPicker(null);
+              if (time) {
+                  const newDate = new Date(formData.startDate);
+                  newDate.setHours(time.getHours());
+                  newDate.setMinutes(time.getMinutes());
+                  handleInputChange('startDate', newDate);
+              }
+            }}
+          />
+        )}
+        
+        <CustomAlert
+          visible={alert.visible}
+          type={alert.type}
+          title={alert.title}
+          message={alert.message}
+          onClose={() => setAlert({ ...alert, visible: false })}
+          onPrimaryPress={() => setAlert({ ...alert, visible: false })}
+        />
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+});
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
   },
-  closeButton: {
-    padding: 4,
+  closeButton: {},
+  headerTitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.semibold as any,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  progressContainer: {
+    height: 4,
+    backgroundColor: COLORS.BORDER,
+    margin: SPACING.md,
+    borderRadius: 2,
   },
-  placeholder: {
-    width: 32,
+  progressBar: {
+    height: '100%',
+    borderRadius: 2,
   },
-  content: {
+  stepContainer: {
+    width: width,
+    padding: SPACING.md
+  },
+  stepTitle: {
+    fontSize: TYPOGRAPHY.sizes.xl,
+    fontWeight: TYPOGRAPHY.weights.bold as any,
+    marginBottom: SPACING.lg
+  },
+  input: {
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    fontSize: TYPOGRAPHY.sizes.md
+  },
+  selector: {
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? SPACING.xl : SPACING.md,
+    borderTopWidth: 1,
+    flexDirection: 'row'
+  },
+  pickerBackdrop: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
-  section: {
-    padding: 16,
+  pickerContainer: {
+    maxHeight: '60%',
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
+    paddingBottom: Platform.OS === 'ios' ? SPACING.xl : 0,
+  },
+  pickerTitle: {
+    fontSize: TYPOGRAPHY.sizes.lg,
+    fontWeight: TYPOGRAPHY.weights.semibold as any,
+    padding: SPACING.md,
+    textAlign: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#333333',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  textInput: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    color: '#FFFFFF',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
-  },
-  amountContainer: {
+  pickerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    paddingHorizontal: 12,
+    padding: SPACING.md,
+    borderBottomWidth: 1,
   },
-  currencySymbol: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginRight: 4,
+  pickerItemText: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    marginLeft: SPACING.md
   },
-  amountInput: {
-    flex: 1,
-    padding: 12,
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  categoryScroll: {
-    flexGrow: 0,
-  },
-  categoryButton: {
+  frequencyContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    padding: 8,
-    marginRight: 8,
-  },
-  categoryText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginLeft: 8,
-  },
-  accountScroll: {
-    flexGrow: 0,
-  },
-  accountButton: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    padding: 12,
-    marginRight: 8,
-  },
-  accountText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
-  frequencyButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
   },
   frequencyButton: {
     flex: 1,
-    minWidth: '45%',
-    backgroundColor: '#111111',
-    borderRadius: 8,
+    padding: SPACING.md,
     borderWidth: 1,
-    borderColor: '#333333',
-    padding: 12,
+    borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
   },
   frequencyText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
-  dateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333333',
-    padding: 12,
-    gap: 8,
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  endDateContainer: {
-    marginTop: 16,
+    fontWeight: TYPOGRAPHY.weights.semibold as any,
   },
   switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  switchLabel: {
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#333333',
-  },
-  // iOS Date Picker Styles
-  iosDatePickerBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  iosDatePickerContainer: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: Platform.OS === 'ios' ? 35 : 20,
-  },
-  iosDatePickerHeader: {
+    marginTop: SPACING.xl,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
-  },
-  iosDatePickerButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  iosDatePickerButtonText: {
-    fontSize: 16,
-    color: '#888888',
-    fontWeight: '500',
-  },
-  iosDatePickerDoneButton: {
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-  iosDatePickerTitle: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  iosDatePickerContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-}); 
+    alignItems: 'center'
+  }
+});
+
+export { CreateRecurringPaymentModal }; 

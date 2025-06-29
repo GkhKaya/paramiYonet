@@ -15,6 +15,7 @@ import AppNavigator from './src/navigation/AppNavigator';
 import WebApp from './src/web/WebApp';
 import ErrorNotification from './src/components/common/ErrorNotification';
 import OnboardingModal from './src/components/onboarding/OnboardingModal';
+import { AppDarkTheme } from './src/navigation/themes';
 
 // Splash screen'i uygulama yüklenene kadar göster
 SplashScreen.preventAutoHideAsync();
@@ -70,7 +71,7 @@ export default function App() {
             <AuthProvider>
               <OnboardingProvider>
                 <ThemeProvider>
-                  <NavigationContainer>
+                  <NavigationContainer theme={AppDarkTheme}>
                     <ViewModelProvider>
                       <AppNavigator />
                       <OnboardingModal />

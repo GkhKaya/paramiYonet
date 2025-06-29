@@ -4,6 +4,7 @@ export interface Account {
   name: string;
   type: AccountType;
   balance: number;
+  currency: 'TRY' | 'USD' | 'EUR';
   color: string;
   icon: string;
   createdAt: Date;
@@ -22,6 +23,8 @@ export interface Account {
   minPaymentRate?: number;
   creditCardTransactions?: CreditCardTransaction[];
   creditCardPayments?: CreditCardPayment[];
+  openingDate: Date;
+  dueDate?: number;
 }
 
 export enum AccountType {

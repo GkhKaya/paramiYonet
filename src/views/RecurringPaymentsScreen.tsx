@@ -243,6 +243,10 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
         <CreateRecurringPaymentModal
           visible={showCreateModal}
           onClose={() => setShowCreateModal(false)}
+          onSaveSuccess={() => {
+            setShowCreateModal(false);
+            handleRefresh();
+          }}
           onSubmit={async (paymentData) => {
             if (paymentViewModel) {
               const success = await paymentViewModel.createRecurringPayment(paymentData);

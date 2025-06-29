@@ -78,7 +78,7 @@ const menuItems = [
     color: '#ef4444'
   },
   {
-    text: 'Tekrarlayan',
+    text: 'Otomatik Ödemeler',
     icon: Repeat,
     page: 'recurring' as PageType,
     color: '#8b5cf6'

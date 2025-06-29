@@ -75,11 +75,11 @@ export const TYPOGRAPHY = {
   
   // Font Ağırlıkları
   weights: {
-    normal: '400',    // Normal
-    medium: '500',    // Orta kalın
-    semiBold: '600',  // Yarı kalın
-    bold: '700',      // Kalın
-  },
+    normal: '400',
+    medium: '500',
+    semibold: '600',
+    bold: '700',
+  } as const,
   
   // Satır Yükseklikleri
   lineHeights: {
