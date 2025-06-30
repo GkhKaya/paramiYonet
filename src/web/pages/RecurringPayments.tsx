@@ -43,7 +43,7 @@ import { gradients, animations } from '../styles/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoading } from '../contexts/LoadingContext';
 import { RecurringPayment } from '../../models/RecurringPayment';
-import { Account } from '../../models/Account';
+import { Account, AccountType } from '../../models/Account';
 import { RecurringPaymentService } from '../../services/RecurringPaymentService';
 import { AccountService } from '../../services/AccountService';
 import { formatCurrency } from '../../utils/formatters';
@@ -729,7 +729,7 @@ const RecurringPayments: React.FC = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, accountId: e.target.value }))}
                 label="Hesap"
               >
-                {accounts.map((account) => (
+                {accounts.filter(account => account.type !== AccountType.GOLD).map((account) => (
                   <MenuItem key={account.id} value={account.id}>
                     {account.name}
                   </MenuItem>
@@ -856,7 +856,7 @@ const RecurringPayments: React.FC = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, accountId: e.target.value }))}
                 label="Hesap"
               >
-                {accounts.map((account) => (
+                {accounts.filter(account => account.type !== AccountType.GOLD).map((account) => (
                   <MenuItem key={account.id} value={account.id}>
                     {account.name}
                   </MenuItem>
