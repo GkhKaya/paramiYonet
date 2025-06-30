@@ -51,6 +51,8 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const [filterUpdate, setFilterUpdate] = useState(0); // Dummy state for force update
+  const [filterLoading, setFilterLoading] = useState(false); // Progress bar için
 
   const [editForm, setEditForm] = useState({
     amount: '',
@@ -709,17 +711,32 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
               <FilterButton
                 title="Tümü"
                 isActive={!viewModel?.filters.type}
-                onPress={() => viewModel?.setFilters({ type: undefined })}
+                onPress={() => {
+                  viewModel?.setFilters({ type: undefined });
+                  setFilterLoading(true);
+                  setFilterUpdate(f => f + 1);
+                  setTimeout(() => setFilterLoading(false), 400);
+                }}
               />
               <FilterButton
                 title="Gelir"
                 isActive={viewModel?.filters.type === TransactionType.INCOME}
-                onPress={() => viewModel?.setFilters({ type: TransactionType.INCOME })}
+                onPress={() => {
+                  viewModel?.setFilters({ type: TransactionType.INCOME });
+                  setFilterLoading(true);
+                  setFilterUpdate(f => f + 1);
+                  setTimeout(() => setFilterLoading(false), 400);
+                }}
               />
               <FilterButton
                 title="Gider"
                 isActive={viewModel?.filters.type === TransactionType.EXPENSE}
-                onPress={() => viewModel?.setFilters({ type: TransactionType.EXPENSE })}
+                onPress={() => {
+                  viewModel?.setFilters({ type: TransactionType.EXPENSE });
+                  setFilterLoading(true);
+                  setFilterUpdate(f => f + 1);
+                  setTimeout(() => setFilterLoading(false), 400);
+                }}
               />
             </ScrollView>
             
