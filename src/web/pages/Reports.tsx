@@ -553,6 +553,17 @@ const Reports: React.FC = () => {
     setRefreshing(false);
   };
 
+  const handleChartClick = (chartId: string) => {
+    // Kullanıcının hiç işlemi yoksa alert göster
+    if (transactions.length === 0) {
+      alert('Grafik analizi için öncelikle işlem eklemelisiniz. Lütfen bir gelir veya gider işlemi ekleyin.');
+      return;
+    }
+    
+    setSelectedChart(chartId);
+    setChartDrawerOpen(true);
+  };
+
   const currentData = getCurrentData();
   const currentCategories = getCurrentCategories();
   const monthlyTrends = getMonthlyTrends();
@@ -649,6 +660,20 @@ const Reports: React.FC = () => {
         {/* Overview Tab */}
         <TabPanel value={selectedTab} index={0}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* No transactions message */}
+            {transactions.length === 0 && (
+              <motion.div {...animations.fadeIn}>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Henüz işlem eklememişsiniz
+                  </Typography>
+                  <Typography variant="body2">
+                    Finansal raporları ve analizleri görüntülemek için önce bir gelir veya gider işlemi ekleyin.
+                  </Typography>
+                </Alert>
+              </motion.div>
+            )}
+            
             {/* Summary Cards */}
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <motion.div {...animations.scaleIn} style={{ flex: 1, minWidth: '300px' }}>
@@ -786,6 +811,20 @@ const Reports: React.FC = () => {
         {/* Analytics Tab */}
         <TabPanel value={selectedTab} index={1}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* No transactions message */}
+            {transactions.length === 0 && (
+              <motion.div {...animations.fadeIn}>
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Analiz için işlem gerekli
+                  </Typography>
+                  <Typography variant="body2">
+                    Detaylı finansal analizler ve grafikler için öncelikle işlem eklemelisiniz.
+                  </Typography>
+                </Alert>
+              </motion.div>
+            )}
+            
             {/* Savings Score */}
             <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
               <motion.div {...animations.scaleIn} style={{ flex: 1, minWidth: '400px' }}>
@@ -1112,12 +1151,14 @@ const Reports: React.FC = () => {
                </Card>
              </motion.div>
 
-                        {/* Modern Chart Analytics Buttons */}
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 4, mb: 3 }}>
-              Görsel Analiz Grafikleri
-            </Typography>
+            {/* Modern Chart Analytics Buttons */}
+            {transactions.length > 0 && (
+              <>
+                <Typography variant="h5" sx={{ fontWeight: 700, mt: 4, mb: 3 }}>
+                  Görsel Analiz Grafikleri
+                </Typography>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
               {/* Chart Selection Cards */}
               {[
                 {
@@ -1180,10 +1221,7 @@ const Reports: React.FC = () => {
                          boxShadow: `0 20px 40px ${alpha(chart.color, 0.2)}`
                        }
                      }}
-                     onClick={() => {
-                       setSelectedChart(chart.id);
-                       setChartDrawerOpen(true);
-                     }}
+                     onClick={() => handleChartClick(chart.id)}
                    >
                      <CardContent sx={{ p: 3, textAlign: 'center' }}>
                        <Box
@@ -1226,6 +1264,8 @@ const Reports: React.FC = () => {
                  </motion.div>
                ))}
              </Box>
+                </>
+              )}
            </Box>
         </TabPanel>
 
