@@ -34,6 +34,7 @@ import {
   Add,
   Search,
   Delete,
+  Edit,
   TrendingUp,
   TrendingDown,
   AccountBalance,
@@ -48,6 +49,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { TransactionService } from '../../services/TransactionService';
 import { formatCurrency } from '../../utils/formatters';
 import { getCategoryIcon } from '../utils/categoryIcons';
+import { DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from '../../models/Category';
+import { AccountService } from '../../services/AccountService';
+import { Account } from '../../models/Account';
+import { CategoryService } from '../../services/CategoryService';
+import { Category } from '../../models/Category';
 
 interface TransactionStats {
   totalIncome: number;
@@ -84,7 +90,20 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
 
   // Dialogs
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    description: '',
+    amount: '',
+    category: '',
+    type: TransactionType.EXPENSE as TransactionType,
+    accountId: '',
+    date: new Date().toISOString().split('T')[0],
+  });
 
   useEffect(() => {
     loadTransactions();
@@ -99,8 +118,31 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
     
     setLoading(true);
     try {
-      const firebaseTransactions = await TransactionService.getUserTransactions(currentUser.uid);
+      const [firebaseTransactions, accountsData, categoriesData] = await Promise.all([
+        TransactionService.getUserTransactions(currentUser.uid),
+        AccountService.getUserAccounts(currentUser.uid),
+        CategoryService.getUserCategories(currentUser.uid)
+      ]);
+      
       setTransactions(firebaseTransactions);
+      setAccounts(accountsData);
+      
+      // Combine default categories with user custom categories (same as AddTransaction)
+      const defaultExpenseCategories: Category[] = DEFAULT_EXPENSE_CATEGORIES.map((cat, index) => ({
+        ...cat,
+        id: `default_expense_${index}`,
+        userId: currentUser.uid,
+      }));
+
+      const defaultIncomeCategories: Category[] = DEFAULT_INCOME_CATEGORIES.map((cat, index) => ({
+        ...cat,
+        id: `default_income_${index}`,
+        userId: currentUser.uid,
+      }));
+
+      const allCategories = [...defaultExpenseCategories, ...defaultIncomeCategories, ...categoriesData];
+      setCategories(allCategories);
+      
       calculateStats(firebaseTransactions);
     } catch (error) {
       console.error('Error loading transactions:', error);
@@ -175,6 +217,47 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
     setDeleteDialogOpen(true);
   };
 
+  const handleEditTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setEditFormData({
+      description: transaction.description,
+      amount: transaction.amount.toString(),
+      category: transaction.category,
+      type: transaction.type,
+      accountId: transaction.accountId,
+      date: transaction.date.toISOString().split('T')[0],
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedTransaction) return;
+    
+    try {
+      const amount = parseFloat(editFormData.amount);
+      if (isNaN(amount) || amount <= 0) {
+        alert('Lütfen geçerli bir tutar girin');
+        return;
+      }
+
+      await TransactionService.updateTransaction(selectedTransaction.id, {
+        description: editFormData.description,
+        amount,
+        category: editFormData.category,
+        type: editFormData.type,
+        accountId: editFormData.accountId,
+        date: new Date(editFormData.date),
+      });
+
+      await loadTransactions();
+      setEditDialogOpen(false);
+      setSelectedTransaction(null);
+    } catch (error) {
+      console.error('Error updating transaction:', error);
+      alert('İşlem güncellenirken hata oluştu');
+    }
+  };
+
   const confirmDelete = async () => {
     if (selectedTransaction) {
       try {
@@ -205,6 +288,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
   const getUniqueCategories = () => {
     const categories = [...new Set(transactions.map(t => t.category))];
     return categories;
+  };
+
+  const getFilteredCategoriesForEdit = () => {
+    return categories.filter(cat => cat.type === editFormData.type);
   };
 
   if (loading) {
@@ -482,6 +569,13 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
                         >
                           <Delete />
                         </IconButton>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => handleEditTransaction(transaction)}
+                        >
+                          <Edit />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -531,6 +625,99 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ onNavigate }) => {
           </Button>
           <Button onClick={confirmDelete} color="error" variant="contained">
             Sil
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>İşlemi Düzenle</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, pt: 2 }}>
+            <TextField
+              fullWidth
+              label="Açıklama"
+              value={editFormData.description}
+              onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+              required
+            />
+            
+            <TextField
+              fullWidth
+              label="Tutar"
+              type="number"
+              value={editFormData.amount}
+              onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
+              required
+              InputProps={{
+                startAdornment: <Typography>₺</Typography>,
+              }}
+            />
+
+            <FormControl fullWidth required>
+              <InputLabel>Tür</InputLabel>
+              <Select
+                value={editFormData.type}
+                onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value as TransactionType })}
+                label="Tür"
+              >
+                <MenuItem value={TransactionType.INCOME}>Gelir</MenuItem>
+                <MenuItem value={TransactionType.EXPENSE}>Gider</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth required>
+              <InputLabel>Kategori</InputLabel>
+              <Select
+                value={editFormData.category}
+                onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                label="Kategori"
+              >
+                {getFilteredCategoriesForEdit().map((category) => (
+                  <MenuItem key={category.id} value={category.name}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {getCategoryIcon(category.name)}
+                      {category.name}
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth required>
+              <InputLabel>Hesap</InputLabel>
+              <Select
+                value={editFormData.accountId}
+                onChange={(e) => setEditFormData({ ...editFormData, accountId: e.target.value })}
+                label="Hesap"
+              >
+                {accounts.map((account) => (
+                  <MenuItem key={account.id} value={account.id}>
+                    {account.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <TextField
+              fullWidth
+              label="Tarih"
+              type="date"
+              value={editFormData.date}
+              onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+              required
+              InputLabelProps={{
+                shrink: true,
+              }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>
+            İptal
+          </Button>
+          <Button onClick={handleEditSubmit} color="primary" variant="contained">
+            Güncelle
           </Button>
         </DialogActions>
       </Dialog>
