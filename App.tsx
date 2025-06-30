@@ -45,6 +45,10 @@ export default function App() {
     prepare();
   }, []);
 
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync('#000000');
+  }, []);
+
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
       // Splash screen'i gizle

@@ -233,7 +233,7 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
               />
               </View>
               <View style={styles.transactionInfo}>
-                <Text style={styles.transactionDescription}>{item.description}</Text>
+                <Text style={[styles.transactionDescription, { color: '#FFFFFF' }]}>{item.description || item.category}</Text>
                 <Text style={styles.transactionCategory}>{item.category}</Text>
                 <Text style={styles.transactionDate}>{formatDateTime(item.date)}</Text>
               </View>

@@ -53,7 +53,7 @@ const TabNavigator: React.FC = () => {
 
           switch (route.name) {
             case 'Dashboard':
-              iconName = focused ? 'receipt' : 'receipt-outline';
+              iconName = focused ? 'home' : 'home-outline';
               break;
             case 'Transactions':
               iconName = focused ? 'swap-horizontal' : 'swap-horizontal-outline';
@@ -116,7 +116,7 @@ const TabNavigator: React.FC = () => {
         name="Dashboard"
         component={CleanDashboardScreen}
         options={{
-          title: 'Kayıtlar',
+          title: 'Ana Sayfa',
         }}
       />
       <Tab.Screen

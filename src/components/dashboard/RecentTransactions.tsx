@@ -87,7 +87,7 @@ export const RecentTransactions: React.FC<RecentTransactionsProps> = ({
         {/* İşlem Bilgileri */}
         <View style={styles.transactionInfo}>
           <Text style={styles.transactionDescription} numberOfLines={1}>
-            {transaction.description}
+            {transaction.description || transaction.category}
           </Text>
           <Text style={styles.transactionCategory}>
             {transaction.category} • {formatDate(transaction.date)}
