@@ -44,7 +44,7 @@ import { gradients, animations } from '../../styles/theme';
 
 const drawerWidth = 280;
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'budgets' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 interface WebLayoutProps {
   children: React.ReactNode;
@@ -88,6 +88,12 @@ const menuItems = [
     icon: TrendingUp,
     page: 'debts' as PageType,
     color: '#f97316'
+  },
+  {
+    text: 'Bütçeler',
+    icon: AccountBalanceWallet,
+    page: 'budgets' as PageType,
+    color: '#22c55e'
   },
   {
     text: 'Raporlar',

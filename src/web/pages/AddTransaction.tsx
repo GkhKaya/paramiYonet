@@ -55,6 +55,7 @@ import { Category, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_INCOME_CATEGORIES } from 
 import { formatCurrency } from '../../utils/formatters';
 import { animations, gradients } from '../styles/theme';
 import { getCategoryIcon } from '../utils/categoryIcons';
+import { BudgetService } from '../../services/BudgetService';
 
 interface AddTransactionProps {
   onClose: () => void;
@@ -327,6 +328,41 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, o
 
       await TransactionService.createTransaction(transactionData);
       
+      // --- BÜTÇE GÜNCELLEME LOGİĞİ ---
+      if (selectedType === TransactionType.EXPENSE) {
+        // 1. Aktif bütçeleri ve işlemleri çek
+        const [budgets, transactions] = await Promise.all([
+          BudgetService.getActiveBudgets(currentUser.uid),
+          TransactionService.getUserTransactions(currentUser.uid)
+        ]);
+        for (const budget of budgets) {
+          let categoryTransactions;
+          if (budget.categoryName === 'Tüm Kategoriler') {
+            categoryTransactions = transactions.filter(t =>
+              t.type === TransactionType.EXPENSE &&
+              t.date >= budget.startDate &&
+              t.date <= budget.endDate
+            );
+          } else {
+            categoryTransactions = transactions.filter(t =>
+              t.type === TransactionType.EXPENSE &&
+              t.category === budget.categoryName &&
+              t.date >= budget.startDate &&
+              t.date <= budget.endDate
+            );
+          }
+          const spentAmount = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+          if (spentAmount !== budget.spentAmount) {
+            await BudgetService.updateBudgetProgress(
+              budget.id,
+              spentAmount,
+              budget.budgetedAmount
+            );
+          }
+        }
+      }
+      // --- SONU ---
+
       showSnackbar('İşlem başarıyla kaydedildi', 'success');
       
       // Call onSuccess callback to refresh parent data

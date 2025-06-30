@@ -104,17 +104,14 @@ export class BudgetViewModel {
 
       // Tarih aralığını hesapla
       const startDate = new Date();
-      const endDate = new Date();
-
+      let endDate = new Date(startDate);
       if (budgetData.period === 'monthly') {
-        startDate.setDate(1); // Ayın ilk günü
-        endDate.setMonth(endDate.getMonth() + 1, 0); // Ayın son günü
+        // Bu ayın son günü
+        endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0, 23, 59, 59, 999);
       } else {
-        // Haftalık için şu anki haftanın başlangıcı ve sonu
-        const dayOfWeek = startDate.getDay();
-        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        startDate.setDate(startDate.getDate() + diffToMonday);
+        // Haftalık: 6 gün sonrası
         endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
       }
 
       const newBudget: Omit<Budget, 'id'> = {

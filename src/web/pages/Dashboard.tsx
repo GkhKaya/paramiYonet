@@ -37,10 +37,18 @@ import { Transaction, TransactionType } from '../../models/Transaction';
 import { Account } from '../../models/Account';
 import { formatCurrency } from '../../utils/formatters';
 import { getCategoryIcon } from '../utils/categoryIcons';
-
-
-
-
+import { Budget } from '../../models/Budget';
+import { BudgetService } from '../../services/BudgetService';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import InputLabel from '@mui/material/InputLabel';
+import FormControl from '@mui/material/FormControl';
+import TextField from '@mui/material/TextField';
+import { DEFAULT_EXPENSE_CATEGORIES } from '../../models/Category';
 
 interface ChartDataItem {
   name: string;
@@ -148,6 +156,10 @@ const Dashboard: React.FC = () => {
   const [totalBalance, setTotalBalance] = useState(0);
   const [monthlyChange, setMonthlyChange] = useState(0);
   const [currentMonthExpense, setCurrentMonthExpense] = useState(0);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [budgetLoading, setBudgetLoading] = useState(true);
+  const [budgetModalOpen, setBudgetModalOpen] = useState(false);
+  const [budgetEdit, setBudgetEdit] = useState<Budget | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -275,6 +287,23 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
+  }, [currentUser]);
+
+  // Bütçeleri yükle
+  useEffect(() => {
+    const loadBudgets = async () => {
+      if (!currentUser) return;
+      setBudgetLoading(true);
+      try {
+        const data = await BudgetService.getBudgets(currentUser.uid);
+        setBudgets(data);
+      } catch (e) {
+        setBudgets([]);
+      } finally {
+        setBudgetLoading(false);
+      }
+    };
+    if (currentUser) loadBudgets();
   }, [currentUser]);
 
   if (loading) {
@@ -661,10 +690,202 @@ const Dashboard: React.FC = () => {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Bütçe Özeti ve Kartları */}
+          <Box sx={{ mb: 4 }}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">Bütçe Özeti</Typography>
+                  <Button variant="contained" size="small" onClick={() => { setBudgetEdit(null); setBudgetModalOpen(true); }}>
+                    Bütçe Ekle
+                  </Button>
+                </Box>
+                {budgetLoading ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 80 }}>
+                    <CircularProgress size={24} />
+                  </Box>
+                ) : budgets.length === 0 ? (
+                  <Typography color="text.secondary">Henüz bütçe eklenmedi.</Typography>
+                ) : (
+                  <Box>
+                    {/* Bütçe kartları */}
+                    {budgets.map((budget) => (
+                      <Card key={budget.id} sx={{ mb: 2, borderLeft: budget.progressPercentage >= 100 ? '4px solid #ef4444' : budget.progressPercentage >= 80 ? '4px solid #f59e0b' : '4px solid #10b981' }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box>
+                              <Typography variant="subtitle1">{budget.categoryName}</Typography>
+                              <Typography variant="body2" color="text.secondary">{budget.period === 'monthly' ? 'Aylık' : 'Haftalık'} Bütçe</Typography>
+                              <Typography variant="body2">Harcanan: <b>{formatCurrency(budget.spentAmount)}</b></Typography>
+                              <Typography variant="body2">Bütçe: <b>{formatCurrency(budget.budgetedAmount)}</b></Typography>
+                              <Typography variant="body2">Kalan: <b style={{ color: budget.remainingAmount < 0 ? '#ef4444' : '#10b981' }}>{formatCurrency(budget.remainingAmount)}</b></Typography>
+                            </Box>
+                            <Box>
+                              <Button size="small" onClick={() => { setBudgetEdit(budget); setBudgetModalOpen(true); }}>Düzenle</Button>
+                              <Button size="small" color="error" onClick={async () => { await BudgetService.deleteBudget(budget.id); setBudgets(budgets.filter(b => b.id !== budget.id)); }}>Sil</Button>
+                            </Box>
+                          </Box>
+                          <Box sx={{ mt: 2 }}>
+                            <LinearProgress variant="determinate" value={Math.min(budget.progressPercentage, 100)} sx={{ height: 8, borderRadius: 4, background: '#eee', '& .MuiLinearProgress-bar': { backgroundColor: budget.progressPercentage >= 100 ? '#ef4444' : budget.progressPercentage >= 80 ? '#f59e0b' : '#10b981' } }} />
+                            <Typography variant="caption" color={budget.progressPercentage >= 100 ? '#ef4444' : budget.progressPercentage >= 80 ? '#f59e0b' : '#10b981'}>{budget.progressPercentage.toFixed(0)}%</Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Box>
         </Box>
       </Box>
+
+      {/* Bütçe Ekle/Düzenle Modalı */}
+      {budgetModalOpen && (
+        <BudgetModal
+          open={budgetModalOpen}
+          onClose={() => setBudgetModalOpen(false)}
+          onSaved={async () => {
+            setBudgetModalOpen(false);
+            setBudgetEdit(null);
+            // Refresh budgets
+            if (currentUser) {
+              setBudgetLoading(true);
+              const data = await BudgetService.getBudgets(currentUser.uid);
+              setBudgets(data);
+              setBudgetLoading(false);
+            }
+          }}
+          editBudget={budgetEdit}
+          userId={currentUser?.uid}
+        />
+      )}
     </Box>
   );
 };
 
-export default Dashboard; 
+export default Dashboard;
+
+// MUI BudgetModal (ekle/düzenle) - Dashboard'dan sonra tanımla
+interface BudgetModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+  editBudget: import('../../models/Budget').Budget | null;
+  userId?: string;
+}
+
+const BudgetModal: React.FC<BudgetModalProps> = ({ open, onClose, onSaved, editBudget, userId }) => {
+  const isEdit = !!editBudget;
+  const [category, setCategory] = React.useState(editBudget?.categoryName || '');
+  const [amount, setAmount] = React.useState(editBudget ? editBudget.budgetedAmount.toString() : '');
+  const [period, setPeriod] = React.useState<'monthly' | 'weekly'>(editBudget?.period || 'monthly');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleSave = async () => {
+    setError(null);
+    if (!category) { setError('Kategori seçin'); return; }
+    const numericAmount = parseFloat(amount.replace(',', '.'));
+    if (!amount || isNaN(numericAmount) || numericAmount <= 0) { setError('Geçerli bir tutar girin'); return; }
+    if (!userId) { setError('Kullanıcı bulunamadı'); return; }
+    setLoading(true);
+    try {
+      // Tarih aralığı hesapla
+      const startDate = new Date();
+      const endDate = new Date();
+      if (period === 'monthly') {
+        startDate.setDate(1);
+        endDate.setMonth(endDate.getMonth() + 1, 0);
+      } else {
+        const dayOfWeek = startDate.getDay();
+        const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        startDate.setDate(startDate.getDate() + diffToMonday);
+        endDate.setDate(startDate.getDate() + 6);
+      }
+      if (isEdit && editBudget) {
+        await import('../../services/BudgetService').then(({ BudgetService }) =>
+          BudgetService.updateBudget(editBudget.id, {
+            categoryName: category,
+            budgetedAmount: numericAmount,
+            period,
+            startDate,
+            endDate,
+          })
+        );
+      } else {
+        const catObj = DEFAULT_EXPENSE_CATEGORIES.find(c => c.name === category);
+        await import('../../services/BudgetService').then(({ BudgetService }) =>
+          BudgetService.createBudget({
+            userId,
+            categoryName: category,
+            categoryIcon: catObj?.icon || 'ellipsis-horizontal',
+            categoryColor: catObj?.color || '#95A5A6',
+            budgetedAmount: numericAmount,
+            spentAmount: 0,
+            remainingAmount: numericAmount,
+            progressPercentage: 0,
+            period,
+            startDate,
+            endDate,
+            createdAt: new Date(),
+          })
+        );
+      }
+      onSaved();
+    } catch (e) {
+      setError('Kayıt sırasında hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>{isEdit ? 'Bütçeyi Düzenle' : 'Yeni Bütçe'}</DialogTitle>
+      <DialogContent>
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Kategori</InputLabel>
+          <Select
+            value={category}
+            label="Kategori"
+            onChange={e => setCategory(e.target.value as string)}
+            disabled={isEdit}
+          >
+            {DEFAULT_EXPENSE_CATEGORIES.map(cat => (
+              <MenuItem key={cat.name} value={cat.name}>
+                {cat.icon ? <span style={{ marginRight: 8 }}>{cat.icon}</span> : null}
+                {cat.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Bütçe Tutarı"
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+          fullWidth
+          margin="normal"
+          type="number"
+        />
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Periyot</InputLabel>
+          <Select
+            value={period}
+            label="Periyot"
+            onChange={e => setPeriod(e.target.value as 'monthly' | 'weekly')}
+          >
+            <MenuItem value="monthly">Aylık</MenuItem>
+            <MenuItem value="weekly">Haftalık</MenuItem>
+          </Select>
+        </FormControl>
+        {error && <Typography color="error" variant="body2">{error}</Typography>}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>İptal</Button>
+        <Button onClick={handleSave} variant="contained" disabled={loading}>{isEdit ? 'Kaydet' : 'Ekle'}</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}; 

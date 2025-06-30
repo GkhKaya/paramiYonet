@@ -70,10 +70,10 @@ export class BudgetService {
           remainingAmount: data.remainingAmount,
           progressPercentage: data.progressPercentage,
           period: data.period,
-          startDate: data.startDate.toDate(),
-          endDate: data.endDate.toDate(),
-          createdAt: data.createdAt.toDate(),
-          updatedAt: data.updatedAt?.toDate() || data.createdAt.toDate(),
+          startDate: this.toDateSafe(data.startDate),
+          endDate: this.toDateSafe(data.endDate),
+          createdAt: this.toDateSafe(data.createdAt),
+          updatedAt: data.updatedAt ? this.toDateSafe(data.updatedAt) : this.toDateSafe(data.createdAt),
         });
       });
 
@@ -206,10 +206,10 @@ export class BudgetService {
             remainingAmount: data.remainingAmount,
             progressPercentage: data.progressPercentage,
             period: data.period,
-            startDate: data.startDate.toDate(),
-            endDate: data.endDate.toDate(),
-            createdAt: data.createdAt.toDate(),
-            updatedAt: data.updatedAt?.toDate() || data.createdAt.toDate(),
+            startDate: this.toDateSafe(data.startDate),
+            endDate: this.toDateSafe(data.endDate),
+            createdAt: this.toDateSafe(data.createdAt),
+            updatedAt: data.updatedAt ? this.toDateSafe(data.updatedAt) : this.toDateSafe(data.createdAt),
           });
         });
         
@@ -224,5 +224,12 @@ export class BudgetService {
     );
 
     return unsubscribe;
+  }
+
+  private static toDateSafe(val: any): Date {
+    if (!val) return new Date();
+    if (val.toDate) return val.toDate();
+    if (typeof val === 'string' || typeof val === 'number') return new Date(val);
+    return val as Date;
   }
 } 

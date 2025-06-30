@@ -19,8 +19,9 @@ import CreditCardsPage from './pages/CreditCards';
 import AddTransaction from './pages/AddTransaction';
 import RecurringPayments from './pages/RecurringPayments';
 import Debts from './pages/Debts';
+import BudgetsPage from './pages/Budgets';
 
-type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
+type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'budgets' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 const AppContent: React.FC = () => {
   console.log('AppContent component rendering...');
@@ -41,7 +42,7 @@ const AppContent: React.FC = () => {
   React.useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(2); // Remove '#/'
-      const validPages = ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'debts', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'];
+      const validPages = ['dashboard', 'accounts', 'transactions', 'credit-cards', 'recurring', 'debts', 'budgets', 'reports', 'settings', 'profile', 'categories', 'help', 'add-transaction'];
       
       if (hash && validPages.includes(hash)) {
         const newPage = hash as PageType;
@@ -101,6 +102,8 @@ const AppContent: React.FC = () => {
         return <RecurringPayments />;
       case 'debts':
         return <Debts />;
+      case 'budgets':
+        return <BudgetsPage />;
       case 'reports':
         return <Reports />;
       case 'settings':
