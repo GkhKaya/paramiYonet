@@ -53,6 +53,7 @@ export interface TransactionFilters {
     start: Date;
     end: Date;
   };
+  searchTerm?: string;
 }
 
 // Mock data for demo purposes
@@ -502,30 +503,23 @@ export class TransactionViewModel {
   private applyFilters(): void {
     let filtered = [...this.transactions];
 
-    // Apply search filter
-    if (this.searchTerm) {
-      const searchLower = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(transaction => 
-        transaction.description.toLowerCase().includes(searchLower) ||
-        transaction.category.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply type filter
+    // Filter by type
     if (this.filters.type) {
-      filtered = filtered.filter(transaction => transaction.type === this.filters.type);
+      filtered = filtered.filter((t) => t.type === this.filters.type);
     }
 
-    // Apply category filter
+    // Filter by category
     if (this.filters.category) {
-      filtered = filtered.filter(transaction => transaction.category === this.filters.category);
+      filtered = filtered.filter((t) => t.category === this.filters.category);
     }
 
-    // Apply date range filter
-    if (this.filters.dateRange) {
-      filtered = filtered.filter(transaction => 
-        transaction.date >= this.filters.dateRange!.start &&
-        transaction.date <= this.filters.dateRange!.end
+    // Filter by search term
+    if (this.filters.searchTerm && this.filters.searchTerm.trim() !== '') {
+      const searchTermLower = this.filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (t) =>
+          t.description.toLowerCase().includes(searchTermLower) ||
+          t.category.toLowerCase().includes(searchTermLower)
       );
     }
 

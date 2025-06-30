@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,11 @@ import {
   Platform,
   TextInput,
   Pressable,
+  Keyboard,
+  KeyboardAvoidingView,
+  Animated,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +37,14 @@ import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewModels } from '../contexts/ViewModelContext';
 import { useCurrency, useCategory, useDate } from '../hooks';
+import { formatCurrency } from '../utils/formatters';
 
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -41,6 +53,309 @@ const isSmallDevice = width < 375;
 interface TransactionsScreenProps {
   navigation: any;
 }
+
+// Sub-components moved outside of the main component to prevent re-creation on re-render
+const FilterButton = React.memo(({ 
+  title, 
+  isActive, 
+  onPress 
+}: {
+  title: string;
+  isActive: boolean;
+  onPress: () => void;
+}) => (
+  <TouchableOpacity
+    style={[
+      styles.filterButton, 
+      isActive && styles.filterButtonActive
+    ]}
+    onPress={onPress}
+  >
+    <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
+      {title}
+    </Text>
+  </TouchableOpacity>
+));
+
+const TransactionItem = React.memo(({ item, getCategoryDetails, formatDateTime, handleTransactionPress }: { item: Transaction, getCategoryDetails: any, formatDateTime: any, handleTransactionPress: any }) => {
+  const category = getCategoryDetails(item.category, item.type);
+  const isIncome = item.type === TransactionType.INCOME;
+
+  return (
+    <TouchableOpacity style={styles.transactionItem} onPress={() => handleTransactionPress(item)}>
+      <View style={styles.transactionCard}>
+        <View style={styles.transactionContent}>
+          <View style={styles.transactionLeft}>
+            <View style={[
+              styles.categoryIconContainer,
+              { backgroundColor: category.color }
+            ]}>
+            <Ionicons 
+              name={category.icon as any} 
+              size={20} 
+              color="#FFFFFF" 
+            />
+            </View>
+            <View style={styles.transactionInfo}>
+              <Text style={[styles.transactionDescription, { color: '#FFFFFF' }]}>{item.description || item.category}</Text>
+              <Text style={styles.transactionCategory}>{item.category}</Text>
+              <Text style={styles.transactionDate}>{formatDateTime(item.date)}</Text>
+            </View>
+          </View>
+          <View style={styles.transactionRight}>
+            <Text style={[
+              styles.transactionAmount,
+              { color: isIncome ? '#4CAF50' : '#F44336' }
+            ]}>
+              {isIncome ? '+' : '-'}{formatCurrency(item.amount)}
+            </Text>
+            <Ionicons 
+              name="chevron-forward" 
+              size={16} 
+              color="#666666" 
+              style={styles.transactionChevron}
+            />
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+
+const MonthSelector = React.memo(({ viewModel, formatMonth } : { viewModel: TransactionViewModel, formatMonth: any }) => (
+  <View style={styles.monthSelector}>
+    <TouchableOpacity 
+      style={styles.monthButton}
+      onPress={() => viewModel?.goToPreviousMonth()}
+    >
+      <Ionicons name="chevron-back" size={20} color="#2196F3" />
+    </TouchableOpacity>
+    
+    <Text style={styles.monthText}>{formatMonth(viewModel?.currentMonth || new Date())}</Text>
+    
+    <TouchableOpacity 
+      style={styles.monthButton}
+      onPress={() => viewModel?.goToNextMonth()}
+    >
+      <Ionicons 
+        name="chevron-forward" 
+        size={20} 
+        color="#2196F3"
+      />
+    </TouchableOpacity>
+  </View>
+));
+
+const DayGroupHeader = React.memo(({ dayGroup, formatCurrency }: { dayGroup: any, formatCurrency: any }) => (
+  <View style={[
+    styles.sectionHeader,
+    Platform.OS === 'web' && styles.webSectionHeader
+  ]}>
+    <Text style={styles.sectionTitle}>{dayGroup.displayDate}</Text>
+    <Text style={[
+      styles.sectionAmount,
+      { color: dayGroup.netAmount >= 0 ? '#4CAF50' : '#F44336' }
+    ]}>
+      {dayGroup.netAmount >= 0 ? '+' : ''}{formatCurrency(Math.abs(dayGroup.netAmount))}
+    </Text>
+  </View>
+));
+
+interface ContentLayoutProps {
+  viewModel: TransactionViewModel;
+  searchQuery: string;
+  handleSearchChange: (text: string) => void;
+  setFilterLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setFilterUpdate: React.Dispatch<React.SetStateAction<number>>;
+  formatCurrency: (value: number) => string;
+  formatMonth: (date: Date) => string;
+  getCategoryDetails: (categoryName: string, type: TransactionType) => { icon: string; color: string; };
+  formatDateTime: (date: Date) => string;
+  handleTransactionPress: (transaction: Transaction) => void;
+  visibilityAnimation: Animated.Value;
+}
+
+const ContentLayout: React.FC<ContentLayoutProps> = ({ 
+  viewModel, 
+  searchQuery,
+  handleSearchChange,
+  setFilterLoading,
+  setFilterUpdate,
+  formatCurrency,
+  formatMonth,
+  getCategoryDetails,
+  formatDateTime,
+  handleTransactionPress,
+  visibilityAnimation,
+}) => {
+  const animatedStyle = {
+    opacity: visibilityAnimation,
+    maxHeight: visibilityAnimation.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 500], // A large enough value to not clip the content
+    }),
+    overflow: 'hidden' as 'hidden',
+  };
+
+  return (
+  <KeyboardAvoidingView style={{flex: 1}} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>İşlemler</Text>
+      </View>
+
+      {/* Month Selector */}
+      <MonthSelector viewModel={viewModel} formatMonth={formatMonth} />
+
+      {/* Search and Filters */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Açıklama veya kategoride ara..."
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={handleSearchChange}
+          />
+        </View>
+        <Animated.View style={animatedStyle}>
+          <View style={styles.filterScrollContainer}>
+            {/* Sol Scroll Indicator */}
+            <View style={styles.filterScrollIndicatorLeft}>
+              <Ionicons name="chevron-back" size={14} color="#666666" />
+            </View>
+            
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScrollView}
+              contentContainerStyle={styles.filterContainer}
+            >
+              <FilterButton
+                title="Tümü"
+                isActive={!viewModel?.filters.type}
+                onPress={() => {
+                  viewModel?.setFilters({ type: undefined });
+                  setFilterLoading(true);
+                  setFilterUpdate(f => f + 1);
+                  setTimeout(() => setFilterLoading(false), 400);
+                }}
+              />
+              <FilterButton
+                title="Gelir"
+                isActive={viewModel?.filters.type === TransactionType.INCOME}
+                onPress={() => {
+                  viewModel?.setFilters({ type: TransactionType.INCOME });
+                  setFilterLoading(true);
+                  setFilterUpdate(f => f + 1);
+                  setTimeout(() => setFilterLoading(false), 400);
+                }}
+              />
+              <FilterButton
+                title="Gider"
+                isActive={viewModel?.filters.type === TransactionType.EXPENSE}
+                onPress={() => {
+                  viewModel?.setFilters({ type: TransactionType.EXPENSE });
+                  setFilterLoading(true);
+                  setFilterUpdate(f => f + 1);
+                  setTimeout(() => setFilterLoading(false), 400);
+                }}
+              />
+            </ScrollView>
+            
+            {/* Sağ Scroll Indicator */}
+            <View style={styles.filterScrollIndicatorRight}>
+              <Ionicons name="chevron-forward" size={14} color="#666666" />
+            </View>
+          </View>
+        </Animated.View>
+      </View>
+
+      {/* Monthly Stats */}
+      <Animated.View style={animatedStyle}>
+        <View style={styles.statsCard}>
+          <View style={styles.statsContent}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Toplam Gelir</Text>
+              <Text style={[styles.statValue, { color: '#00E676' }]}>
+                +{formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Toplam Gider</Text>
+              <Text style={[styles.statValue, { color: '#FF1744' }]}>
+                -{formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Net Miktar</Text>
+              <Text style={[
+                styles.statValue,
+                { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#00E676' : '#FF1744' }
+              ]}>
+                {(viewModel?.monthlyStats.netAmount || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Transactions List */}
+      <View style={styles.listContainer}>
+        {(viewModel?.dayGroups.length || 0) === 0 ? (
+          <ScrollView
+            style={styles.scrollView}
+            refreshControl={
+              <RefreshControl
+                refreshing={viewModel?.isLoading || false}
+                onRefresh={() => viewModel?.loadTransactions()}
+                colors={['#FFFFFF']}
+                tintColor="#FFFFFF"
+              />
+            }
+          >
+            <View style={styles.emptyState}>
+              <Ionicons name="receipt-outline" size={64} color="#666666" />
+              <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
+              <Text style={styles.emptyStateText}>
+                Bu ay için henüz bir işlem kaydı bulunmuyor.
+              </Text>
+            </View>
+          </ScrollView>
+        ) : (
+          <ScrollView 
+            style={styles.scrollView}
+            refreshControl={
+              <RefreshControl
+                refreshing={viewModel?.isLoading || false}
+                onRefresh={() => viewModel?.loadTransactions()}
+                colors={['#FFFFFF']}
+                tintColor="#FFFFFF"
+              />
+            }
+          >
+            {viewModel?.dayGroups.map((dayGroup) => (
+              <View key={dayGroup.date}>
+                <DayGroupHeader dayGroup={dayGroup} formatCurrency={formatCurrency} />
+                {dayGroup.transactions.map((transaction) => (
+                  <TransactionItem 
+                    key={transaction.id} 
+                    item={transaction} 
+                    getCategoryDetails={getCategoryDetails}
+                    formatDateTime={formatDateTime}
+                    handleTransactionPress={handleTransactionPress}
+                  />
+                ))}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+  </KeyboardAvoidingView>
+  )
+};
 
 const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ navigation }) => {
   const { user } = useAuth();
@@ -51,6 +366,8 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [showCategoriesModal, setShowCategoriesModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const visibilityAnimation = useRef(new Animated.Value(1)).current;
   const [filterUpdate, setFilterUpdate] = useState(0); // Dummy state for force update
   const [filterLoading, setFilterLoading] = useState(false); // Progress bar için
 
@@ -62,19 +379,52 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
   });
 
   // Get frequent categories (same logic as AddTransactionScreen)
-  const getFrequentCategories = () => {
+  const getFrequentCategories = useCallback(() => {
     const availableCategories = selectedTransaction?.type === TransactionType.INCOME 
       ? DEFAULT_INCOME_CATEGORIES 
       : DEFAULT_EXPENSE_CATEGORIES;
     
     // Show top 4 categories instead of all
     return availableCategories.slice(0, 4);
-  };
+  }, [selectedTransaction]);
 
   // Custom hooks
   const { formatCurrency, currencySymbol, parseInput } = useCurrency({ maximumFractionDigits: 2, minimumFractionDigits: 2 });
   const { getDetails } = useCategory();
   const { formatShort, formatMonthYear, formatTime } = useDate();
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
+    viewModel?.setFilters({ searchTerm: text });
+  };
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        Animated.timing(visibilityAnimation, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: false, // height animations are not supported with native driver
+        }).start();
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        Animated.timing(visibilityAnimation, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false, // height animations are not supported with native driver
+        }).start();
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   // Edit transaction'ı aç (viewModel'den gelen editTransactionId kontrolü)
   useEffect(() => {
@@ -88,27 +438,27 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     }
   }, [viewModel?.editTransactionId, viewModel?.transactions]);
 
-  const formatDate = (date: Date) => {
+  const formatDate = useCallback((date: Date) => {
     return formatShort(date);
-  };
+  }, [formatShort]);
 
-  const formatDateTime = (date: Date) => {
+  const formatDateTime = useCallback((date: Date) => {
     return `${formatShort(date)} ${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
-  };
+  }, [formatShort]);
 
-  const formatMonth = (date: Date) => {
+  const formatMonth = useCallback((date: Date) => {
     return formatMonthYear(date);
-  };
+  }, [formatMonthYear]);
 
-  const getCategoryDetails = (categoryName: string, type: TransactionType) => {
+  const getCategoryDetails = useCallback((categoryName: string, type: TransactionType) => {
     return getDetails(categoryName, type);
-  };
+  }, [getDetails]);
 
 
 
-  const handleTransactionPress = (transaction: Transaction) => {
+  const handleTransactionPress = useCallback((transaction: Transaction) => {
     navigation.navigate('TransactionDetail', { transactionId: transaction.id });
-  };
+  }, [navigation]);
 
   const handleEditTransactionPress = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
@@ -193,119 +543,11 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     }
   };
 
-  const FilterButton = ({ 
-    title, 
-    isActive, 
-    onPress 
-  }: {
-    title: string;
-    isActive: boolean;
-    onPress: () => void;
-  }) => (
-    <TouchableOpacity
-      style={[
-        styles.filterButton, 
-        isActive && styles.filterButtonActive
-      ]}
-      onPress={onPress}
-    >
-      <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const TransactionItem = ({ item }: { item: Transaction }) => {
-    const category = getCategoryDetails(item.category, item.type);
-    const isIncome = item.type === TransactionType.INCOME;
-
-    return (
-      <TouchableOpacity style={styles.transactionItem} onPress={() => handleTransactionPress(item)}>
-        <View style={styles.transactionCard}>
-          <View style={styles.transactionContent}>
-            <View style={styles.transactionLeft}>
-              <View style={[
-                styles.categoryIconContainer,
-                { backgroundColor: category.color }
-              ]}>
-              <Ionicons 
-                name={category.icon as any} 
-                size={20} 
-                color="#FFFFFF" 
-              />
-              </View>
-              <View style={styles.transactionInfo}>
-                <Text style={[styles.transactionDescription, { color: '#FFFFFF' }]}>{item.description || item.category}</Text>
-                <Text style={styles.transactionCategory}>{item.category}</Text>
-                <Text style={styles.transactionDate}>{formatDateTime(item.date)}</Text>
-              </View>
-            </View>
-            <View style={styles.transactionRight}>
-              <Text style={[
-                styles.transactionAmount,
-                { color: isIncome ? '#4CAF50' : '#F44336' }
-              ]}>
-                {isIncome ? '+' : '-'}{formatCurrency(item.amount)}
-              </Text>
-              <Ionicons 
-                name="chevron-forward" 
-                size={16} 
-                color="#666666" 
-                style={styles.transactionChevron}
-              />
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-
-
-  const MonthSelector = () => (
-    <View style={styles.monthSelector}>
-      <TouchableOpacity 
-        style={styles.monthButton}
-        onPress={() => viewModel?.goToPreviousMonth()}
-      >
-        <Ionicons name="chevron-back" size={20} color="#2196F3" />
-      </TouchableOpacity>
-      
-      <Text style={styles.monthText}>{formatMonth(viewModel?.currentMonth || new Date())}</Text>
-      
-      <TouchableOpacity 
-        style={styles.monthButton}
-        onPress={() => viewModel?.goToNextMonth()}
-      >
-        <Ionicons 
-          name="chevron-forward" 
-          size={20} 
-          color="#2196F3"
-        />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const DayGroupHeader = ({ dayGroup }: { dayGroup: any }) => (
-    <View style={[
-      styles.sectionHeader,
-      Platform.OS === 'web' && styles.webSectionHeader
-    ]}>
-      <Text style={styles.sectionTitle}>{dayGroup.displayDate}</Text>
-      <Text style={[
-        styles.sectionAmount,
-        { color: dayGroup.netAmount >= 0 ? '#4CAF50' : '#F44336' }
-      ]}>
-        {dayGroup.netAmount >= 0 ? '+' : ''}{formatCurrency(Math.abs(dayGroup.netAmount))}
-      </Text>
-    </View>
-  );
-
   const TransactionModal = () => {
     if (!selectedTransaction) return null;
 
     const isIncome = selectedTransaction.type === TransactionType.INCOME;
-    const category = getCategoryDetails(selectedTransaction.category, selectedTransaction.type);
+    const category = getDetails(selectedTransaction.category, selectedTransaction.type);
     const availableCategories = isIncome ? DEFAULT_INCOME_CATEGORIES : DEFAULT_EXPENSE_CATEGORIES;
 
     return (
@@ -677,157 +919,25 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     );
   }
 
-  const ContentLayout = () => (
-    <>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>İşlemler</Text>
-        </View>
-
-        {/* Month Selector */}
-        <MonthSelector />
-
-        {/* Search and Filters */}
-        <View style={styles.searchSection}>
-          <Input
-            placeholder="İşlem ara..."
-            value={viewModel?.searchTerm || ''}
-            onChangeText={(term) => viewModel?.setSearchTerm(term)}
-            leftIcon="search"
-          />
-          
-          <View style={styles.filterScrollContainer}>
-            {/* Sol Scroll Indicator */}
-            <View style={styles.filterScrollIndicatorLeft}>
-              <Ionicons name="chevron-back" size={14} color="#666666" />
-            </View>
-            
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.filterScrollView}
-              contentContainerStyle={styles.filterContainer}
-            >
-              <FilterButton
-                title="Tümü"
-                isActive={!viewModel?.filters.type}
-                onPress={() => {
-                  viewModel?.setFilters({ type: undefined });
-                  setFilterLoading(true);
-                  setFilterUpdate(f => f + 1);
-                  setTimeout(() => setFilterLoading(false), 400);
-                }}
-              />
-              <FilterButton
-                title="Gelir"
-                isActive={viewModel?.filters.type === TransactionType.INCOME}
-                onPress={() => {
-                  viewModel?.setFilters({ type: TransactionType.INCOME });
-                  setFilterLoading(true);
-                  setFilterUpdate(f => f + 1);
-                  setTimeout(() => setFilterLoading(false), 400);
-                }}
-              />
-              <FilterButton
-                title="Gider"
-                isActive={viewModel?.filters.type === TransactionType.EXPENSE}
-                onPress={() => {
-                  viewModel?.setFilters({ type: TransactionType.EXPENSE });
-                  setFilterLoading(true);
-                  setFilterUpdate(f => f + 1);
-                  setTimeout(() => setFilterLoading(false), 400);
-                }}
-              />
-            </ScrollView>
-            
-            {/* Sağ Scroll Indicator */}
-            <View style={styles.filterScrollIndicatorRight}>
-              <Ionicons name="chevron-forward" size={14} color="#666666" />
-            </View>
-          </View>
-        </View>
-
-        {/* Monthly Stats */}
-        <View style={styles.statsCard}>
-          <View style={styles.statsContent}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Toplam Gelir</Text>
-              <Text style={[styles.statValue, { color: '#00E676' }]}>
-                +{formatCurrency(viewModel?.monthlyStats.totalIncome || 0)}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Toplam Gider</Text>
-              <Text style={[styles.statValue, { color: '#FF1744' }]}>
-                -{formatCurrency(viewModel?.monthlyStats.totalExpense || 0)}
-              </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Net Miktar</Text>
-              <Text style={[
-                styles.statValue,
-                { color: (viewModel?.monthlyStats.netAmount || 0) >= 0 ? '#00E676' : '#FF1744' }
-              ]}>
-                {(viewModel?.monthlyStats.netAmount || 0) >= 0 ? '+' : ''}{formatCurrency(Math.abs(viewModel?.monthlyStats.netAmount || 0))}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Transactions List */}
-        <View style={styles.listContainer}>
-          {(viewModel?.dayGroups.length || 0) === 0 ? (
-            <ScrollView
-              style={styles.scrollView}
-              refreshControl={
-                <RefreshControl
-                  refreshing={viewModel?.isLoading || false}
-                  onRefresh={() => viewModel?.loadTransactions()}
-                  colors={['#FFFFFF']}
-                  tintColor="#FFFFFF"
-                />
-              }
-            >
-              <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={64} color="#666666" />
-                <Text style={styles.emptyStateTitle}>Henüz işlem yok</Text>
-                <Text style={styles.emptyStateText}>
-                  Bu ay için henüz bir işlem kaydı bulunmuyor.
-                </Text>
-              </View>
-            </ScrollView>
-          ) : (
-            <ScrollView 
-              style={styles.scrollView}
-              refreshControl={
-                <RefreshControl
-                  refreshing={viewModel?.isLoading || false}
-                  onRefresh={() => viewModel?.loadTransactions()}
-                  colors={['#FFFFFF']}
-                  tintColor="#FFFFFF"
-                />
-              }
-            >
-              {viewModel?.dayGroups.map((dayGroup) => (
-                <View key={dayGroup.date}>
-                  <DayGroupHeader dayGroup={dayGroup} />
-                  {dayGroup.transactions.map((transaction) => (
-                    <TransactionItem key={transaction.id} item={transaction} />
-                  ))}
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        <TransactionModal />
-    </>
-  );
+  const contentProps = {
+    viewModel, 
+    searchQuery,
+    handleSearchChange,
+    setFilterLoading,
+    setFilterUpdate,
+    formatCurrency,
+    formatMonth,
+    getCategoryDetails,
+    formatDateTime,
+    handleTransactionPress,
+    visibilityAnimation,
+  }
 
   if (Platform.OS === 'web') {
     return (
       <WebLayout title="İşlemler" activeRoute="transactions" navigation={navigation}>
-        <ContentLayout />
+        <ContentLayout {...contentProps} />
+        <TransactionModal />
       </WebLayout>
     );
   }
@@ -836,7 +946,8 @@ const TransactionsScreen: React.FC<TransactionsScreenProps> = observer(({ naviga
     <>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <SafeAreaView style={styles.container} edges={['bottom']}>
-        <ContentLayout />
+        <ContentLayout {...contentProps} />
+        <TransactionModal />
       </SafeAreaView>
     </>
   );
@@ -863,8 +974,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 16,
   },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111111',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+    marginBottom: 16,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
   searchInput: {
-    marginBottom: 12,
+    flex: 1,
+    height: 48,
+    color: '#FFFFFF',
+    fontSize: 16,
   },
   filterScrollView: {
     marginBottom: 16,

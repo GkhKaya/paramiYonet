@@ -105,6 +105,8 @@ export const Input: React.FC<InputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholderTextColor={COLORS.TEXT_SECONDARY}
+          value={textInputProps.value ?? ''}
+          onChangeText={textInputProps.onChangeText}
           {...textInputProps}
         />
         
