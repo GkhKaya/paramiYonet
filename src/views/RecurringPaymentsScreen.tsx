@@ -18,6 +18,8 @@ import { CreateRecurringPaymentModal } from '../components/recurring/CreateRecur
 import { useAuth } from '../contexts/AuthContext';
 import { RecurringPaymentViewModel } from '../viewmodels/RecurringPaymentViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
+import { RecurringPaymentService } from '../services/RecurringPaymentService';
+import { RecurringPayment } from '../models/RecurringPayment';
 
 interface RecurringPaymentsScreenProps {
   navigation: any;
@@ -29,6 +31,7 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
   const [accountViewModel, setAccountViewModel] = useState<AccountViewModel | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [paymentToEdit, setPaymentToEdit] = useState<RecurringPayment | null>(null);
 
   // Initialize ViewModels when user is available
   useEffect(() => {
@@ -39,6 +42,16 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
       setAccountViewModel(accountVm);
       // Load initial data
       accountVm.loadAccounts();
+      // Otomatik vadesi gelen ödemeleri işle
+      RecurringPaymentService.processRecurringPayments(user.id)
+        .then(() => {
+          // İsterseniz burada kullanıcıya bilgi gösterebilirsiniz
+          // örn: ToastAndroid.show('Vadesi gelen ödemeler işlendi', ToastAndroid.SHORT);
+        })
+        .catch((err) => {
+          // Hata yönetimi
+          // örn: ToastAndroid.show('Otomatik ödeme işlenirken hata oluştu', ToastAndroid.SHORT);
+        });
     } else {
       setPaymentViewModel(null);
       setAccountViewModel(null);
@@ -200,6 +213,7 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
                   onSkipPayment={() => paymentViewModel.skipPayment(payment.id)}
                   onToggleStatus={() => paymentViewModel.togglePaymentStatus(payment.id)}
                   onDelete={() => handleDeletePayment(payment.id, payment.name)}
+                  onEdit={() => { setPaymentToEdit(payment); setShowCreateModal(true); }}
                 />
               ))}
             </View>
@@ -222,6 +236,7 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
                   onSkipPayment={() => paymentViewModel.skipPayment(payment.id)}
                   onToggleStatus={() => paymentViewModel.togglePaymentStatus(payment.id)}
                   onDelete={() => handleDeletePayment(payment.id, payment.name)}
+                  onEdit={() => { setPaymentToEdit(payment); setShowCreateModal(true); }}
                 />
               ))
             ) : (
@@ -242,23 +257,13 @@ const RecurringPaymentsScreen: React.FC<RecurringPaymentsScreenProps> = observer
         {/* Create Modal */}
         <CreateRecurringPaymentModal
           visible={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+          onClose={() => { setShowCreateModal(false); setPaymentToEdit(null); }}
           onSaveSuccess={() => {
             setShowCreateModal(false);
+            setPaymentToEdit(null);
             handleRefresh();
           }}
-          onSubmit={async (paymentData) => {
-            if (paymentViewModel) {
-              const success = await paymentViewModel.createRecurringPayment(paymentData);
-              if (success) {
-                Alert.alert('Başarılı', 'Düzenli ödeme oluşturuldu');
-              }
-              return success;
-            }
-            return false;
-          }}
-          accounts={accountViewModel.accounts}
-          isLoading={paymentViewModel.isLoading}
+          paymentToEdit={paymentToEdit}
         />
       </SafeAreaView>
     </>

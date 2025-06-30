@@ -23,6 +23,7 @@ import {
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { gradients, animations } from '../styles/theme';
+import { validatePassword, validatePasswordConfirm, PASSWORD_RULES } from '../../utils/validation';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -58,12 +59,14 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       setError('Lütfen e-posta adresinizi girin.');
       return false;
     }
-    if (formData.password.length < 6) {
-      setError('Şifre en az 6 karakter olmalıdır.');
+    const passwordValidation = validatePassword(formData.password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors.join(' '));
       return false;
     }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Şifreler eşleşmiyor.');
+    const confirmValidation = validatePasswordConfirm(formData.password, formData.confirmPassword);
+    if (!confirmValidation.isValid) {
+      setError(confirmValidation.message || 'Şifreler eşleşmiyor.');
       return false;
     }
     return true;
@@ -207,7 +210,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
                 value={formData.password}
                 onChange={handleChange('password')}
                 required
-                sx={{ mb: 3 }}
+                sx={{ mb: 1 }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -226,6 +229,20 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
                   ),
                 }}
               />
+
+              {/* Şifre kuralları */}
+              <Box sx={{ mb: 2, ml: 1 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Şifre Kuralları:
+                </Typography>
+                <ul style={{ margin: 0, paddingLeft: 18, color: '#aaa', fontSize: 13 }}>
+                  <li>En az {PASSWORD_RULES.minLength} karakter</li>
+                  <li>En az bir büyük harf</li>
+                  <li>En az bir küçük harf</li>
+                  <li>En az bir sayı</li>
+                  <li>En az bir özel karakter ({PASSWORD_RULES.specialChars})</li>
+                </ul>
+              </Box>
 
               <TextField
                 fullWidth

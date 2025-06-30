@@ -132,7 +132,7 @@ const CreateRecurringPaymentModal: React.FC<CreateRecurringPaymentModalProps> = 
           category: paymentToEdit.category,
           accountId: paymentToEdit.accountId,
           frequency: paymentToEdit.frequency,
-          startDate: paymentToEdit.startDate.toDate(),
+          startDate: paymentToEdit.startDate,
           autoCreate: paymentToEdit.autoCreateTransaction,
         });
       }
@@ -210,12 +210,12 @@ const CreateRecurringPaymentModal: React.FC<CreateRecurringPaymentModalProps> = 
     let success = false;
     try {
       if (paymentToEdit) {
-        // success = await viewModels.recurringPaymentViewModel.updateRecurringPayment(paymentToEdit.id, paymentData);
+        success = await viewModels.recurringPaymentViewModel.updateRecurringPayment(paymentToEdit.id, paymentData as any);
       } else {
         success = await viewModels.recurringPaymentViewModel.createRecurringPayment(paymentData as any);
       }
     } catch (error) {
-       console.error("Error creating recurring payment:", error);
+       console.error("Error creating/updating recurring payment:", error);
        success = false;
     }
 
