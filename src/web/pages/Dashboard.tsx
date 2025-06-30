@@ -207,11 +207,11 @@ const Dashboard: React.FC = () => {
         }, 0);
         
         const currentMonthTransactions = transactionsData.filter(transaction => {
-          const transactionDate = transaction.date;
-          return transactionDate.getMonth() === now.getMonth() && 
-                 transactionDate.getFullYear() === now.getFullYear();
+            const transactionDate = transaction.date;
+            return transactionDate.getMonth() === now.getMonth() &&
+                   transactionDate.getFullYear() === now.getFullYear();
         });
-        
+
         const currentMonthBalance = currentMonthTransactions.reduce((sum, t) => {
           return sum + (t.type === TransactionType.INCOME ? t.amount : -t.amount);
         }, 0);
@@ -236,7 +236,7 @@ const Dashboard: React.FC = () => {
     };
 
     if (currentUser) {
-      loadData();
+    loadData();
     }
   }, [currentUser, setGlobalLoading]);
 

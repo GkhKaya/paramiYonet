@@ -3,7 +3,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { darkTheme } from './styles/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { LoadingProvider, useLoading, LoadingBar } from './contexts/LoadingContext';
+import { LoadingProvider, useLoading } from './contexts/LoadingContext';
 import { ErrorProvider } from '../contexts/ErrorContext';
 import WebLayout from './components/Layout/WebLayout';
 import Dashboard from './pages/Dashboard';
@@ -27,18 +27,13 @@ const AppContent: React.FC = () => {
   const { currentUser, loading } = useAuth();
   const { setLoading } = useLoading();
   const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
-  const [pageLoading, setPageLoading] = useState(false);
 
   // Navigation function that updates both state and browser history
   const navigateToPage = (page: PageType) => {
     if (page !== currentPage) {
       // Browser history'ye ekle
       window.history.pushState({ page }, '', `#/${page}`);
-      setPageLoading(true);
-      setTimeout(() => {
         setCurrentPage(page);
-        setPageLoading(false);
-      }, 300);
     }
   };
 
@@ -51,11 +46,7 @@ const AppContent: React.FC = () => {
       if (hash && validPages.includes(hash)) {
         const newPage = hash as PageType;
         if (newPage !== currentPage) {
-          setPageLoading(true);
-          setTimeout(() => {
             setCurrentPage(newPage);
-            setPageLoading(false);
-          }, 300); // Small delay for smooth transition
         }
       } else {
         // Eğer hash yoksa veya geçersizse dashboard'a yönlendir
@@ -160,12 +151,9 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <>
-      <LoadingBar show={pageLoading} />
       <WebLayout currentPage={currentPage} onNavigate={navigateToPage}>
         {renderPage()}
       </WebLayout>
-    </>
   );
 };
 

@@ -27,6 +27,8 @@ import {
   Stack,
   Avatar,
   IconButton,
+  Checkbox,
+  Switch,
 } from '@mui/material';
 import {
   CreditCard,
@@ -75,6 +77,8 @@ const CreditCards: React.FC = () => {
   const [paymentType, setPaymentType] = useState<'minimum' | 'full' | 'custom'>('minimum');
   const [customAmount, setCustomAmount] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [addAsExpense, setAddAsExpense] = useState(true);
+  const [isExternalPayment, setIsExternalPayment] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -153,6 +157,15 @@ const CreditCards: React.FC = () => {
     loadData();
   }, [currentUser]);
 
+  useEffect(() => {
+    if (isExternalPayment) {
+      setSelectedAccountId('');
+      setAddAsExpense(false);
+    } else {
+      setAddAsExpense(true);
+    }
+  }, [isExternalPayment]);
+
   // Alert auto dismiss
   useEffect(() => {
     if (alert) {
@@ -193,18 +206,14 @@ const CreditCards: React.FC = () => {
 
   // Mobil uygulamadaki AccountViewModel.addCreditCardPayment mantığı
   const handlePayment = async () => {
-    if (!selectedCard || !selectedAccountId) {
-      setAlert({ type: 'error', message: 'Lütfen tüm alanları doldurun' });
+    if (!selectedCard) return; // Should not happen
+
+    if (!isExternalPayment && !selectedAccountId) {
+      setAlert({ type: 'error', message: 'Lütfen bir ödeme hesabı seçin.' });
       return;
     }
 
     const paymentAmount = getPaymentAmount();
-    const selectedAccount = paymentAccounts.find(acc => acc.id === selectedAccountId);
-
-    if (!selectedAccount) {
-      setAlert({ type: 'error', message: 'Geçersiz ödeme hesabı' });
-      return;
-    }
 
     if (paymentAmount <= 0) {
       setAlert({ type: 'error', message: 'Geçerli bir ödeme tutarı girin' });
@@ -216,17 +225,24 @@ const CreditCards: React.FC = () => {
       return;
     }
 
-    if (paymentAmount > selectedAccount.balance) {
-      setAlert({ type: 'error', message: 'Ödeme hesabında yetersiz bakiye' });
-      return;
-    }
+    // Internal Payment specific checks
+    if (!isExternalPayment) {
+        const selectedAccount = paymentAccounts.find(acc => acc.id === selectedAccountId);
+        if (!selectedAccount) {
+            setAlert({ type: 'error', message: 'Geçersiz ödeme hesabı' });
+            return;
+        }
+        if (paymentAmount > selectedAccount.balance) {
+            setAlert({ type: 'error', message: 'Ödeme hesabında yetersiz bakiye' });
+            return;
+        }
 
-    // Minimum payment warning - mobil uygulamadaki mantık
-    const minPayment = calculateMinPayment(selectedCard.currentDebt);
-    if (paymentType === 'custom' && paymentAmount < minPayment && paymentAmount < selectedCard.currentDebt) {
-      if (!window.confirm(`Asgari ödeme tutarı ${minPayment.toFixed(2)} ₺. Bu tutardan az ödeme yapmak faiz uygulanmasına neden olabilir. Devam etmek istiyor musunuz?`)) {
-        return;
-      }
+        const minPayment = calculateMinPayment(selectedCard.currentDebt);
+        if (paymentType === 'custom' && paymentAmount < minPayment && paymentAmount < selectedCard.currentDebt) {
+            if (!window.confirm(`Asgari ödeme tutarı ${minPayment.toFixed(2)} ₺. Bu tutardan az ödeme yapmak faiz uygulanmasına neden olabilir. Devam etmek istiyor musunuz?`)) {
+                return;
+            }
+        }
     }
 
     setPaymentLoading(true);
@@ -235,51 +251,62 @@ const CreditCards: React.FC = () => {
       const { db } = await import('../../config/firebase');
       const { doc, updateDoc, addDoc, collection, Timestamp } = await import('firebase/firestore');
 
-      // Update payment account balance - ödeme hesabından para çıkar
-      await updateDoc(doc(db, 'accounts', selectedAccountId), {
-        balance: selectedAccount.balance - paymentAmount,
-        updatedAt: Timestamp.now()
-      });
+      // If internal payment, update source account
+      if (!isExternalPayment && selectedAccountId) {
+        const selectedAccount = paymentAccounts.find(acc => acc.id === selectedAccountId)!;
+        await updateDoc(doc(db, 'accounts', selectedAccountId), {
+          balance: selectedAccount.balance - paymentAmount,
+          updatedAt: Timestamp.now()
+        });
 
-      // Update credit card debt - kredi kartı borcunu azalt
+        // Add transaction if requested
+        if (addAsExpense) {
+          await addDoc(collection(db, 'transactions'), {
+            userId: currentUser!.uid,
+            accountId: selectedAccountId,
+            amount: paymentAmount,
+            type: 'expense',
+            description: `Kredi kartı ödeme (${selectedCard.name})`,
+            category: 'Kredi Kartı Ödeme',
+            categoryIcon: 'card',
+            date: Timestamp.now(),
+            createdAt: Timestamp.now(),
+          });
+        }
+      }
+
+      // Update credit card debt (for both)
       const newDebt = Math.max(selectedCard.currentDebt - paymentAmount, 0);
       await updateDoc(doc(db, 'accounts', selectedCard.id), {
         currentDebt: newDebt,
         updatedAt: Timestamp.now()
       });
 
-      // Add transaction record - işlem kaydı ekle
-      await addDoc(collection(db, 'transactions'), {
-        userId: currentUser!.uid,
-        accountId: selectedAccountId,
-        amount: paymentAmount,
-        type: 'expense',
-        description: `Kredi kartı ödeme (${selectedCard.name})`,
-        category: 'Kredi Kartı Ödeme',
-        categoryIcon: 'card',
-        date: Timestamp.now(),
-        createdAt: Timestamp.now(),
-      });
-
-      // Update local state
+      // Update local state for credit card
       setCreditCards(prev => prev.map(card => 
         card.id === selectedCard.id 
           ? { ...card, currentDebt: newDebt }
           : card
       ));
 
-      setPaymentAccounts(prev => prev.map(acc =>
-        acc.id === selectedAccountId
-          ? { ...acc, balance: acc.balance - paymentAmount }
-          : acc
-      ));
+      // Update local state for payment account if internal payment
+      if (!isExternalPayment && selectedAccountId) {
+        setPaymentAccounts(prev => prev.map(acc =>
+          acc.id === selectedAccountId
+            ? { ...acc, balance: acc.balance - paymentAmount }
+            : acc
+        ));
+      }
 
       setAlert({ type: 'success', message: 'Kredi kartı ödemesi başarıyla yapıldı' });
       setPaymentDialogOpen(false);
+      // Reset states after payment
       setSelectedCard(null);
       setPaymentType('minimum');
       setCustomAmount('');
       setSelectedAccountId('');
+      setAddAsExpense(true);
+      setIsExternalPayment(false);
 
     } catch (error) {
       console.error('Payment error:', error);
@@ -295,6 +322,8 @@ const CreditCards: React.FC = () => {
     setPaymentType('minimum');
     setCustomAmount('');
     setSelectedAccountId(paymentAccounts.length > 0 ? paymentAccounts[0].id : '');
+    setAddAsExpense(true);
+    setIsExternalPayment(false);
   };
 
   if (loading) {
@@ -694,59 +723,106 @@ const CreditCards: React.FC = () => {
                 />
               )}
 
-              {/* Payment Account Selection - Mobil uygulamadaki PaymentAccountSelector mantığı */}
-              <FormControl fullWidth>
-                <InputLabel id="payment-account-label" sx={{ color: '#bbb' }}>Ödeme Hesabı</InputLabel>
-                <Select
-                  labelId="payment-account-label"
-                  label="Ödeme Hesabı"
-                  value={selectedAccountId}
-                  onChange={(e) => setSelectedAccountId(e.target.value)}
-                  sx={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    color: '#fff',
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: selectedCard.color },
-                    '& .MuiInputLabel-root': { 
-                      color: '#bbb',
-                      '&.Mui-focused': { color: selectedCard?.color || '#2196f3' }
-                    }
-                  }}
-                >
-                  {paymentAccounts.map((account) => {
-                    const paymentAmount = getPaymentAmount();
-                    const hasEnoughBalance = account.balance >= paymentAmount;
-                    
-                    return (
-                      <MenuItem 
-                        key={account.id} 
-                        value={account.id}
-                        disabled={!hasEnoughBalance && paymentAmount > 0}
-                      >
-                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                          <Avatar sx={{ bgcolor: account.color, width: 32, height: 32, mr: 2 }}>
-                            <AccountBalance />
-                          </Avatar>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography sx={{ color: hasEnoughBalance ? '#fff' : '#666' }}>
-                              {account.name}
-                            </Typography>
-                            <Typography variant="body2" sx={{ 
-                              color: hasEnoughBalance ? '#4caf50' : '#f44336' 
-                            }}>
-                              Bakiye: ₺{account.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </MenuItem>
-                    );
-                  })}
-                </Select>
+              {/* Gider Olarak Kaydet Seçeneği */}
+              <FormControl component="fieldset" disabled={isExternalPayment}>
+                <FormLabel sx={{ color: isExternalPayment ? '#666' : '#fff', mb: 1 }}>Kayıt Seçenekleri</FormLabel>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={addAsExpense}
+                      onChange={(e) => setAddAsExpense(e.target.checked)}
+                      disabled={isExternalPayment}
+                      sx={{ 
+                        color: isExternalPayment ? '#666' : '#fff',
+                        '&.Mui-checked': { color: selectedCard?.color || '#2196f3' }
+                      }}
+                    />
+                  }
+                  label={
+                    <Box>
+                      <Typography sx={{ color: isExternalPayment ? '#666' : '#fff' }}>Gider Olarak Kaydet</Typography>
+                      <Typography variant="body2" sx={{ color: isExternalPayment ? '#666' : '#bbb' }}>
+                        {addAsExpense 
+                          ? 'Ödeme işlemi harcama listesinde gözükecek' 
+                          : 'Ödeme işlemi sadece kredi kartı borcunu azaltacak'
+                        }
+                      </Typography>
+                    </Box>
+                  }
+                />
               </FormControl>
 
+              {/* Dış Kaynaktan Ödeme */}
+              <FormControl component="fieldset">
+                <FormLabel sx={{ color: '#fff', mb: 1 }}>Ödeme Kaynağı</FormLabel>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={isExternalPayment}
+                      onChange={(e) => setIsExternalPayment(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Dış Kaynaktan Ödeme Yap"
+                  sx={{ color: '#fff' }}
+                />
+              </FormControl>
+
+              {/* Payment Account Selection - Mobil uygulamadaki PaymentAccountSelector mantığı */}
+              {!isExternalPayment && (
+                <FormControl fullWidth>
+                  <InputLabel id="payment-account-label" sx={{ color: '#bbb' }}>Ödeme Hesabı</InputLabel>
+                  <Select
+                    labelId="payment-account-label"
+                    label="Ödeme Hesabı"
+                    value={selectedAccountId}
+                    onChange={(e) => setSelectedAccountId(e.target.value)}
+                    sx={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      color: '#fff',
+                      '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: selectedCard.color },
+                      '& .MuiInputLabel-root': { 
+                        color: '#bbb',
+                        '&.Mui-focused': { color: selectedCard?.color || '#2196f3' }
+                      }
+                    }}
+                  >
+                    {paymentAccounts.map((account) => {
+                      const paymentAmount = getPaymentAmount();
+                      const hasEnoughBalance = account.balance >= paymentAmount;
+                      
+                      return (
+                        <MenuItem 
+                          key={account.id} 
+                          value={account.id}
+                          disabled={!hasEnoughBalance && paymentAmount > 0}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                            <Avatar sx={{ bgcolor: account.color, width: 32, height: 32, mr: 2 }}>
+                              <AccountBalance />
+                            </Avatar>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography sx={{ color: hasEnoughBalance ? '#fff' : '#666' }}>
+                                {account.name}
+                              </Typography>
+                              <Typography variant="body2" sx={{ 
+                                color: hasEnoughBalance ? '#4caf50' : '#f44336' 
+                              }}>
+                                Bakiye: ₺{account.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              )}
+
               {/* Payment Summary - Mobil uygulamadaki PaymentSummaryCard mantığı */}
-              {selectedAccountId && getPaymentAmount() > 0 && (
+              {(selectedAccountId || isExternalPayment) && getPaymentAmount() > 0 && (
                 <Card sx={{ 
                   background: 'rgba(255, 255, 255, 0.05)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -757,6 +833,12 @@ const CreditCards: React.FC = () => {
                       Ödeme Özeti
                     </Typography>
                     <Stack spacing={1}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography sx={{ color: '#bbb' }}>Ödeme Kaynağı:</Typography>
+                        <Typography sx={{ color: '#fff', fontWeight: 600 }}>
+                          {isExternalPayment ? 'Dış Kaynak' : paymentAccounts.find(a => a.id === selectedAccountId)?.name}
+                        </Typography>
+                      </Box>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                         <Typography sx={{ color: '#bbb' }}>Ödeme Tutarı:</Typography>
                         <Typography sx={{ color: '#fff', fontWeight: 600 }}>
@@ -805,7 +887,7 @@ const CreditCards: React.FC = () => {
           <Button
             onClick={handlePayment}
             variant="contained"
-            disabled={paymentLoading || !selectedAccountId || getPaymentAmount() <= 0}
+            disabled={paymentLoading || (!isExternalPayment && !selectedAccountId) || getPaymentAmount() <= 0}
             startIcon={paymentLoading ? <CircularProgress size={16} /> : <Payment />}
             sx={{ 
               bgcolor: selectedCard?.color || '#2196f3',

@@ -471,56 +471,61 @@ export class AccountViewModel extends BaseViewModel {
    */
   addCreditCardPayment = async (
     creditCardId: string,
-    fromAccountId: string,
+    fromAccountId: string | null,
     amount: number,
     paymentType: 'minimum' | 'full' | 'custom',
-    description?: string
+    description?: string,
+    addAsExpense: boolean = true
   ): Promise<boolean> => {
     try {
       this.setLoading(true);
 
       const creditCard = this.getAccountById(creditCardId);
-      const fromAccount = this.getAccountById(fromAccountId);
-
       if (!creditCard || creditCard.type !== AccountType.CREDIT_CARD) {
         throw new Error('Geçersiz kredi kartı');
       }
 
-      if (!fromAccount) {
-        throw new Error('Geçersiz ödeme hesabı');
+      // Dahili ödeme (kullanıcının kendi hesabından)
+      if (fromAccountId) {
+        const fromAccount = this.getAccountById(fromAccountId);
+
+        if (!fromAccount) {
+          throw new Error('Geçersiz ödeme hesabı');
+        }
+
+        if (fromAccount.balance < amount) {
+          throw new Error('Yetersiz bakiye');
+        }
+
+        // Ödeme hesabından para çıkar
+        await updateDoc(doc(db, 'accounts', fromAccountId), {
+          balance: fromAccount.balance - amount,
+          updatedAt: Timestamp.now(),
+        });
+
+        // Gider olarak işlem kaydet (eğer istenmişse)
+        if (addAsExpense) {
+          await addDoc(collection(db, 'transactions'), {
+            userId: this.userId,
+            accountId: fromAccountId,
+            amount: -amount,
+            type: TransactionType.EXPENSE,
+            description: description || `Kredi kartı ödeme (${creditCard.name})`,
+            category: 'Kredi Kartı Ödeme',
+            categoryIcon: 'card',
+            date: Timestamp.now(),
+            createdAt: Timestamp.now(),
+          });
+        }
       }
+      // `fromAccountId` null ise dış kaynaklı ödemedir, kullanıcının hesap bakiyeleri etkilenmez.
 
-      if (fromAccount.balance < amount) {
-        throw new Error('Yetersiz bakiye');
-      }
-
-      // Ödeme hesabından para çıkar
-      await updateDoc(doc(db, 'accounts', fromAccountId), {
-        balance: fromAccount.balance - amount,
-        updatedAt: Timestamp.now()
-      });
-
-      // Kredi kartı borcunu azalt
+      // Kredi kartı borcunu azalt (her iki durumda da ortak)
       const newDebt = Math.max((creditCard.currentDebt || 0) - amount, 0);
       await updateDoc(doc(db, 'accounts', creditCardId), {
         currentDebt: newDebt,
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
       });
-
-      // Kredi kartı ödeme işlemi olarak kaydet
-      await addDoc(collection(db, 'transactions'), {
-        userId: this.userId,
-        accountId: fromAccountId,
-        amount: -amount,
-        type: TransactionType.EXPENSE,
-        description: description || `Kredi kartı ödeme (${creditCard.name})`,
-        category: 'Kredi Kartı Ödeme',
-        categoryIcon: 'card',
-        date: Timestamp.now(),
-        createdAt: Timestamp.now(),
-      });
-
-      // Real-time listener otomatik güncelleyecek
 
       this.setLoading(false);
       return true;

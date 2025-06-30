@@ -351,9 +351,9 @@ const RecurringPayments: React.FC = () => {
     } catch (error) {
         showSnackbar('Ödeme güncellenirken hata oluştu');
     } finally {
-        setGlobalLoading(false);
+      setGlobalLoading(false);
     }
-};
+  };
 
   // Filter payments by status
   const activePayments = recurringPayments.filter(p => p.isActive);
@@ -456,17 +456,17 @@ const RecurringPayments: React.FC = () => {
           position: 'relative'
         }}
       >
-        <CardContent>
+          <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Avatar sx={{ bgcolor: statusColor, width: 56, height: 56 }}>
                 {getCategoryIcon(payment.categoryIcon || 'Receipt')}
-              </Avatar>
-              <Box>
+                </Avatar>
+                <Box>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>{payment.name}</Typography>
-                <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" color="text.secondary">
                   {payment.description || 'Açıklama yok'}
-                </Typography>
+                  </Typography>
               </Box>
             </Box>
             <IconButton onClick={(e) => openMenu(e, payment)}>
@@ -504,10 +504,10 @@ const RecurringPayments: React.FC = () => {
             </Typography>
             <Typography variant="body2">
               Hesap: {account?.name || 'Bilinmiyor'}
-            </Typography>
+              </Typography>
           </Box>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
     );
   };
 

@@ -1151,14 +1151,14 @@ const Reports: React.FC = () => {
                </Card>
              </motion.div>
 
-            {/* Modern Chart Analytics Buttons */}
+                        {/* Modern Chart Analytics Buttons */}
             {transactions.length > 0 && (
               <>
-                <Typography variant="h5" sx={{ fontWeight: 700, mt: 4, mb: 3 }}>
-                  Görsel Analiz Grafikleri
-                </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700, mt: 4, mb: 3 }}>
+              Görsel Analiz Grafikleri
+            </Typography>
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 3 }}>
               {/* Chart Selection Cards */}
               {[
                 {

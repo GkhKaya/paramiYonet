@@ -203,18 +203,18 @@ export class TransactionService {
       } else {
         // For regular accounts, update balance
         const currentBalance = accountData.balance || 0;
-        let newBalance: number;
+      let newBalance: number;
         
-        if (transactionData.type === TransactionType.INCOME) {
-          newBalance = currentBalance + transactionData.amount;
-        } else {
-          newBalance = currentBalance - transactionData.amount;
-        }
+      if (transactionData.type === TransactionType.INCOME) {
+        newBalance = currentBalance + transactionData.amount;
+      } else {
+        newBalance = currentBalance - transactionData.amount;
+      }
 
-        batch.update(accountRef, { 
-          balance: newBalance,
-          updatedAt: Timestamp.fromDate(now)
-        });
+      batch.update(accountRef, { 
+        balance: newBalance,
+        updatedAt: Timestamp.fromDate(now)
+      });
       }
 
       // Execute batch write
@@ -299,29 +299,29 @@ export class TransactionService {
           });
         } else {
           // For regular accounts, update balance
-          let currentBalance = accountData.balance || 0;
-          
-          // Revert old transaction effect
-          if (currentTransaction.type === TransactionType.INCOME) {
-            currentBalance -= currentTransaction.amount;
-          } else {
-            currentBalance += currentTransaction.amount;
-          }
-          
-          // Apply new transaction effect
-          const newAmount = updates.amount !== undefined ? updates.amount : currentTransaction.amount;
-          const newType = updates.type !== undefined ? updates.type : currentTransaction.type;
-          
-          if (newType === TransactionType.INCOME) {
-            currentBalance += newAmount;
-          } else {
-            currentBalance -= newAmount;
-          }
+        let currentBalance = accountData.balance || 0;
+        
+        // Revert old transaction effect
+        if (currentTransaction.type === TransactionType.INCOME) {
+          currentBalance -= currentTransaction.amount;
+        } else {
+          currentBalance += currentTransaction.amount;
+        }
+        
+        // Apply new transaction effect
+        const newAmount = updates.amount !== undefined ? updates.amount : currentTransaction.amount;
+        const newType = updates.type !== undefined ? updates.type : currentTransaction.type;
+        
+        if (newType === TransactionType.INCOME) {
+          currentBalance += newAmount;
+        } else {
+          currentBalance -= newAmount;
+        }
 
-          batch.update(accountRef, { 
-            balance: currentBalance,
-            updatedAt: Timestamp.fromDate(now)
-          });
+        batch.update(accountRef, { 
+          balance: currentBalance,
+          updatedAt: Timestamp.fromDate(now)
+        });
         }
       }
 
@@ -378,19 +378,19 @@ export class TransactionService {
         });
       } else {
         // For regular accounts, revert balance
-        let currentBalance = accountData.balance || 0;
-        
-        // Revert transaction effect
-        if (transactionData.type === TransactionType.INCOME) {
-          currentBalance -= transactionData.amount;
-        } else {
-          currentBalance += transactionData.amount;
-        }
+      let currentBalance = accountData.balance || 0;
+      
+      // Revert transaction effect
+      if (transactionData.type === TransactionType.INCOME) {
+        currentBalance -= transactionData.amount;
+      } else {
+        currentBalance += transactionData.amount;
+      }
 
-        batch.update(accountRef, { 
-          balance: currentBalance,
-          updatedAt: Timestamp.fromDate(now)
-        });
+      batch.update(accountRef, { 
+        balance: currentBalance,
+        updatedAt: Timestamp.fromDate(now)
+      });
       }
 
       await batch.commit();

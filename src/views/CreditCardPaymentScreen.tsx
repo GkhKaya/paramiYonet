@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +53,8 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [paymentType, setPaymentType] = useState<'minimum' | 'full' | 'custom'>('minimum');
   const [amount, setAmount] = useState('');
+  const [addAsExpense, setAddAsExpense] = useState(true);
+  const [isExternalPayment, setIsExternalPayment] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Custom Alert states
@@ -77,6 +80,15 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
     }
   }, [accountViewModel]);
 
+  useEffect(() => {
+    if (isExternalPayment) {
+      setSelectedAccount(null);
+      setAddAsExpense(false);
+    } else {
+      setAddAsExpense(true);
+    }
+  }, [isExternalPayment]);
+
   // Hesaplamalar
   const currentDebt = creditCard.currentDebt || 0;
   const minPayment = calculateMinPayment(currentDebt);
@@ -97,18 +109,17 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
 
   // Validation kontrolü
   const isFormValid = () => {
-    if (!selectedAccount) return false;
+    if (!isExternalPayment && !selectedAccount) return false;
     if (paymentType === 'custom' && (!amount || parseFloat(amount.replace(',', '.')) <= 0)) return false;
     const paymentAmount = getAmount();
     if (paymentAmount <= 0) return false;
-    if (paymentAmount > (selectedAccount?.balance || 0)) return false;
+    if (!isExternalPayment && paymentAmount > (selectedAccount?.balance || 0)) return false;
     return true;
   };
 
   // Ödeme yap veya validation uyarısı göster
   const handlePayment = async () => {
-    // Validation kontrolleri
-    if (!selectedAccount) {
+    if (!isExternalPayment && !selectedAccount) {
       showAlert('warning', 'Eksik Bilgi', 'Lütfen ödeme yapılacak hesabı seçin');
       return;
     }
@@ -125,8 +136,8 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
       return;
     }
 
-    if (paymentAmount > selectedAccount.balance) {
-      showAlert('error', 'Yetersiz Bakiye', `Bu hesapta yeterli bakiye bulunmuyor.\n\nMevcut bakiye: ${selectedAccount.balance.toFixed(2)} ${currencySymbol}\nÖdeme tutarı: ${paymentAmount.toFixed(2)} ${currencySymbol}`);
+    if (!isExternalPayment && paymentAmount > selectedAccount!.balance) {
+      showAlert('error', 'Yetersiz Bakiye', `Bu hesapta yeterli bakiye bulunmuyor.\n\nMevcut bakiye: ${selectedAccount!.balance.toFixed(2)} ${currencySymbol}\nÖdeme tutarı: ${paymentAmount.toFixed(2)} ${currencySymbol}`);
       return;
     }
 
@@ -136,10 +147,11 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
       if (accountViewModel) {
         await accountViewModel.addCreditCardPayment(
           creditCard.id,
-          selectedAccount.id,
+          isExternalPayment ? null : selectedAccount!.id,
           paymentAmount,
           paymentType,
-          `${creditCard.name} ödeme`
+          `${creditCard.name} ödeme`,
+          isExternalPayment ? false : addAsExpense
         );
 
         showAlert('success', 'Başarılı', 'Ödeme başarıyla yapıldı', () => navigation.goBack());
@@ -272,39 +284,86 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
           )}
         </View>
 
-        {/* Ödeme Hesabı Seçimi */}
+        {/* Gider Olarak Kaydet Seçeneği */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ödeme Hesabı</Text>
-          {paymentAccounts.map((account) => (
-            <TouchableOpacity
-              key={account.id}
-              style={[
-                styles.accountOption,
-                selectedAccount?.id === account.id && styles.selectedAccount
-              ]}
-              onPress={() => setSelectedAccount(account)}
-            >
-              <View style={styles.accountContent}>
-                <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
-                  <Ionicons name={account.icon as any} size={20} color="white" />
-                </View>
-                <View style={styles.accountInfo}>
-                  <Text style={styles.accountName}>{account.name}</Text>
-                  <Text style={styles.accountBalance}>
-                    {account.balance.toFixed(2)} {currencySymbol}
-                  </Text>
-                </View>
-                {selectedAccount?.id === account.id && (
-                  <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-          
-          {paymentAccounts.length === 0 && (
-            <Text style={styles.noAccountText}>Ödeme yapılabilecek hesap yok</Text>
-          )}
+          <Text style={styles.cardTitle}>Kayıt Seçenekleri</Text>
+          <TouchableOpacity 
+            style={[
+              styles.option, 
+              addAsExpense && styles.selectedOption,
+              isExternalPayment && styles.disabledOption
+            ]}
+            onPress={() => setAddAsExpense(!addAsExpense)}
+            disabled={isExternalPayment}
+          >
+            <View style={styles.optionContent}>
+              <Text style={[styles.optionTitle, isExternalPayment && styles.disabledText]}>Gider Olarak Kaydet</Text>
+              <Text style={[styles.optionSubtitle, isExternalPayment && styles.disabledText]}>
+                {addAsExpense 
+                  ? 'Ödeme işlemi harcama listesinde gözükecek' 
+                  : 'Ödeme işlemi sadece kredi kartı borcunu azaltacak'
+                }
+              </Text>
+            </View>
+            {addAsExpense ? (
+              <Ionicons name="checkmark-circle" size={24} color={isExternalPayment ? COLORS.TEXT_SECONDARY : COLORS.PRIMARY} />
+            ) : (
+              <Ionicons name="ellipse-outline" size={24} color={COLORS.TEXT_SECONDARY} />
+            )}
+          </TouchableOpacity>
         </View>
+
+        {/* Dış Kaynaktan Ödeme */}
+        <View style={styles.card}>
+          <View style={styles.externalPaymentContainer}>
+            <View>
+              <Text style={styles.cardTitle}>Dış Kaynaktan Ödeme</Text>
+              <Text style={styles.optionSubtitle}>Hesap seçmeden ödeme yap</Text>
+            </View>
+            <Switch
+              value={isExternalPayment}
+              onValueChange={setIsExternalPayment}
+              thumbColor={isExternalPayment ? COLORS.PRIMARY : '#f4f3f4'}
+              trackColor={{ false: '#767577', true: COLORS.PRIMARY + '80' }}
+            />
+          </View>
+        </View>
+
+        {/* Ödeme Hesabı Seçimi */}
+        {!isExternalPayment && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Ödeme Hesabı</Text>
+            {paymentAccounts.map((account) => (
+              <TouchableOpacity
+                key={account.id}
+                style={[
+                  styles.accountOption,
+                  selectedAccount?.id === account.id && styles.selectedAccount
+                ]}
+                onPress={() => setSelectedAccount(account)}
+              >
+                <View style={styles.accountContent}>
+                  <View style={[styles.accountIcon, { backgroundColor: account.color }]}>
+                    <Ionicons name={account.icon as any} size={20} color="white" />
+                  </View>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountName}>{account.name}</Text>
+                    <Text style={styles.accountBalance}>
+                      {account.balance.toFixed(2)} {currencySymbol}
+                    </Text>
+                  </View>
+                  {selectedAccount?.id === account.id && (
+                    <Ionicons name="checkmark-circle" size={24} color={COLORS.PRIMARY} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+            
+            {paymentAccounts.length === 0 && (
+              <Text style={styles.noAccountText}>Ödeme yapılabilecek hesap yok</Text>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       {/* Ödeme Butonu - Her zaman görünür */}
@@ -447,6 +506,18 @@ const styles = StyleSheet.create({
     color: COLORS.PRIMARY,
     fontWeight: '500',
   },
+  disabledOption: {
+    backgroundColor: '#333333',
+    opacity: 0.6,
+  },
+  disabledText: {
+    color: COLORS.TEXT_SECONDARY,
+  },
+  optionSubtitle: {
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.TEXT_SECONDARY,
+    marginTop: 2,
+  },
   inputContainer: {
     marginTop: SPACING.sm,
   },
@@ -559,6 +630,11 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: TYPOGRAPHY.sizes.md,
     fontWeight: '600',
+  },
+  externalPaymentContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
 
