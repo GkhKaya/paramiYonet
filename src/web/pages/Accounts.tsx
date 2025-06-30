@@ -65,6 +65,16 @@ const AccountsPage: React.FC = () => {
   // Gold account detail state
   const [goldDetailAccount, setGoldDetailAccount] = useState<Account | null>(null);
   
+  // Edit form states
+  const [editAccountName, setEditAccountName] = useState('');
+  const [editAccountBalance, setEditAccountBalance] = useState('');
+  const [editCreditLimit, setEditCreditLimit] = useState('');
+  const [editCurrentDebt, setEditCurrentDebt] = useState('');
+  const [editStatementDay, setEditStatementDay] = useState('');
+  const [editDueDay, setEditDueDay] = useState('');
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [editIncludeInTotal, setEditIncludeInTotal] = useState(true);
+  
   // New account creation states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
@@ -125,6 +135,14 @@ const AccountsPage: React.FC = () => {
   const handleEditClick = (account: Account) => {
     setSelectedAccount(account);
     setSelectedColor(account.color);
+    setEditAccountName(account.name);
+    setEditAccountBalance(account.balance.toString());
+    setEditCreditLimit(account.limit?.toString() || '');
+    setEditCurrentDebt(account.currentDebt?.toString() || '');
+    setEditStatementDay(account.statementDay?.toString() || '1');
+    setEditDueDay(account.dueDay?.toString() || '10');
+    setEditIsActive(account.isActive);
+    setEditIncludeInTotal(account.includeInTotalBalance ?? true);
     setEditDialogOpen(true);
     handleMenuClose();
   };
@@ -149,6 +167,47 @@ const AccountsPage: React.FC = () => {
       } catch (error) {
         console.error('Error deleting account:', error);
       }
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!selectedAccount || !currentUser) return;
+    
+    try {
+      const updates: any = {
+        name: editAccountName,
+        color: selectedColor,
+        isActive: editIsActive,
+        includeInTotalBalance: editIncludeInTotal,
+      };
+
+      // Add balance for non-credit cards
+      if (selectedAccount.type !== 'credit_card') {
+        updates.balance = parseFloat(editAccountBalance) || 0;
+      }
+
+      // Add credit card specific fields
+      if (selectedAccount.type === 'credit_card') {
+        updates.limit = parseFloat(editCreditLimit) || 0;
+        updates.currentDebt = parseFloat(editCurrentDebt) || 0;
+        updates.statementDay = parseInt(editStatementDay) || 1;
+        updates.dueDay = parseInt(editDueDay) || 10;
+      }
+
+      // Update in Firebase
+      await AccountService.updateAccount(selectedAccount.id, updates);
+      
+      // Update local state
+      setAccounts(accounts.map(acc => 
+        acc.id === selectedAccount.id 
+          ? { ...acc, ...updates }
+          : acc
+      ));
+      
+      setEditDialogOpen(false);
+      setSelectedAccount(null);
+    } catch (error) {
+      console.error('Error updating account:', error);
     }
   };
 
@@ -193,7 +252,13 @@ const AccountsPage: React.FC = () => {
   const getTotalBalance = () => {
     return accounts
       .filter(account => account.includeInTotalBalance)
-      .reduce((total, account) => total + account.balance, 0);
+      .reduce((total, account) => {
+        if (account.type === 'credit_card') {
+          // Kredi kartı borcu toplam bakiyeden düşer (negatif değer olarak)
+          return total - (account.currentDebt || 0);
+        }
+        return total + account.balance;
+      }, 0);
   };
 
   const getCreditCardUsage = (account: Account) => {
@@ -254,6 +319,8 @@ const AccountsPage: React.FC = () => {
         type: newAccountType,
         balance: finalBalance,
         color: newAccountColor,
+        currency: 'TRY' as 'TRY' | 'USD' | 'EUR',
+        openingDate: new Date(),
         includeInTotalBalance: includeInTotal,
       };
 
@@ -457,10 +524,14 @@ const AccountsPage: React.FC = () => {
                     sx={{ 
                       fontWeight: 700, 
                       mb: 2,
-                      color: account.balance < 0 ? 'error.main' : 'text.primary'
+                      color: account.type === 'credit_card' ? 
+                        (account.currentDebt && account.currentDebt > 0 ? 'error.main' : 'success.main') :
+                        (account.balance < 0 ? 'error.main' : 'text.primary')
                     }}
                   >
-                    {balanceVisible ? formatCurrency(Math.abs(account.balance)) : '••••••'}
+                    {balanceVisible ? formatCurrency(
+                      account.type === 'credit_card' ? (account.currentDebt || 0) : Math.abs(account.balance)
+                    ) : '••••••'}
                   </Typography>
 
                   {/* Credit Card Specific Info */}
@@ -662,9 +733,15 @@ const AccountsPage: React.FC = () => {
                     </Typography>
                     <Typography variant="h5" sx={{ 
                       fontWeight: 700,
-                      color: selectedAccount.balance < 0 ? 'error.main' : 'success.main'
+                      color: selectedAccount.type === 'credit_card' ? 
+                        (selectedAccount.currentDebt && selectedAccount.currentDebt > 0 ? 'error.main' : 'success.main') :
+                        (selectedAccount.balance < 0 ? 'error.main' : 'success.main')
                     }}>
-                      {formatCurrency(Math.abs(selectedAccount.balance))}
+                      {formatCurrency(
+                        selectedAccount.type === 'credit_card' ? 
+                          (selectedAccount.currentDebt || 0) : 
+                          Math.abs(selectedAccount.balance)
+                      )}
                     </Typography>
                   </Box>
                   
@@ -872,7 +949,8 @@ const AccountsPage: React.FC = () => {
               <TextField
                 fullWidth
                 label="Hesap Adı"
-                defaultValue={selectedAccount.name}
+                value={editAccountName}
+                onChange={(e) => setEditAccountName(e.target.value)}
                 sx={{ mb: 3 }}
               />
               
@@ -950,21 +1028,24 @@ const AccountsPage: React.FC = () => {
                     fullWidth
                     label="Kredi Limiti"
                     type="number"
-                    defaultValue={selectedAccount.limit}
+                    value={editCreditLimit}
+                    onChange={(e) => setEditCreditLimit(e.target.value)}
                     sx={{ mb: 3 }}
                   />
                   <TextField
                     fullWidth
                     label="Mevcut Borç"
                     type="number"
-                    defaultValue={selectedAccount.currentDebt}
+                    value={editCurrentDebt}
+                    onChange={(e) => setEditCurrentDebt(e.target.value)}
                     sx={{ mb: 3 }}
                   />
                   <TextField
                     fullWidth
                     label="Hesap Kesim Günü"
                     type="number"
-                    defaultValue={selectedAccount.statementDay}
+                    value={editStatementDay}
+                    onChange={(e) => setEditStatementDay(e.target.value)}
                     inputProps={{ min: 1, max: 31 }}
                     sx={{ mb: 3 }}
                   />
@@ -972,7 +1053,8 @@ const AccountsPage: React.FC = () => {
                     fullWidth
                     label="Son Ödeme Günü"
                     type="number"
-                    defaultValue={selectedAccount.dueDay}
+                    value={editDueDay}
+                    onChange={(e) => setEditDueDay(e.target.value)}
                     inputProps={{ min: 1, max: 31 }}
                     sx={{ mb: 3 }}
                   />
@@ -984,7 +1066,8 @@ const AccountsPage: React.FC = () => {
                   fullWidth
                   label="Bakiye"
                   type="number"
-                  defaultValue={selectedAccount.balance}
+                  value={editAccountBalance}
+                  onChange={(e) => setEditAccountBalance(e.target.value)}
                   sx={{ mb: 3 }}
                 />
               )}
@@ -992,7 +1075,8 @@ const AccountsPage: React.FC = () => {
               <FormControlLabel
                 control={
                   <Switch 
-                    defaultChecked={selectedAccount.isActive}
+                    checked={editIsActive}
+                    onChange={(e) => setEditIsActive(e.target.checked)}
                     color="primary"
                   />
                 }
@@ -1003,7 +1087,8 @@ const AccountsPage: React.FC = () => {
               <FormControlLabel
                 control={
                   <Switch 
-                    defaultChecked={selectedAccount.includeInTotalBalance}
+                    checked={editIncludeInTotal}
+                    onChange={(e) => setEditIncludeInTotal(e.target.checked)}
                     color="primary"
                   />
                 }
@@ -1018,10 +1103,7 @@ const AccountsPage: React.FC = () => {
             İptal
           </Button>
           <Button 
-            onClick={() => {
-              // TODO: Implement save functionality
-              setEditDialogOpen(false);
-            }}
+            onClick={handleEditSave}
             variant="contained"
           >
             Kaydet

@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
+import { AccountType } from '../models/Account';
 
 export class TransactionService {
   private static readonly COLLECTION_NAME = 'transactions';
@@ -156,7 +157,7 @@ export class TransactionService {
         updatedAt: Timestamp.fromDate(now),
       });
 
-      // Update account balance
+      // Update account balance or credit card debt
       const accountRef = doc(db, 'accounts', transactionData.accountId);
       const accountDoc = await getDoc(accountRef);
       
@@ -165,20 +166,56 @@ export class TransactionService {
       }
 
       const accountData = accountDoc.data();
-      const currentBalance = accountData.balance || 0;
       
-      // Calculate new balance based on transaction type
-      let newBalance: number;
-      if (transactionData.type === TransactionType.INCOME) {
-        newBalance = currentBalance + transactionData.amount;
-      } else {
-        newBalance = currentBalance - transactionData.amount;
-      }
-
-      batch.update(accountRef, { 
-        balance: newBalance,
-        updatedAt: Timestamp.fromDate(now)
+      console.log('TransactionService.createTransaction - Account data:', {
+        accountId: transactionData.accountId,
+        accountType: accountData.type,
+        currentDebt: accountData.currentDebt,
+        transactionType: transactionData.type,
+        transactionAmount: transactionData.amount
       });
+      
+      // Check if this is a credit card account
+      if (accountData.type === AccountType.CREDIT_CARD) {
+        // For credit card transactions, update currentDebt instead of balance
+        const currentDebt = accountData.currentDebt || 0;
+        let newDebt: number;
+        
+        if (transactionData.type === TransactionType.EXPENSE) {
+          // Credit card expense increases debt
+          newDebt = currentDebt + transactionData.amount;
+        } else {
+          // Credit card payment (income) decreases debt
+          newDebt = Math.max(0, currentDebt - transactionData.amount);
+        }
+
+        console.log('Credit card debt update:', {
+          oldDebt: currentDebt,
+          newDebt: newDebt,
+          transactionType: transactionData.type,
+          amount: transactionData.amount
+        });
+
+        batch.update(accountRef, { 
+          currentDebt: newDebt,
+          updatedAt: Timestamp.fromDate(now)
+        });
+      } else {
+        // For regular accounts, update balance
+        const currentBalance = accountData.balance || 0;
+        let newBalance: number;
+        
+        if (transactionData.type === TransactionType.INCOME) {
+          newBalance = currentBalance + transactionData.amount;
+        } else {
+          newBalance = currentBalance - transactionData.amount;
+        }
+
+        batch.update(accountRef, { 
+          balance: newBalance,
+          updatedAt: Timestamp.fromDate(now)
+        });
+      }
 
       // Execute batch write
       await batch.commit();
@@ -223,7 +260,7 @@ export class TransactionService {
 
       batch.update(transactionRef, updateData);
 
-      // Update account balance if amount or type changed
+      // Update account balance or credit card debt if amount or type changed
       if (updates.amount !== undefined || updates.type !== undefined) {
         const accountId = updates.accountId || currentTransaction.accountId;
         const accountRef = doc(db, 'accounts', accountId);
@@ -234,29 +271,58 @@ export class TransactionService {
         }
 
         const accountData = accountDoc.data();
-        let currentBalance = accountData.balance || 0;
         
-        // Revert old transaction effect
-        if (currentTransaction.type === TransactionType.INCOME) {
-          currentBalance -= currentTransaction.amount;
-        } else {
-          currentBalance += currentTransaction.amount;
-        }
-        
-        // Apply new transaction effect
-        const newAmount = updates.amount !== undefined ? updates.amount : currentTransaction.amount;
-        const newType = updates.type !== undefined ? updates.type : currentTransaction.type;
-        
-        if (newType === TransactionType.INCOME) {
-          currentBalance += newAmount;
-        } else {
-          currentBalance -= newAmount;
-        }
+        if (accountData.type === AccountType.CREDIT_CARD) {
+          // For credit card accounts, update currentDebt
+          let currentDebt = accountData.currentDebt || 0;
+          
+          // Revert old transaction effect
+          if (currentTransaction.type === TransactionType.EXPENSE) {
+            currentDebt -= currentTransaction.amount;
+          } else {
+            currentDebt += currentTransaction.amount;
+          }
+          
+          // Apply new transaction effect
+          const newAmount = updates.amount !== undefined ? updates.amount : currentTransaction.amount;
+          const newType = updates.type !== undefined ? updates.type : currentTransaction.type;
+          
+          if (newType === TransactionType.EXPENSE) {
+            currentDebt += newAmount;
+          } else {
+            currentDebt = Math.max(0, currentDebt - newAmount);
+          }
 
-        batch.update(accountRef, { 
-          balance: currentBalance,
-          updatedAt: Timestamp.fromDate(now)
-        });
+          batch.update(accountRef, { 
+            currentDebt: Math.max(0, currentDebt),
+            updatedAt: Timestamp.fromDate(now)
+          });
+        } else {
+          // For regular accounts, update balance
+          let currentBalance = accountData.balance || 0;
+          
+          // Revert old transaction effect
+          if (currentTransaction.type === TransactionType.INCOME) {
+            currentBalance -= currentTransaction.amount;
+          } else {
+            currentBalance += currentTransaction.amount;
+          }
+          
+          // Apply new transaction effect
+          const newAmount = updates.amount !== undefined ? updates.amount : currentTransaction.amount;
+          const newType = updates.type !== undefined ? updates.type : currentTransaction.type;
+          
+          if (newType === TransactionType.INCOME) {
+            currentBalance += newAmount;
+          } else {
+            currentBalance -= newAmount;
+          }
+
+          batch.update(accountRef, { 
+            balance: currentBalance,
+            updatedAt: Timestamp.fromDate(now)
+          });
+        }
       }
 
       await batch.commit();
@@ -285,7 +351,7 @@ export class TransactionService {
       // Delete transaction
       batch.delete(transactionRef);
       
-      // Revert account balance
+      // Revert account balance or credit card debt
       const accountRef = doc(db, 'accounts', transactionData.accountId);
       const accountDoc = await getDoc(accountRef);
       
@@ -294,19 +360,38 @@ export class TransactionService {
       }
 
       const accountData = accountDoc.data();
-      let currentBalance = accountData.balance || 0;
       
-      // Revert transaction effect
-      if (transactionData.type === TransactionType.INCOME) {
-        currentBalance -= transactionData.amount;
-      } else {
-        currentBalance += transactionData.amount;
-      }
+      if (accountData.type === AccountType.CREDIT_CARD) {
+        // For credit card accounts, revert currentDebt
+        let currentDebt = accountData.currentDebt || 0;
+        
+        // Revert transaction effect
+        if (transactionData.type === TransactionType.EXPENSE) {
+          currentDebt -= transactionData.amount;
+        } else {
+          currentDebt += transactionData.amount;
+        }
 
-      batch.update(accountRef, { 
-        balance: currentBalance,
-        updatedAt: Timestamp.fromDate(now)
-      });
+        batch.update(accountRef, { 
+          currentDebt: Math.max(0, currentDebt),
+          updatedAt: Timestamp.fromDate(now)
+        });
+      } else {
+        // For regular accounts, revert balance
+        let currentBalance = accountData.balance || 0;
+        
+        // Revert transaction effect
+        if (transactionData.type === TransactionType.INCOME) {
+          currentBalance -= transactionData.amount;
+        } else {
+          currentBalance += transactionData.amount;
+        }
+
+        batch.update(accountRef, { 
+          balance: currentBalance,
+          updatedAt: Timestamp.fromDate(now)
+        });
+      }
 
       await batch.commit();
     } catch (error) {
