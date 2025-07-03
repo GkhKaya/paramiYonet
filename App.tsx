@@ -16,6 +16,7 @@ import WebApp from './src/web/WebApp';
 import ErrorNotification from './src/components/common/ErrorNotification';
 import OnboardingModal from './src/components/onboarding/OnboardingModal';
 import { AppDarkTheme } from './src/navigation/themes';
+import NotificationService from './src/services/NotificationService';
 
 // Splash screen'i uygulama yüklenene kadar göster
 SplashScreen.preventAutoHideAsync();
@@ -32,6 +33,11 @@ export default function App() {
         }
 
         // Firebase, fonts, vb. yükleme işlemleri burada yapılabilir
+        
+        // Bildirim servisini başlat
+        const notificationService = NotificationService.getInstance();
+        await notificationService.initialize();
+        
         // 1 saniye bekletiyoruz (daha hızlı deneyim için)
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
