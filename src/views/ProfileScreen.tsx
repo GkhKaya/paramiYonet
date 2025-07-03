@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+
   TextInput,
   Modal,
   ActivityIndicator,
@@ -25,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { AccountViewModel } from '../viewmodels/AccountViewModel';
 import { isWeb } from '../utils/platform';
+import CustomAlert, { AlertType } from '../components/common/CustomAlert';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -48,6 +49,26 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpense, setTotalExpense] = useState(0);
   const [accountCount, setAccountCount] = useState(0);
+
+  // Custom Alert states
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertType, setAlertType] = useState<AlertType>('info');
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+
+  const showAlert = (
+    type: AlertType,
+    title: string,
+    message: string,
+    action?: () => void
+  ) => {
+    setAlertType(type);
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setConfirmAction(action ? () => action : null);
+    setAlertVisible(true);
+  };
 
   // Initialize ViewModels
   useEffect(() => {
@@ -115,7 +136,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
 
   const handleSaveProfile = async () => {
     if (!newDisplayName.trim()) {
-      Alert.alert('Hata', 'Lütfen ad soyad girin');
+      showAlert('error', 'Hata', 'Lütfen ad soyad girin');
       return;
     }
 
@@ -126,11 +147,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
         // Email update might require re-authentication
       });
       
-      Alert.alert('Başarılı', 'Profil bilgileriniz güncellendi');
-      setShowEditModal(false);
+      showAlert('success', 'Başarılı', 'Profil bilgileriniz güncellendi', () => {
+        setShowEditModal(false);
+      });
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Hata', 'Profil güncellenirken hata oluştu');
+      showAlert('error', 'Hata', 'Profil güncellenirken hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -367,6 +389,23 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
         <View style={styles.webContainer}>
           {renderContent()}
           {renderEditModal()}
+
+          <CustomAlert
+            visible={alertVisible}
+            type={alertType}
+            title={alertTitle}
+            message={alertMessage}
+            onClose={() => setAlertVisible(false)}
+            onPrimaryPress={() => {
+              if (confirmAction) {
+                confirmAction();
+              }
+              setAlertVisible(false);
+            }}
+            onSecondaryPress={() => setAlertVisible(false)}
+            primaryButtonText={alertType === 'confirm' ? 'Evet' : 'Tamam'}
+            secondaryButtonText={alertType === 'confirm' ? 'İptal' : undefined}
+          />
         </View>
       </WebLayout>
     );
@@ -391,6 +430,23 @@ const ProfileScreen: React.FC<ProfileScreenProps> = observer(({ navigation }) =>
 
         {renderContent()}
         {renderEditModal()}
+
+        <CustomAlert
+          visible={alertVisible}
+          type={alertType}
+          title={alertTitle}
+          message={alertMessage}
+          onClose={() => setAlertVisible(false)}
+          onPrimaryPress={() => {
+            if (confirmAction) {
+              confirmAction();
+            }
+            setAlertVisible(false);
+          }}
+          onSecondaryPress={() => setAlertVisible(false)}
+          primaryButtonText={alertType === 'confirm' ? 'Evet' : 'Tamam'}
+          secondaryButtonText={alertType === 'confirm' ? 'İptal' : undefined}
+        />
       </SafeAreaView>
     </>
   );
