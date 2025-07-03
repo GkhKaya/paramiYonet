@@ -40,6 +40,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const { register } = useAuth();
 
@@ -55,26 +56,51 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
       setError('Lütfen adınızı soyadınızı girin.');
       return false;
     }
+    
+    if (formData.displayName.trim().length < 2) {
+      setError('Ad soyad en az 2 karakter olmalıdır.');
+      return false;
+    }
+    
     if (!formData.email.trim()) {
       setError('Lütfen e-posta adresinizi girin.');
       return false;
     }
+    
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError('Geçerli bir e-posta adresi girin.');
+      return false;
+    }
+    
+    if (!formData.password.trim()) {
+      setError('Lütfen bir şifre girin.');
+      return false;
+    }
+    
+    if (!formData.confirmPassword.trim()) {
+      setError('Lütfen şifre tekrarını girin.');
+      return false;
+    }
+    
     const passwordValidation = validatePassword(formData.password);
     if (!passwordValidation.isValid) {
       setError(passwordValidation.errors.join(' '));
       return false;
     }
+    
     const confirmValidation = validatePasswordConfirm(formData.password, formData.confirmPassword);
     if (!confirmValidation.isValid) {
       setError(confirmValidation.message || 'Şifreler eşleşmiyor.');
       return false;
     }
+    
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (!validateForm()) {
       return;
@@ -83,15 +109,22 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
     setLoading(true);
 
     try {
+      setSuccess('Hesap oluşturuluyor...');
       await register(formData.email, formData.password, formData.displayName);
+      setSuccess('Hesap başarıyla oluşturuldu! Yönlendiriliyorsunuz...');
     } catch (error: any) {
       console.error('Registration error:', error);
+      setSuccess('');
       if (error.code === 'auth/email-already-in-use') {
         setError('Bu e-posta adresi zaten kullanılıyor.');
       } else if (error.code === 'auth/invalid-email') {
         setError('Geçersiz e-posta adresi.');
       } else if (error.code === 'auth/weak-password') {
         setError('Şifre çok zayıf. Lütfen daha güçlü bir şifre seçin.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        setError('E-posta ile kayıt işlemi şu anda kullanılamıyor.');
+      } else if (error.code === 'auth/network-request-failed') {
+        setError('Ağ bağlantısı hatası. İnternet bağlantınızı kontrol edin.');
       } else {
         setError('Kayıt olurken bir hata oluştu. Lütfen tekrar deneyin.');
       }
@@ -165,6 +198,13 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             {error && (
               <Alert severity="error" sx={{ mb: 3 }}>
                 {error}
+              </Alert>
+            )}
+
+            {/* Success Alert */}
+            {success && (
+              <Alert severity="success" sx={{ mb: 3 }}>
+                {success}
               </Alert>
             )}
 

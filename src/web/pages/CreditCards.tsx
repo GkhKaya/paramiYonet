@@ -55,6 +55,7 @@ interface CreditCardData {
   type: string;
   balance: number;
   isActive: boolean;
+  openingDate: Date;
 }
 
 interface PaymentAccount {
@@ -117,6 +118,7 @@ const CreditCards: React.FC = () => {
             type: data.type,
             balance: data.balance || 0,
             isActive: data.isActive || true,
+            openingDate: data.openingDate?.toDate() || data.createdAt?.toDate() || new Date(0),
           });
         });
 
@@ -134,7 +136,7 @@ const CreditCards: React.FC = () => {
         
         paymentAccountsSnapshot.forEach((doc) => {
           const data = doc.data();
-          if (data.type !== 'credit_card' && data.balance > 0) {
+          if (data.type !== 'credit_card' && data.type !== 'gold' && data.balance > 0) {
             accounts.push({
               id: doc.id,
               name: data.name || 'Hesap',
@@ -178,6 +180,42 @@ const CreditCards: React.FC = () => {
   const calculateMinPayment = (debt: number) => debt * 0.20; // 20% minimum
   const calculateMonthlyInterest = (debt: number, rate: number) => (debt * rate) / 100;
   const calculateAvailableLimit = (limit: number, debt: number) => Math.max(limit - debt, 0);
+
+  const getPaymentStatus = (card: CreditCardData) => {
+    if (card.currentDebt <= 0) {
+      return { text: 'Borç Yok', color: 'success', icon: <CheckCircle /> };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const openingDate = new Date(card.openingDate);
+    openingDate.setHours(0, 0, 0, 0);
+
+    // Find the last statement date
+    let lastStatementDate = new Date(today.getFullYear(), today.getMonth(), card.statementDay);
+    if (today.getDate() < card.statementDay) {
+      // If today is before this month's statement day, the last statement was last month
+      lastStatementDate.setMonth(lastStatementDate.getMonth() - 1);
+    }
+
+    // If the card was opened after the last statement was issued, no payment is due yet.
+    if (openingDate > lastStatementDate) {
+      return { text: 'Ekstre Bekleniyor', color: 'info', icon: <Schedule /> };
+    }
+    
+    // Determine the payment window for the last statement
+    const dueDate = new Date(lastStatementDate.getFullYear(), lastStatementDate.getMonth(), card.dueDay);
+    if(card.dueDay < card.statementDay) { // due day is in the next month
+        dueDate.setMonth(dueDate.getMonth() + 1);
+    }
+
+    if (today >= lastStatementDate && today <= dueDate) {
+      return { text: 'Ödeme Gerekli', color: 'error', icon: <Warning /> };
+    }
+
+    return { text: 'Ekstre Bekleniyor', color: 'info', icon: <Schedule /> };
+  };
 
   const calculateDueDate = (dueDay: number) => {
     const today = new Date();
@@ -389,6 +427,7 @@ const CreditCards: React.FC = () => {
             const monthlyInterest = calculateMonthlyInterest(card.currentDebt, card.interestRate);
             const availableLimit = calculateAvailableLimit(card.limit, card.currentDebt);
             const utilizationRate = card.limit > 0 ? (card.currentDebt / card.limit) * 100 : 0;
+            const paymentStatus = getPaymentStatus(card);
             
             return (
               <Box key={card.id}>
@@ -435,21 +474,12 @@ const CreditCards: React.FC = () => {
                           <Typography variant="body2" sx={{ color: '#bbb' }}>
                             Mevcut Borç
                           </Typography>
-                          {card.currentDebt === 0 ? (
-                            <Chip 
-                              icon={<CheckCircle />} 
-                              label="Borç Yok" 
-                              color="success" 
-                              size="small" 
-                            />
-                          ) : (
-                            <Chip 
-                              icon={<Warning />} 
-                              label="Ödeme Gerekli" 
-                              color="error" 
-                              size="small" 
-                            />
-                          )}
+                          <Chip 
+                            icon={paymentStatus.icon}
+                            label={paymentStatus.text}
+                            color={paymentStatus.color as 'success' | 'error' | 'info' | 'warning' | 'primary' | 'secondary' | 'default'}
+                            size="small" 
+                          />
                         </Box>
                         <Typography 
                           variant="h4" 

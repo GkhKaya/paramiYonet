@@ -36,18 +36,42 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     setLoading(true);
 
+    // Basit doğrulama
+    if (!email.trim()) {
+      setError('Lütfen e-posta adresinizi girin.');
+      setLoading(false);
+      return;
+    }
+
+    if (!password.trim()) {
+      setError('Lütfen şifrenizi girin.');
+      setLoading(false);
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Geçerli bir e-posta adresi girin.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      setSuccess('Giriş yapılıyor...');
       await login(email, password, rememberMe);
+      setSuccess('Giriş başarılı! Yönlendiriliyorsunuz...');
     } catch (error: any) {
       console.error('Login error:', error);
+      setSuccess('');
       if (error.code === 'auth/user-not-found') {
         setError('Bu e-posta adresi ile kayıtlı kullanıcı bulunamadı.');
       } else if (error.code === 'auth/wrong-password') {
@@ -56,6 +80,10 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
         setError('Geçersiz e-posta adresi.');
       } else if (error.code === 'auth/too-many-requests') {
         setError('Çok fazla başarısız giriş denemesi. Lütfen daha sonra tekrar deneyin.');
+      } else if (error.code === 'auth/invalid-credential') {
+        setError('E-posta veya şifre hatalı. Lütfen tekrar kontrol edin.');
+      } else if (error.code === 'auth/user-disabled') {
+        setError('Bu hesap devre dışı bırakılmış. Destek ekibi ile iletişime geçin.');
       } else {
         setError('Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.');
       }
@@ -129,6 +157,13 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
             {error && (
               <Alert severity="error" sx={{ mb: 3 }}>
                 {error}
+              </Alert>
+            )}
+
+            {/* Success Alert */}
+            {success && (
+              <Alert severity="success" sx={{ mb: 3 }}>
+                {success}
               </Alert>
             )}
 

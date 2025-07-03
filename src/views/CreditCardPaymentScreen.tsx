@@ -93,9 +93,10 @@ const CreditCardPaymentScreen: React.FC<CreditCardPaymentScreenProps> = observer
   const currentDebt = creditCard.currentDebt || 0;
   const minPayment = calculateMinPayment(currentDebt);
   
-  // Ödeme hesapları
+  // Ödeme hesapları (Altın hesapları hariç)
   const paymentAccounts = accountViewModel?.accounts.filter(acc => 
     acc.type !== AccountType.CREDIT_CARD && 
+    acc.type !== AccountType.GOLD &&
     acc.isActive && 
     acc.balance > 0
   ) || [];

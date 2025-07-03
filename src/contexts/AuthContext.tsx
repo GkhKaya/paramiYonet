@@ -76,21 +76,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           appUser = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
-            displayName: userData.displayName || firebaseUser.displayName || '',
-            photoURL: userData.photoURL || firebaseUser.photoURL || undefined,
-            preferences: userData.preferences || {},
+            name: userData.displayName || firebaseUser.displayName || '',
+            currency: userData.currency || 'TRY',
+            currencySymbol: userData.currencySymbol || '₺',
+            currencyFormat: userData.currencyFormat || 'TR',
+            language: userData.language || 'tr',
+            profilePictureUrl: userData.photoURL || firebaseUser.photoURL || undefined,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            onboardingCompleted: userData.preferences?.onboardingCompleted || false,
           };
         } else {
           // Bu durum normalde signUp sonrası olmalı, ancak bir fallback olarak ekleyelim
           appUser = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || undefined,
-            photoURL: firebaseUser.photoURL || undefined,
+            name: firebaseUser.displayName || '',
+            currency: 'TRY',
+            currencySymbol: '₺',
+            currencyFormat: 'TR',
+            language: 'tr',
+            profilePictureUrl: firebaseUser.photoURL || undefined,
             createdAt: new Date(), // Gerçek kayıt zamanı olmadığı için fallback
             updatedAt: new Date(),
+            onboardingCompleted: false,
           };
         }
         
@@ -110,19 +119,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const password = await AsyncStorage.getItem(SAVED_PASSWORD_KEY);
               
               if (email && password) {
+                console.log('Attempting auto-login for user:', email);
                 // Firebase auth state dinleyici içinde signIn çağırmayalım, 
                 // bunun yerine direkt Firebase signIn yapalım
                 await signInWithEmailAndPassword(auth, email, password);
                 // Bu işlem başarılıysa onAuthStateChanged tekrar tetiklenecek
+                console.log('Auto-login successful');
                 return; // Loading'i burada false yapmayalım
               }
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Auto-login failed:', error);
-            // Hatalı kayıtlı bilgileri temizle
-            await AsyncStorage.removeItem(REMEMBER_ME_KEY);
-            await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
-            await AsyncStorage.removeItem(SAVED_PASSWORD_KEY);
+            
+            // Hata tipine göre farklı davran
+            if (error.code === 'auth/invalid-credential' || 
+                error.code === 'auth/user-not-found' || 
+                error.code === 'auth/wrong-password' ||
+                error.code === 'auth/user-disabled') {
+              console.log('Clearing invalid saved credentials due to:', error.code);
+              // Hatalı kayıtlı bilgileri temizle
+              await AsyncStorage.removeItem(REMEMBER_ME_KEY);
+              await AsyncStorage.removeItem(SAVED_EMAIL_KEY);
+              await AsyncStorage.removeItem(SAVED_PASSWORD_KEY);
+            }
+            
+            // Hata durumunda normal giriş ekranına devam et
+            // Error durumunda kullanıcıya bilgi vermeyeceğiz, sessizce login ekranı göstereceğiz
+            
+            // Geliştirici için debug log
+            if (__DEV__) {
+              console.warn('Auto-login failed with saved credentials. User will need to login manually.');
+            }
+            
+            // Geliştirici için debug log
+            if (__DEV__) {
+              console.warn('Auto-login failed with saved credentials. User will need to login manually.');
+            }
           }
         }
         
@@ -341,7 +373,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateUserProfile = async (updates: { displayName?: string; photoURL?: string }): Promise<void> => {
+  const updateUserProfile = async (updates: { name?: string; profilePictureUrl?: string }): Promise<void> => {
     try {
       if (!auth.currentUser) {
         throw new Error('No authenticated user');

@@ -77,9 +77,10 @@ const ReportsCreditCardPaymentScreen: React.FC<ReportsCreditCardPaymentScreenPro
     }
   }, [isExternalPayment]);
 
-  // Kredi kartı dışındaki diğer hesaplar (ödeme yapılabilecek hesaplar)
+  // Kredi kartı ve altın hesapları dışındaki diğer hesaplar (ödeme yapılabilecek hesaplar)
   const paymentAccounts = accountViewModel?.accounts.filter(acc => 
     acc.type !== AccountType.CREDIT_CARD && 
+    acc.type !== AccountType.GOLD &&
     acc.isActive && 
     acc.balance > 0
   ) || [];

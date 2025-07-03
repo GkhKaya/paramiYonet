@@ -61,6 +61,8 @@ const AccountsPage: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuAccountId, setMenuAccountId] = useState<string>('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   
   // Gold account detail state
   const [goldDetailAccount, setGoldDetailAccount] = useState<Account | null>(null);
@@ -267,15 +269,44 @@ const AccountsPage: React.FC = () => {
   };
 
   const handleCreateAccount = async () => {
-    if (!currentUser || !newAccountName) {
-      console.error("Validation failed: Missing account name");
+    setError('');
+    setSuccess('');
+    
+    if (!currentUser) {
+      setError('Kullanıcı oturumu bulunamadı. Lütfen tekrar giriş yapın.');
+      return;
+    }
+    
+    if (!newAccountName.trim()) {
+      setError('Lütfen hesap adını girin.');
+      return;
+    }
+    
+    if (newAccountName.trim().length < 2) {
+      setError('Hesap adı en az 2 karakter olmalıdır.');
       return;
     }
     
     const isStandardAccount = newAccountType !== AccountType.GOLD && newAccountType !== AccountType.CREDIT_CARD;
-    if (isStandardAccount && !newAccountBalance) {
-        console.error("Validation failed: Missing account balance for this account type");
+    if (isStandardAccount && !newAccountBalance.trim()) {
+      setError('Lütfen hesap bakiyesini girin.');
+      return;
+    }
+    
+    if (isStandardAccount && isNaN(parseFloat(newAccountBalance))) {
+      setError('Geçerli bir bakiye tutarı girin.');
+      return;
+    }
+    
+    if (newAccountType === AccountType.CREDIT_CARD) {
+      if (!creditLimit.trim() || isNaN(parseFloat(creditLimit))) {
+        setError('Lütfen geçerli bir kredi kartı limiti girin.');
         return;
+      }
+      if (currentDebt.trim() && isNaN(parseFloat(currentDebt))) {
+        setError('Geçerli bir borç tutarı girin.');
+        return;
+      }
     }
 
     try {
@@ -308,7 +339,7 @@ const AccountsPage: React.FC = () => {
                 return total + (holding.quantity * holding.initialPrice);
             }, 0);
         } else {
-            console.error("Validation failed: No gold quantities specified for gold account");
+            setError('Lütfen altın hesabı için en az bir altın türü ve miktarı girin.');
             return;
         }
       }
@@ -336,6 +367,7 @@ const AccountsPage: React.FC = () => {
         newAccountData.goldHoldings = finalGoldHoldings;
       }
 
+      setSuccess('Hesap oluşturuluyor...');
       await AccountService.createAccount(newAccountData);
       
       // Reset form and close dialog
@@ -351,10 +383,15 @@ const AccountsPage: React.FC = () => {
       setDueDay('10');
       setGoldQuantities({ GRA: '', CEYREKALTIN: '', YARIMALTIN: '', TAMALTIN: '' });
       
+      setSuccess('Hesap başarıyla oluşturuldu!');
       loadAccounts();
 
-    } catch (error) {
+      // Başarı mesajını 3 saniye sonra temizle
+      setTimeout(() => setSuccess(''), 3000);
+
+    } catch (error: any) {
       console.error("Error creating account:", error);
+      setError('Hesap oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.');
     }
   };
 
@@ -402,6 +439,20 @@ const AccountsPage: React.FC = () => {
           Tüm hesaplarınızı görüntüleyin ve yönetin
         </Typography>
       </Box>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Success Alert */}
+      {success && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccess('')}>
+          {success}
+        </Alert>
+      )}
 
       {/* Summary Cards */}
       <Box sx={{ 
@@ -636,7 +687,11 @@ const AccountsPage: React.FC = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             İlk hesabınızı ekleyerek başlayın
           </Typography>
-          <Button variant="contained" startIcon={<Add />}>
+          <Button 
+            variant="contained" 
+            startIcon={<Add />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
             Hesap Ekle
           </Button>
         </Box>
