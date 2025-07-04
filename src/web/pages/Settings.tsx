@@ -53,6 +53,7 @@ import { TransactionService } from '../../services/TransactionService';
 import { Transaction } from '../../models/Transaction';
 import UserService from '../../services/UserService';
 import { SecurityService } from '../../services/FirebaseService';
+import { PrivacyPolicyModal } from '../../components/common/PrivacyPolicyModal';
 
 interface SettingsProps {
   onNavigateToProfile?: () => void;
@@ -79,6 +80,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [securityLoading, setSecurityLoading] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [showPrivacyPolicyModal, setShowPrivacyPolicyModal] = useState(false);
 
   // Alert göründüğünde otomatik kapatma
   useEffect(() => {
@@ -645,7 +647,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => window.alert('Gizlilik politikası yakında gelecek')}
+                  onClick={() => setShowPrivacyPolicyModal(true)}
                   sx={{ borderColor: '#673AB7', color: '#673AB7' }}
                 >
                   Oku
@@ -1120,6 +1122,9 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
           )}
         </DialogActions>
       </Dialog>
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal visible={showPrivacyPolicyModal} onClose={() => setShowPrivacyPolicyModal(false)} />
     </Box>
   );
 };
