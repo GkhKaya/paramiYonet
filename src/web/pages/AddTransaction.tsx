@@ -328,42 +328,47 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onClose, defaultType, o
 
       await TransactionService.createTransaction(transactionData);
       
-      // --- BÜTÇE GÜNCELLEME LOGİĞİ ---
-      if (selectedType === TransactionType.EXPENSE) {
-        // 1. Aktif bütçeleri ve işlemleri çek
-        const [budgets, transactions] = await Promise.all([
-          BudgetService.getActiveBudgets(currentUser.uid),
-          TransactionService.getUserTransactions(currentUser.uid)
-        ]);
-        for (const budget of budgets) {
-          let categoryTransactions;
-          if (budget.categoryName === 'Tüm Kategoriler') {
-            categoryTransactions = transactions.filter(t =>
-              t.type === TransactionType.EXPENSE &&
-              t.date >= budget.startDate &&
-              t.date <= budget.endDate
-            );
-          } else {
-            categoryTransactions = transactions.filter(t =>
-              t.type === TransactionType.EXPENSE &&
-              t.category === budget.categoryName &&
-              t.date >= budget.startDate &&
-              t.date <= budget.endDate
-            );
-          }
-          const spentAmount = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
-          if (spentAmount !== budget.spentAmount) {
-            await BudgetService.updateBudgetProgress(
-              budget.id,
-              spentAmount,
-              budget.budgetedAmount
-            );
+      // İşlemin başarıyla kaydedildiğini hemen bildir
+      showSnackbar('İşlem başarıyla kaydedildi', 'success');
+
+      // Bütçe güncellemesini ayrı bir try-catch bloğunda yap
+      try {
+        if (selectedType === TransactionType.EXPENSE) {
+          const [budgets, transactions] = await Promise.all([
+            BudgetService.getActiveBudgets(currentUser.uid),
+            TransactionService.getUserTransactions(currentUser.uid)
+          ]);
+          for (const budget of budgets) {
+            let categoryTransactions;
+            if (budget.categoryName === 'Tüm Kategoriler') {
+              categoryTransactions = transactions.filter(t =>
+                t.type === TransactionType.EXPENSE &&
+                t.date >= budget.startDate &&
+                t.date <= budget.endDate
+              );
+            } else {
+              categoryTransactions = transactions.filter(t =>
+                t.type === TransactionType.EXPENSE &&
+                t.category === budget.categoryName &&
+                t.date >= budget.startDate &&
+                t.date <= budget.endDate
+              );
+            }
+            const spentAmount = categoryTransactions.reduce((sum, t) => sum + t.amount, 0);
+            if (spentAmount !== budget.spentAmount) {
+              await BudgetService.updateBudgetProgress(
+                budget.id,
+                spentAmount,
+                budget.budgetedAmount
+              );
+            }
           }
         }
+      } catch (budgetError) {
+        console.error('Error updating budget after transaction:', budgetError);
+        // Bütçe güncellemesi başarısız olsa bile ana işlem başarılı olduğu için
+        // kullanıcıya ek bir hata gösterme, sadece logla.
       }
-      // --- SONU ---
-
-      showSnackbar('İşlem başarıyla kaydedildi', 'success');
       
       // Call onSuccess callback to refresh parent data
       if (onSuccess) {

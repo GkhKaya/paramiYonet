@@ -38,9 +38,9 @@ class NotificationService {
         // Mevcut zamanlanmış bildirimleri kontrol et
         await this.checkAndScheduleNotifications();
         this.isInitialized = true;
-        console.log('NotificationService başarıyla başlatıldı');
+        // Service initialized successfully
       } else {
-        console.log('Bildirim izni verilmedi');
+        // Notification permission denied
       }
     } catch (error) {
       console.error('NotificationService başlatılırken hata:', error);
@@ -107,7 +107,7 @@ class NotificationService {
       // Bildirim ID'sini kaydet
       await AsyncStorage.setItem('expenseReminderNotificationId', this.notificationIdentifier);
       
-      console.log('Günlük gider hatırlatma bildirimi zamanlandı:', this.notificationIdentifier);
+      // Daily expense reminder scheduled
     } catch (error) {
       console.error('Bildirim zamanlanırken hata:', error);
     }
@@ -122,7 +122,7 @@ class NotificationService {
         await Notifications.cancelScheduledNotificationAsync(this.notificationIdentifier);
         await AsyncStorage.removeItem('expenseReminderNotificationId');
         this.notificationIdentifier = null;
-        console.log('Günlük gider hatırlatma bildirimi iptal edildi');
+        // Daily expense reminder cancelled
       }
     } catch (error) {
       console.error('Bildirim iptal edilirken hata:', error);
@@ -146,13 +146,13 @@ class NotificationService {
 
         if (existingNotification) {
           this.notificationIdentifier = savedNotificationId;
-          console.log('Mevcut bildirim bulundu:', savedNotificationId);
+          // Existing notification found, no need to create new one
           return;
         }
       }
 
-      // Bildirim yoksa yeni bir tane zamanla
-      await this.scheduleDailyExpenseReminder();
+      // Bildirim yoksa ancak kullanıcı daha önce açmışsa yeni bir tane zamanla
+      // (İlk defa kullanım için scheduleDailyExpenseReminder manuel olarak çağrılır)
     } catch (error) {
       console.error('Bildirim kontrol edilirken hata:', error);
     }

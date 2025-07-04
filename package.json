@@ -7,7 +7,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "expo export -p web"
+    "build": "expo export -p web",
+    "build:prod": "NODE_ENV=production expo export -p web --minify --source-maps false",
+    "deploy": "npm run build:prod && firebase deploy --only hosting",
+    "deploy:vercel": "npm run build:prod && vercel --prod",
+    "deploy:firestore": "firebase deploy --only firestore"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

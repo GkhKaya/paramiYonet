@@ -119,12 +119,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               const password = await AsyncStorage.getItem(SAVED_PASSWORD_KEY);
               
               if (email && password) {
-                console.log('Attempting auto-login for user:', email);
+                // Attempting auto-login
                 // Firebase auth state dinleyici içinde signIn çağırmayalım, 
                 // bunun yerine direkt Firebase signIn yapalım
                 await signInWithEmailAndPassword(auth, email, password);
                 // Bu işlem başarılıysa onAuthStateChanged tekrar tetiklenecek
-                console.log('Auto-login successful');
+                // Auto-login successful
                 return; // Loading'i burada false yapmayalım
               }
             }
@@ -173,7 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Düzenli ödemeleri arka planda işle
       RecurringPaymentService.processRecurringPayments(user.id)
         .then(() => {
-          console.log('Recurring payments processed successfully');
+          // Recurring payments processed successfully
         })
         .catch((error) => {
           console.error('Error processing recurring payments:', error);
