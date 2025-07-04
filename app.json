@@ -26,22 +26,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.gkhkaya.paramiyonet",
-      "notifications": {
-        "icon": "./assets/icon.png",
-        "color": "#1e293b"
-      }
+      "package": "com.gkhkaya.paramiyonet"
     },
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#1e293b",
-          "defaultChannel": "default",
-          "sounds": ["default"]
-        }
-      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"

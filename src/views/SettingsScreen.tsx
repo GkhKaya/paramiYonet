@@ -25,7 +25,6 @@ import { isWeb } from '../utils/platform';
 import { TransactionViewModel } from '../viewmodels/TransactionViewModel';
 import { Transaction } from '../models/Transaction';
 import CustomAlert, { AlertType } from '../components/common/CustomAlert';
-import NotificationService from '../services/NotificationService';
 
 // Get screen dimensions for responsive sizing
 const { width } = Dimensions.get('window');
@@ -41,22 +40,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [password, setPassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
-  // Bildirim durumunu kontrol et
-  useEffect(() => {
-    const checkNotificationStatus = async () => {
-      try {
-        const notificationService = NotificationService.getInstance();
-        const isEnabled = await notificationService.isNotificationEnabled();
-        setNotificationsEnabled(isEnabled);
-      } catch (error) {
-        console.error('Bildirim durumu kontrol edilirken hata:', error);
-      }
-    };
-
-    checkNotificationStatus();
-  }, []);
 
   // Custom Alert states
   const [alertVisible, setAlertVisible] = useState(false);
@@ -147,25 +130,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   { text: 'Tamam', onPress: () => {} }
     ]);
   };
-
-  const handleNotificationToggle = async (enabled: boolean) => {
-    try {
-      const notificationService = NotificationService.getInstance();
-      await notificationService.toggleNotifications(enabled);
-      setNotificationsEnabled(enabled);
-      
-      if (enabled) {
-        showAlert('success', 'Bildirimler Aktif', 'Günlük gider hatırlatma bildirimleri her akşam saat 21:00\'da gelecek.');
-      } else {
-        showAlert('info', 'Bildirimler Deaktif', 'Günlük gider hatırlatma bildirimleri durduruldu.');
-      }
-    } catch (error) {
-      console.error('Bildirim ayarları değiştirilirken hata:', error);
-      showAlert('error', 'Hata', 'Bildirim ayarları değiştirilirken bir hata oluştu.');
-    }
-  };
-
-
 
   const handleExportData = async () => {
     if (!user) {
@@ -365,20 +329,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
 
       {/* Uygulama */}
       <SettingSection title="Uygulama">
-        <SettingItem
-          icon="notifications-outline"
-          title="Günlük Hatırlatma"
-          subtitle="Her akşam saat 21:00'da gider hatırlatması"
-          showArrow={false}
-          rightElement={
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={handleNotificationToggle}
-              trackColor={{ false: '#3e3e3e', true: COLORS.PRIMARY }}
-              thumbColor={notificationsEnabled ? '#ffffff' : '#f4f3f4'}
-            />
-          }
-        />
         <SettingItem
           icon="information-circle-outline"
           title="Uygulama Sürümü"
