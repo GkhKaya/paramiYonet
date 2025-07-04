@@ -21,6 +21,9 @@ import RecurringPayments from './pages/RecurringPayments';
 import Debts from './pages/Debts';
 import BudgetsPage from './pages/Budgets';
 
+// Bu uygulama subfolder'da (ör: /paramiyonet/) yayınlanacağı için hash tabanlı yönlendirme uygundur.
+// Eğer BrowserRouter kullanılsaydı, basename ayarı verilmeliydi. Şu an hash routing ile uyumlu.
+
 type PageType = 'dashboard' | 'accounts' | 'transactions' | 'credit-cards' | 'recurring' | 'debts' | 'budgets' | 'reports' | 'settings' | 'profile' | 'categories' | 'help' | 'add-transaction';
 
 const AppContent: React.FC = () => {

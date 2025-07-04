@@ -16,6 +16,7 @@ import {
 import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { AccountType } from '../models/Account';
+import { BudgetService } from './BudgetService';
 
 export class TransactionService {
   private static readonly COLLECTION_NAME = 'transactions';
@@ -219,6 +220,26 @@ export class TransactionService {
 
       // Execute batch write
       await batch.commit();
+
+      // BÜTÇE GÜNCELLEME: Eğer gider ise ilgili bütçeleri güncelle
+      if (transactionData.type === TransactionType.EXPENSE) {
+        const budgets = await BudgetService.getActiveBudgets(transactionData.userId);
+        for (const budget of budgets) {
+          if (
+            budget.categoryName === transactionData.category ||
+            budget.categoryName === 'Tüm Kategoriler'
+          ) {
+            const spentAmount = budget.spentAmount + transactionData.amount;
+            const remainingAmount = Math.max(0, budget.budgetedAmount - spentAmount);
+            const progressPercentage = budget.budgetedAmount > 0 ? (spentAmount / budget.budgetedAmount) * 100 : 0;
+            await BudgetService.updateBudget(budget.id, {
+              spentAmount,
+              remainingAmount,
+              progressPercentage,
+            });
+          }
+        }
+      }
 
       return {
         id: transactionRef.id,
