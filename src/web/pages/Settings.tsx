@@ -501,7 +501,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigateToProfile, onNavigateToCa
               <Button 
                 variant="outlined" 
                 size="small"
-                onClick={() => window.alert('Gizlilik politikası yakında gelecek')}
+                onClick={handleOpenPrivacyPolicy}
                 sx={{ borderColor: '#673AB7', color: '#673AB7' }}
               >
                 Politikayı Oku
