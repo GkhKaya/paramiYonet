@@ -11,6 +11,7 @@ import {
   Dimensions,
   StatusBar,
   TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { observer } from 'mobx-react-lite';
 import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import { useAuth } from '../../contexts/AuthContext';
 import { useError } from '../../contexts/ErrorContext';
+import ForgotPasswordModal from '../../components/auth/ForgotPasswordModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,14 +32,15 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
   onNavigateToRegister, 
   onLoginSuccess 
 }) => {
-  const { signIn, loading, dataLoading, getSavedCredentials } = useAuth();
-  const { showError } = useError();
+  const { signIn, loading, dataLoading, getSavedCredentials, forgotPassword } = useAuth();
+  const { showError, showSuccess } = useError();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [isForgotPasswordModalVisible, setIsForgotPasswordModalVisible] = useState(false);
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -71,6 +74,19 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
     const result = await signIn(email, password, rememberMe);
     if (result) {
       onLoginSuccess();
+    }
+  };
+
+  const handleForgotPassword = async (email?: string) => {
+    if (!email) {
+      setIsForgotPasswordModalVisible(true);
+      return;
+    }
+
+    const result = await forgotPassword(email);
+    if (result) {
+      setIsForgotPasswordModalVisible(false);
+      showSuccess('Şifre sıfırlama e-postası gönderildi. Lütfen gelen kutunuzu ve spam/junk klasörünüzü kontrol edin.');
     }
   };
 
@@ -161,7 +177,7 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
                 </TouchableOpacity>
 
                 {/* Forgot Password */}
-                <TouchableOpacity style={styles.forgotPassword}>
+                <TouchableOpacity style={styles.forgotPassword} onPress={() => handleForgotPassword()}>
                   <Text style={styles.forgotPasswordText}>Şifremi unuttum?</Text>
                 </TouchableOpacity>
 
@@ -191,6 +207,12 @@ const LoginScreen: React.FC<LoginScreenProps> = observer(({
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
+
+        <ForgotPasswordModal
+          visible={isForgotPasswordModalVisible}
+          onClose={() => setIsForgotPasswordModalVisible(false)}
+          onConfirm={handleForgotPassword}
+        />
       </View>
     </>
   );

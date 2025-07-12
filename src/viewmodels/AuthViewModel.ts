@@ -5,7 +5,8 @@ import {
   signOut,
   onAuthStateChanged,
   User as FirebaseUser,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -73,6 +74,7 @@ export class AuthViewModel extends BaseViewModel {
       signUp: action,
       logout: action,
       initializeAuth: action,
+      forgotPassword: action,
     });
 
     this.initializeAuth();
@@ -222,6 +224,16 @@ export class AuthViewModel extends BaseViewModel {
 
         this.clearForm();
         return firebaseUser;
+      } catch (error: any) {
+        throw new Error(this.getAuthErrorMessage(error.code));
+      }
+    });
+  };
+
+  forgotPassword = async (email: string) => {
+    return this.executeAsync(async () => {
+      try {
+        await sendPasswordResetEmail(auth, email);
       } catch (error: any) {
         throw new Error(this.getAuthErrorMessage(error.code));
       }

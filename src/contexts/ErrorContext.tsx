@@ -16,6 +16,7 @@ interface ErrorContextType {
   showAuthError: (errorCode: string) => void;
   showNetworkError: () => void;
   showValidationError: (field: string, message: string) => void;
+  showSuccess: (message: string, title?: string) => void;
 }
 
 const ErrorContext = createContext<ErrorContextType | undefined>(undefined);
@@ -99,6 +100,10 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
     showError(message, 'error', title);
   };
 
+  const showSuccess = (message: string, title?: string) => {
+    showError(message, 'success', title || 'Başarılı');
+  };
+
   const showNetworkError = () => {
     showError(
       'İnternet bağlantınızı kontrol edin ve tekrar deneyin.',
@@ -133,7 +138,8 @@ export const ErrorProvider: React.FC<ErrorProviderProps> = ({ children }) => {
         hideError,
         showAuthError,
         showNetworkError,
-        showValidationError
+        showValidationError,
+        showSuccess
       }}
     >
       {children}

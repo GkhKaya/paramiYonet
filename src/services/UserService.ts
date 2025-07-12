@@ -27,6 +27,8 @@ import {
 } from 'firebase/firestore';
 
 class UserService {
+  private static usersCollection = collection(db, 'users');
+
   async register(email: string, password: string, displayName?: string): Promise<User> {
     try {
       // Firebase Auth'da kullanıcı oluştur
@@ -168,6 +170,16 @@ class UserService {
       // Sadece loglamak yeterli, hata yönetimi context'te yapılıyor.
       throw error; // Yine de zinciri kırmamak için hatayı yukarı yollayalım.
     }
+  }
+
+  static async createUser(userId: string, userData: Omit<User, 'id'>): Promise<void> {
+    const userDocRef = doc(this.usersCollection, userId);
+    await setDoc(userDocRef, userData);
+  }
+
+  static async updateUser(userId: string, updates: Partial<User>): Promise<void> {
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, updates);
   }
 }
 

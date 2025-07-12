@@ -11,6 +11,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   deleteUser,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
@@ -25,13 +26,14 @@ interface AuthContextType {
   loading: boolean;
   dataLoading: boolean;
   signIn: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
-  signUp: (email: string, password: string, displayName: string) => Promise<boolean>;
+  signUp: (email: string, password: string, name: string) => Promise<boolean>;
   signOut: () => Promise<void>;
-  updateUserProfile: (updates: { displayName?: string; photoURL?: string }) => Promise<void>;
+  updateUserProfile: (updates: { name?: string; photoURL?: string }) => Promise<void>;
   deleteUserAccount: (password: string) => Promise<boolean>;
   getSavedCredentials: () => Promise<{ email: string; password: string } | null>;
   clearSavedCredentials: () => Promise<void>;
   tryAutoLogin: () => Promise<boolean>;
+  forgotPassword: (email: string) => Promise<boolean>;
 }
 
 // AsyncStorage keys
@@ -223,7 +225,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // finally bloğunu kaldırıyoruz çünkü successful giriş durumunda onAuthStateChanged loading'i false yapacak
   };
 
-  const signUp = async (email: string, password: string, displayName: string): Promise<boolean> => {
+  const forgotPassword = async (email: string): Promise<boolean> => {
+    try {
+      setDataLoading(true);
+      await sendPasswordResetEmail(auth, email);
+      setDataLoading(false);
+      return true;
+    } catch (error: any) {
+      showAuthError(error.code || 'auth/unknown-error');
+      setDataLoading(false);
+      return false;
+    }
+  };
+
+  const signUp = async (email: string, password: string, name: string): Promise<boolean> => {
     try {
       // Email validation
       const emailValidation = validateEmail(email);
@@ -240,7 +255,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Display name validation
-      const displayNameValidation = validateDisplayName(displayName);
+      const displayNameValidation = validateDisplayName(name);
       if (!displayNameValidation.isValid) {
         showError(displayNameValidation.message || 'Geçersiz kullanıcı adı', 'error', 'Kayıt Hatası');
         return false;
@@ -248,32 +263,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       setDataLoading(true);
       
-      // Firebase'de kullanıcı oluştur
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Kullanıcı profil bilgisini güncelle
-      await updateProfile(userCredential.user, {
-        displayName: displayName
-      });
+      const firebaseUser = userCredential.user;
 
-      // Firestore'da kullanıcı belgesi oluştur
-      const userData = {
-        email: email,
-        displayName: displayName,
-        photoURL: null,
-        currency: 'TRY',
-        preferences: {
-          onboardingCompleted: false
-        },
-        createdAt: Timestamp.fromDate(new Date()),
-        updatedAt: Timestamp.fromDate(new Date()),
-      };
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      await setDoc(userDocRef, userData);
+      // Firebase Auth profilini güncelle
+      await updateProfile(firebaseUser, { displayName: name });
       
-      // onAuthStateChanged tetiklenecek ve kullanıcıyı set edecek
+      // Firestore'da kullanıcı profili oluştur
+      const newUser: User = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        name: name,
+        currency: 'TRY', // Varsayılan para birimi
+        currencySymbol: '₺',
+        currencyFormat: 'tr-TR',
+        language: 'tr',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        onboardingCompleted: false,
+      };
+
+      await UserService.createUser(firebaseUser.uid, newUser);
+      
+      // Lokal state'i güncelle
+      setUser(newUser);
+      
       setDataLoading(false);
       return true;
+
     } catch (error: any) {
       console.error('Sign up error:', error);
       showAuthError(error.code || 'auth/unknown-error');
@@ -373,30 +390,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const updateUserProfile = async (updates: { name?: string; profilePictureUrl?: string }): Promise<void> => {
+  const updateUserProfile = async (updates: { name?: string; photoURL?: string }): Promise<void> => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      showError('Bu işlemi yapmak için giriş yapmalısınız.', 'error', 'Yetkilendirme Hatası');
+      return;
+    }
+  
+    setDataLoading(true);
     try {
-      if (!auth.currentUser) {
-        throw new Error('No authenticated user');
-      }
-      
-      setLoading(true);
-      await updateProfile(auth.currentUser, updates);
-      
-      // Update local user state
+      // Firebase Auth profilini güncelle
+      await updateProfile(firebaseUser, {
+        displayName: updates.name,
+        photoURL: updates.photoURL,
+      });
+  
+      // Firestore'daki kullanıcı verisini güncelle
+      const updateData: { [key: string]: any } = {};
+      if (updates.name) updateData.name = updates.name;
+      if (updates.photoURL) updateData.profilePictureUrl = updates.photoURL;
+      updateData.updatedAt = new Date();
+  
+      await UserService.updateUser(firebaseUser.uid, updateData);
+  
+      // Lokal state'i güncelle
       if (user) {
-        const updatedUser: User = {
+        setUser({
           ...user,
-          displayName: updates.displayName || user.displayName,
-          photoURL: updates.photoURL || user.photoURL,
-          updatedAt: new Date(),
-        };
-        setUser(updatedUser);
+          name: updates.name || user.name,
+          profilePictureUrl: updates.photoURL || user.profilePictureUrl,
+        });
       }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error;
+    } catch (error: any) {
+      showAuthError(error.code || 'auth/unknown-error');
     } finally {
-      setLoading(false);
+      setDataLoading(false);
     }
   };
 
@@ -412,6 +440,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     getSavedCredentials,
     clearSavedCredentials,
     tryAutoLogin,
+    forgotPassword,
   };
 
   return (
