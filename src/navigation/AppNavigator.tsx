@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { observer } from 'mobx-react-lite';
 import { useAuth } from '../contexts/AuthContext';
-import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useNetwork } from '../contexts/NetworkContext';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import { NetworkErrorScreen } from '../components/common/NetworkErrorScreen';
@@ -10,17 +10,20 @@ import { COLORS, SPACING, TYPOGRAPHY } from '../constants';
 
 const AppNavigator: React.FC = observer(() => {
   const { user, loading, dataLoading } = useAuth();
-  const networkStatus = useNetworkStatus();
+  const { networkStatus, isOnline, retryConnection } = useNetwork();
   const [retryCount, setRetryCount] = useState(0);
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
-    // Force reload app by triggering re-render
-    window.location.reload();
+    retryConnection();
+    // Force reload app by triggering re-render (sadece web için)
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
   };
 
   // İnternet bağlantısı yoksa error screen göster
-  if (!networkStatus.isConnected) {
+  if (!isOnline) {
     return <NetworkErrorScreen onRetry={handleRetry} />;
   }
 

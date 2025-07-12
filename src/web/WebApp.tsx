@@ -5,6 +5,8 @@ import { darkTheme } from './styles/theme';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoadingProvider, useLoading } from './contexts/LoadingContext';
 import { ErrorProvider } from '../contexts/ErrorContext';
+import { NetworkProvider } from '../contexts/NetworkContext';
+import { NetworkStatusIndicator } from '../components/common/NetworkStatusIndicator';
 import WebLayout from './components/Layout/WebLayout';
 import Dashboard from './pages/Dashboard';
 import TransactionsPage from './pages/Transactions';
@@ -158,6 +160,7 @@ const AppContent: React.FC = () => {
 
   return (
       <WebLayout currentPage={currentPage} onNavigate={navigateToPage}>
+        <NetworkStatusIndicator />
         {renderPage()}
       </WebLayout>
   );
@@ -169,11 +172,13 @@ const WebApp: React.FC = () => {
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <ErrorProvider>
-        <AuthProvider>
-          <LoadingProvider>
-            <AppContent />
-          </LoadingProvider>
-        </AuthProvider>
+        <NetworkProvider>
+          <AuthProvider>
+            <LoadingProvider>
+              <AppContent />
+            </LoadingProvider>
+          </AuthProvider>
+        </NetworkProvider>
       </ErrorProvider>
     </ThemeProvider>
   );
