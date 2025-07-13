@@ -2,48 +2,143 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // GEÇICI TEST MODU - Tüm read/write işlemlerine izin ver
-    // PRODUCTION'da AUTH kontrolü eklenecek!
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper functions for security
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
-    // PRODUCTION RULES (şimdilik disabled):
-    /*
-    // Kullanıcılar sadece kendi verilerine erişebilir
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidUser() {
+      return isAuthenticated() && 
+             request.auth.uid is string && 
+             request.auth.uid.size() > 0;
+    }
+    
+    function isValidTimestamp(timestamp) {
+      return timestamp is timestamp;
+    }
+    
+    function isValidAmount(amount) {
+      return amount is number && amount >= 0;
+    }
+    
+    function isValidString(str, maxLength) {
+      return str is string && str.size() > 0 && str.size() <= maxLength;
+    }
+    
+    // Users collection - only owner can access
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isValidUser() && isOwner(userId);
+      allow create: if isValidUser() && 
+                   isOwner(userId) &&
+                   isValidString(request.resource.data.email, 100) &&
+                   isValidString(request.resource.data.name, 50) &&
+                   isValidTimestamp(request.resource.data.createdAt);
     }
     
-    // İşlemler (Transactions)
+    // Transactions collection
     match /transactions/{transactionId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read: if isValidUser() && isOwner(resource.data.userId);
+      allow create: if isValidUser() && 
+                   isOwner(request.resource.data.userId) &&
+                   isValidString(request.resource.data.description, 200) &&
+                   isValidAmount(request.resource.data.amount) &&
+                   isValidString(request.resource.data.category, 50) &&
+                   request.resource.data.type in ['income', 'expense'] &&
+                   isValidTimestamp(request.resource.data.date) &&
+                   isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isValidUser() && 
+                   isOwner(resource.data.userId) &&
+                   isOwner(request.resource.data.userId) &&
+                   isValidTimestamp(request.resource.data.updatedAt);
+      allow delete: if isValidUser() && isOwner(resource.data.userId);
     }
     
-    // Hesaplar (Accounts)
+    // Accounts collection
     match /accounts/{accountId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      allow read: if isValidUser() && isOwner(resource.data.userId);
+      allow create: if isValidUser() && 
+                   isOwner(request.resource.data.userId) &&
+                   isValidString(request.resource.data.name, 50) &&
+                   request.resource.data.type in ['checking', 'savings', 'credit_card', 'cash', 'investment', 'gold'] &&
+                   isValidAmount(request.resource.data.balance) &&
+                   isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isValidUser() && 
+                   isOwner(resource.data.userId) &&
+                   isOwner(request.resource.data.userId) &&
+                   isValidTimestamp(request.resource.data.updatedAt);
+      allow delete: if isValidUser() && isOwner(resource.data.userId);
     }
     
-    // Kategoriler (Categories) - Herkes okuyabilir, sadece sahibi yazabilir
+    // Categories collection
     match /categories/{categoryId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && (
-        !resource.data.exists() || 
-        request.auth.uid == resource.data.userId ||
-        resource.data.isDefault == true
+      allow read: if isValidUser();
+      allow create: if isValidUser() && (
+        (request.resource.data.isDefault == true) ||
+        (isOwner(request.resource.data.userId) && 
+         isValidString(request.resource.data.name, 50) &&
+         isValidString(request.resource.data.icon, 50))
       );
-      allow create: if request.auth != null && (
-        request.resource.data.userId == request.auth.uid ||
-        request.resource.data.isDefault == true
+      allow update: if isValidUser() && (
+        (resource.data.isDefault == true && request.auth.uid in ['admin']) ||
+        (isOwner(resource.data.userId) && isOwner(request.resource.data.userId))
       );
+      allow delete: if isValidUser() && isOwner(resource.data.userId);
     }
-    */
+    
+    // Budgets collection
+    match /budgets/{budgetId} {
+      allow read: if isValidUser() && isOwner(resource.data.userId);
+      allow create: if isValidUser() && 
+                   isOwner(request.resource.data.userId) &&
+                   isValidString(request.resource.data.categoryName, 50) &&
+                   isValidAmount(request.resource.data.budgetedAmount) &&
+                   request.resource.data.period in ['monthly', 'weekly'] &&
+                   isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isValidUser() && 
+                   isOwner(resource.data.userId) &&
+                   isOwner(request.resource.data.userId) &&
+                   isValidTimestamp(request.resource.data.updatedAt);
+      allow delete: if isValidUser() && isOwner(resource.data.userId);
+    }
+    
+    // Debts collection
+    match /debts/{debtId} {
+      allow read: if isValidUser() && isOwner(resource.data.userId);
+      allow create: if isValidUser() && 
+                   isOwner(request.resource.data.userId) &&
+                   isValidString(request.resource.data.name, 100) &&
+                   isValidAmount(request.resource.data.totalAmount) &&
+                   isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isValidUser() && 
+                   isOwner(resource.data.userId) &&
+                   isOwner(request.resource.data.userId) &&
+                   isValidTimestamp(request.resource.data.updatedAt);
+      allow delete: if isValidUser() && isOwner(resource.data.userId);
+    }
+    
+    // Recurring payments collection
+    match /recurringPayments/{paymentId} {
+      allow read: if isValidUser() && isOwner(resource.data.userId);
+      allow create: if isValidUser() && 
+                   isOwner(request.resource.data.userId) &&
+                   isValidString(request.resource.data.name, 100) &&
+                   isValidAmount(request.resource.data.amount) &&
+                   request.resource.data.frequency in ['daily', 'weekly', 'monthly', 'yearly'] &&
+                   isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isValidUser() && 
+                   isOwner(resource.data.userId) &&
+                   isOwner(request.resource.data.userId) &&
+                   isValidTimestamp(request.resource.data.updatedAt);
+      allow delete: if isValidUser() && isOwner(resource.data.userId);
+    }
+    
+    // Deny all other requests
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

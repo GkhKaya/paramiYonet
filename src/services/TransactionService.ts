@@ -17,6 +17,7 @@ import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { AccountType } from '../models/Account';
 import { BudgetService } from './BudgetService';
+import { SecurityService } from './SecurityService';
 
 export class TransactionService {
   private static readonly COLLECTION_NAME = 'transactions';
@@ -105,12 +106,10 @@ export class TransactionService {
       const startDate = new Date(year, month, 1);
       const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
-      // Simplified query without orderBy to avoid composite index requirement
+      // Use simple query to avoid composite index requirement
       const q = query(
         collection(db, this.COLLECTION_NAME),
-        where('userId', '==', userId),
-        where('date', '>=', Timestamp.fromDate(startDate)),
-        where('date', '<=', Timestamp.fromDate(endDate))
+        where('userId', '==', userId)
       );
       
       const querySnapshot = await getDocs(q);
@@ -133,10 +132,16 @@ export class TransactionService {
         });
       });
 
-      // Sort client-side to avoid index requirement
-      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+      // Filter by date range client-side to avoid composite index
+      const filteredTransactions = transactions.filter(transaction => {
+        const transactionDate = transaction.date;
+        return transactionDate >= startDate && transactionDate <= endDate;
+      });
 
-      return transactions;
+      // Sort client-side to avoid index requirement
+      filteredTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      return filteredTransactions;
     } catch (error) {
       console.error('Error getting monthly transactions:', error);
       throw new Error('Aylık işlemler yüklenemedi');
@@ -146,20 +151,29 @@ export class TransactionService {
   // Create a new transaction
   static async createTransaction(transactionData: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<Transaction> {
     try {
+      // Security validation
+      const validation = SecurityService.validateTransactionData(transactionData);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(', '));
+      }
+      
+      // Use sanitized data
+      const sanitizedData = validation.sanitizedData!;
+      
       const now = new Date();
       const batch = writeBatch(db);
       
-      // Create transaction document
+      // Create transaction document with sanitized data
       const transactionRef = doc(collection(db, this.COLLECTION_NAME));
       batch.set(transactionRef, {
-        ...transactionData,
-        date: Timestamp.fromDate(transactionData.date),
+        ...sanitizedData,
+        date: Timestamp.fromDate(sanitizedData.date),
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now),
       });
 
       // Update account balance or credit card debt
-      const accountRef = doc(db, 'accounts', transactionData.accountId);
+      const accountRef = doc(db, 'accounts', sanitizedData.accountId);
       const accountDoc = await getDoc(accountRef);
       
       if (!accountDoc.exists()) {
@@ -168,13 +182,13 @@ export class TransactionService {
 
       const accountData = accountDoc.data();
       
-      console.log('TransactionService.createTransaction - Account data:', {
-        accountId: transactionData.accountId,
-        accountType: accountData.type,
-        currentDebt: accountData.currentDebt,
-        transactionType: transactionData.type,
-        transactionAmount: transactionData.amount
-      });
+              console.log('TransactionService.createTransaction - Account data:', {
+          accountId: sanitizedData.accountId,
+          accountType: accountData.type,
+          currentDebt: accountData.currentDebt,
+          transactionType: sanitizedData.type,
+          transactionAmount: sanitizedData.amount
+        });
       
       // Check if this is a credit card account
       if (accountData.type === AccountType.CREDIT_CARD) {
@@ -182,19 +196,19 @@ export class TransactionService {
         const currentDebt = accountData.currentDebt || 0;
         let newDebt: number;
         
-        if (transactionData.type === TransactionType.EXPENSE) {
+        if (sanitizedData.type === TransactionType.EXPENSE) {
           // Credit card expense increases debt
-          newDebt = currentDebt + transactionData.amount;
+          newDebt = currentDebt + sanitizedData.amount;
         } else {
           // Credit card payment (income) decreases debt
-          newDebt = Math.max(0, currentDebt - transactionData.amount);
+          newDebt = Math.max(0, currentDebt - sanitizedData.amount);
         }
 
         console.log('Credit card debt update:', {
           oldDebt: currentDebt,
           newDebt: newDebt,
-          transactionType: transactionData.type,
-          amount: transactionData.amount
+          transactionType: sanitizedData.type,
+          amount: sanitizedData.amount
         });
 
         batch.update(accountRef, { 
@@ -206,10 +220,10 @@ export class TransactionService {
         const currentBalance = accountData.balance || 0;
       let newBalance: number;
         
-      if (transactionData.type === TransactionType.INCOME) {
-        newBalance = currentBalance + transactionData.amount;
+      if (sanitizedData.type === TransactionType.INCOME) {
+        newBalance = currentBalance + sanitizedData.amount;
       } else {
-        newBalance = currentBalance - transactionData.amount;
+        newBalance = currentBalance - sanitizedData.amount;
       }
 
       batch.update(accountRef, { 
@@ -222,14 +236,14 @@ export class TransactionService {
       await batch.commit();
 
       // BÜTÇE GÜNCELLEME: Eğer gider ise ilgili bütçeleri güncelle
-      if (transactionData.type === TransactionType.EXPENSE) {
-        const budgets = await BudgetService.getActiveBudgets(transactionData.userId);
+      if (sanitizedData.type === TransactionType.EXPENSE) {
+        const budgets = await BudgetService.getActiveBudgets(sanitizedData.userId);
         for (const budget of budgets) {
           if (
-            budget.categoryName === transactionData.category ||
+            budget.categoryName === sanitizedData.category ||
             budget.categoryName === 'Tüm Kategoriler'
           ) {
-            const spentAmount = budget.spentAmount + transactionData.amount;
+            const spentAmount = budget.spentAmount + sanitizedData.amount;
             const remainingAmount = Math.max(0, budget.budgetedAmount - spentAmount);
             const progressPercentage = budget.budgetedAmount > 0 ? (spentAmount / budget.budgetedAmount) * 100 : 0;
             await BudgetService.updateBudget(budget.id, {
@@ -243,13 +257,13 @@ export class TransactionService {
 
       return {
         id: transactionRef.id,
-        ...transactionData,
+        ...sanitizedData,
         createdAt: now,
         updatedAt: now,
       };
     } catch (error) {
-      console.error('Error creating transaction:', error);
-      throw new Error('İşlem kaydedilemedi');
+      console.error('Error creating transaction:', SecurityService.cleanupSensitiveData(error));
+      throw new Error(SecurityService.sanitizeError(error));
     }
   }
 
@@ -462,12 +476,10 @@ export class TransactionService {
     type?: TransactionType
   ): Promise<{ [category: string]: number }> {
     try {
+      // Use simple query to avoid composite index requirement
       const q = query(
         collection(db, this.COLLECTION_NAME),
-        where('userId', '==', userId),
-        where('date', '>=', Timestamp.fromDate(startDate)),
-        where('date', '<=', Timestamp.fromDate(endDate)),
-        ...(type ? [where('type', '==', type)] : [])
+        where('userId', '==', userId)
       );
       
       const querySnapshot = await getDocs(q);
@@ -475,13 +487,20 @@ export class TransactionService {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        const category = data.category;
-        const amount = data.amount;
+        const transactionDate = data.date?.toDate() ?? new Date();
+        
+        // Filter by date range and type client-side to avoid composite index
+        if (transactionDate >= startDate && 
+            transactionDate <= endDate && 
+            (!type || data.type === type)) {
+          const category = data.category;
+          const amount = data.amount;
 
-        if (categoryTotals[category]) {
-          categoryTotals[category] += amount;
-        } else {
-          categoryTotals[category] = amount;
+          if (categoryTotals[category]) {
+            categoryTotals[category] += amount;
+          } else {
+            categoryTotals[category] = amount;
+          }
         }
       });
 

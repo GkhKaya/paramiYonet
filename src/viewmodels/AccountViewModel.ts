@@ -17,6 +17,7 @@ import { BaseViewModel } from './BaseViewModel';
 import { Transaction, TransactionType } from '../models/Transaction';
 import GoldPriceService from '../services/GoldPriceService';
 import { COLORS } from '../constants';
+import CacheService from '../services/CacheService';
 
 // Hesap tipine göre default renk getiren yardımcı fonksiyon
 const getDefaultColorForAccountType = (type: string): string => {
@@ -221,21 +222,31 @@ export class AccountViewModel extends BaseViewModel {
     try {
       this.setLoading(true);
       
+      // Check cache first
+      const cachedAccounts = CacheService.getAccounts(this.userId);
+      if (cachedAccounts) {
+        this.setAccounts(cachedAccounts);
+        this.setLoading(false);
+        return;
+      }
+      
+      // Use simple query to avoid composite index requirement
       const accountsQuery = query(
         collection(db, 'accounts'),
-        where('userId', '==', this.userId),
-        where('isActive', '==', true)
+        where('userId', '==', this.userId)
       );
 
-      // Real-time listener
-      this.unsubscribeAccounts = onSnapshot(accountsQuery, (snapshot) => {
-        const accountsData = snapshot.docs.map(doc => {
+      const snapshot = await getDocs(accountsQuery);
+      const accountsData = snapshot.docs
+        .map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
             ...data,
             createdAt: data.createdAt?.toDate() || new Date(),
             updatedAt: data.updatedAt?.toDate() || new Date(),
+            openingDate: data.openingDate?.toDate() || new Date(),
+            currency: data.currency || 'TRY',
             // Eğer includeInTotalBalance field'ı yoksa default true yap
             includeInTotalBalance: data.includeInTotalBalance !== undefined ? data.includeInTotalBalance : true,
             // Eğer color field'ı yoksa hesap tipine göre default renk ver
@@ -243,11 +254,15 @@ export class AccountViewModel extends BaseViewModel {
             // goldHoldings varsa date'leri dönüştür
             goldHoldings: data.goldHoldings ? this.convertGoldHoldingsDates(data.goldHoldings) : undefined,
           } as Account;
-        });
-        
-        this.setAccounts(accountsData);
-        this.setLoading(false);
-      });
+        })
+        // Filter for active accounts client-side to avoid composite index
+        .filter(account => account.isActive !== false);
+      
+      // Cache the results
+      CacheService.setAccounts(this.userId, accountsData);
+      
+      this.setAccounts(accountsData);
+      this.setLoading(false);
     } catch (error) {
       console.error('Error loading accounts:', error);
       this.setError('Hesaplar yüklenirken hata oluştu');
@@ -306,10 +321,16 @@ export class AccountViewModel extends BaseViewModel {
         ...newAccount,
         createdAt: new Date(),
         updatedAt: new Date(),
+        openingDate: new Date(),
+        currency: 'TRY',
         goldHoldings: accountData.goldHoldings,
       };
 
       this.addAccount(createdAccount);
+      
+      // Invalidate cache after creating account
+      CacheService.invalidateAccountCache(this.userId);
+      
       this.setLoading(false);
       return true;
     } catch (error) {
@@ -360,6 +381,9 @@ export class AccountViewModel extends BaseViewModel {
       
       await updateDoc(accountRef, finalUpdateData);
       
+      // Invalidate cache after updating account
+      CacheService.invalidateAccountCache(this.userId);
+      
       this.setLoading(false);
       return true;
     } catch (error) {
@@ -381,6 +405,10 @@ export class AccountViewModel extends BaseViewModel {
       });
       
       this.removeAccount(accountId);
+      
+      // Invalidate cache after deleting account
+      CacheService.invalidateAccountCache(this.userId);
+      
       this.setLoading(false);
       return true;
     } catch (error) {

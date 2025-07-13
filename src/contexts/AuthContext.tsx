@@ -19,7 +19,9 @@ import { User } from '../models/User';
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validation';
 import { RecurringPaymentService } from '../services/RecurringPaymentService';
 import UserService from '../services/UserService';
+import { UserService as FirebaseUserService } from '../services/FirebaseService';
 import { useError } from './ErrorContext';
+import CacheService from '../services/CacheService';
 
 interface AuthContextType {
   user: User | null;
@@ -59,38 +61,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         setDataLoading(true);
-        // Firestore'dan tam kullanıcı verisini çek
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        let appUser: User;
-
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          // Firestore'daki Timestamp'i Date objesine çevir
-          const createdAt = userData.createdAt instanceof Timestamp 
-            ? userData.createdAt.toDate() 
-            : new Date();
-          const updatedAt = userData.updatedAt instanceof Timestamp 
-            ? userData.updatedAt.toDate()
-            : new Date();
-
-          appUser = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            name: userData.displayName || firebaseUser.displayName || '',
-            currency: userData.currency || 'TRY',
-            currencySymbol: userData.currencySymbol || '₺',
-            currencyFormat: userData.currencyFormat || 'TR',
-            language: userData.language || 'tr',
-            profilePictureUrl: userData.photoURL || firebaseUser.photoURL || undefined,
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            onboardingCompleted: userData.preferences?.onboardingCompleted || false,
-          };
-        } else {
-          // Bu durum normalde signUp sonrası olmalı, ancak bir fallback olarak ekleyelim
-          appUser = {
+        // Use optimized UserService with cache
+        const appUser = await FirebaseUserService.getUser(firebaseUser.uid);
+        
+        if (!appUser) {
+          // Fallback if user doesn't exist in Firestore
+          const fallbackUser: User = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
             name: firebaseUser.displayName || '',
@@ -99,10 +75,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             currencyFormat: 'TR',
             language: 'tr',
             profilePictureUrl: firebaseUser.photoURL || undefined,
-            createdAt: new Date(), // Gerçek kayıt zamanı olmadığı için fallback
+            createdAt: new Date(),
             updatedAt: new Date(),
             onboardingCompleted: false,
           };
+          
+          // Create user in Firestore
+          await FirebaseUserService.createUser(fallbackUser);
+          setUser(fallbackUser);
+        } else {
+          setUser(appUser);
         }
         
         setUser(appUser);
@@ -283,7 +265,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         onboardingCompleted: false,
       };
 
-      await UserService.createUser(firebaseUser.uid, newUser);
+      await FirebaseUserService.createUser(newUser);
       
       // Lokal state'i güncelle
       setUser(newUser);
@@ -411,7 +393,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (updates.photoURL) updateData.profilePictureUrl = updates.photoURL;
       updateData.updatedAt = new Date();
   
-      await UserService.updateUser(firebaseUser.uid, updateData);
+      await FirebaseUserService.updateUser(firebaseUser.uid, updateData);
   
       // Lokal state'i güncelle
       if (user) {

@@ -20,14 +20,14 @@ export class CategoryService {
   // Kullanıcının custom kategorilerini getir
   static async getUserCategories(userId: string): Promise<Category[]> {
     try {
+      // Simple query without orderBy to avoid index requirement
       const categoriesQuery = query(
         collection(db, this.COLLECTION_NAME),
-        where('userId', '==', userId),
-        orderBy('name', 'asc')
+        where('userId', '==', userId)
       );
 
       const querySnapshot = await getDocs(categoriesQuery);
-      return querySnapshot.docs.map(doc => {
+      const categories = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -39,6 +39,11 @@ export class CategoryService {
           userId: data.userId,
         } as Category;
       });
+
+      // Sort client-side by name alphabetically
+      categories.sort((a, b) => a.name.localeCompare(b.name));
+
+      return categories;
     } catch (error) {
       console.error('Error getting user categories:', error);
       throw error;

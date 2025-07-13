@@ -12,6 +12,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { BaseViewModel } from './BaseViewModel';
 import { User, DEFAULT_USER_PREFERENCES } from '../models/User';
+import { SecurityService } from '../services/SecurityService';
 
 export interface AuthFormData {
   email: string;
@@ -178,12 +179,32 @@ export class AuthViewModel extends BaseViewModel {
   signIn = async (email: string, password: string) => {
     return this.executeAsync(async () => {
       try {
+        // Security validations
+        if (!SecurityService.validateEmail(email)) {
+          throw new Error('Geçersiz email formatı');
+        }
+        
+        // Rate limiting check
+        if (!SecurityService.checkRateLimit(email)) {
+          throw new Error('Çok fazla deneme. Lütfen daha sonra tekrar deneyin.');
+        }
+        
+        // Check login attempts
+        if (!SecurityService.recordLoginAttempt(email)) {
+          const attemptsLeft = SecurityService.getLoginAttemptsLeft(email);
+          throw new Error(`Çok fazla başarısız deneme. ${attemptsLeft} deneme hakkınız kaldı.`);
+        }
+        
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        
+        // Reset login attempts on successful login
+        SecurityService.resetLoginAttempts(email);
+        
         await this.loadUserProfile(userCredential.user.uid);
         this.clearForm();
         return userCredential.user;
       } catch (error: any) {
-        throw new Error(this.getAuthErrorMessage(error.code));
+        throw new Error(SecurityService.sanitizeError(error));
       }
     });
   };
@@ -191,6 +212,27 @@ export class AuthViewModel extends BaseViewModel {
   signUp = async (email: string, password: string, displayName: string) => {
     return this.executeAsync(async () => {
       try {
+        // Security validations
+        if (!SecurityService.validateEmail(email)) {
+          throw new Error('Geçersiz email formatı');
+        }
+        
+        const passwordValidation = SecurityService.validatePassword(password);
+        if (!passwordValidation.isValid) {
+          throw new Error(passwordValidation.errors.join(', '));
+        }
+        
+        if (!displayName || displayName.trim().length === 0) {
+          throw new Error('İsim gerekli');
+        }
+        
+        const sanitizedDisplayName = SecurityService.sanitizeString(displayName, 50);
+        
+        // Rate limiting check
+        if (!SecurityService.checkRateLimit(email)) {
+          throw new Error('Çok fazla deneme. Lütfen daha sonra tekrar deneyin.');
+        }
+        
         // Firebase Auth'da kullanıcı oluştur
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const firebaseUser = userCredential.user;

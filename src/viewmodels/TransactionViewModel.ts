@@ -14,7 +14,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Transaction, TransactionType } from '../models/Transaction';
-// import { TransactionService } from '../services/TransactionService';
+import { TransactionService } from '../services/FirebaseService';
+import CacheService from '../services/CacheService';
 
 export interface TransactionViewModelState {
   transactions: Transaction[];
@@ -261,46 +262,20 @@ export class TransactionViewModel {
     this.error = null;
 
     try {
-      // Simplified query - only filter by userId to avoid index requirement
-      const q = query(
-        collection(db, 'transactions'),
-        where('userId', '==', this.userId)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const allTransactions: Transaction[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        allTransactions.push({
-          id: doc.id,
-          userId: data.userId,
-          type: data.type as TransactionType,
-          amount: data.amount,
-          description: data.description,
-          category: data.category,
-          categoryIcon: data.categoryIcon,
-          accountId: data.accountId,
-          date: data.date.toDate(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        });
-      });
-
-      // Sort client-side to avoid index requirement
-      allTransactions.sort((a, b) => b.date.getTime() - a.date.getTime());
-
-      // Client-side filtering by current month
       const monthStart = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
       const monthEnd = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0, 23, 59, 59);
       
-      const filteredTransactions = allTransactions.filter(transaction => {
-        const transactionDate = transaction.date;
-        return transactionDate >= monthStart && transactionDate <= monthEnd;
-      });
+      // Use optimized TransactionService with cache
+      const transactions = await TransactionService.getTransactions(
+        this.userId,
+        monthStart,
+        monthEnd,
+        true, // use cache
+        100 // limit
+      );
 
       runInAction(() => {
-        this.transactions = filteredTransactions;
+        this.transactions = transactions;
         this.applyFilters();
         this.isLoading = false;
       });
@@ -315,20 +290,13 @@ export class TransactionViewModel {
 
   async addTransaction(transaction: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> {
     try {
-      const transactionData = {
-        userId: transaction.userId,
-        type: transaction.type,
-        amount: transaction.amount,
-        description: transaction.description,
-        category: transaction.category,
-        categoryIcon: transaction.categoryIcon,
-        accountId: transaction.accountId,
-        date: Timestamp.fromDate(transaction.date),
-        createdAt: Timestamp.fromDate(new Date()),
-        updatedAt: Timestamp.fromDate(new Date()),
+      // Use optimized TransactionService with cache invalidation
+      const transactionWithDates = {
+        ...transaction,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
-
-      const docRef = await addDoc(collection(db, 'transactions'), transactionData);
+      const transactionId = await TransactionService.createTransaction(transactionWithDates);
       
       // Update account balance
       const accountRef = doc(db, 'accounts', transaction.accountId);
@@ -355,7 +323,7 @@ export class TransactionViewModel {
       // Add to local state
       const newTransaction: Transaction = {
         ...transaction,
-        id: docRef.id,
+        id: transactionId,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -383,22 +351,8 @@ export class TransactionViewModel {
         throw new Error('Transaction not found');
       }
 
-      const transactionRef = doc(db, 'transactions', transactionId);
-      const updateData: any = { ...updates };
-
-      // Remove fields that shouldn't be updated
-      delete updateData.id;
-      delete updateData.createdAt;
-
-      // Convert date to Timestamp if provided
-      if (updates.date) {
-        updateData.date = Timestamp.fromDate(updates.date);
-      }
-
-      await updateDoc(transactionRef, {
-        ...updateData,
-        updatedAt: Timestamp.fromDate(new Date()),
-      });
+      // Use optimized TransactionService with cache invalidation
+      await TransactionService.updateTransaction(transactionId, updates);
 
       // Update account balance if amount or type changed
       if (updates.amount !== undefined || updates.type !== undefined) {
@@ -460,8 +414,8 @@ export class TransactionViewModel {
         throw new Error('Transaction not found');
       }
 
-      const transactionRef = doc(db, 'transactions', transactionId);
-      await deleteDoc(transactionRef);
+      // Use optimized TransactionService with cache invalidation
+      await TransactionService.deleteTransaction(transactionId, this.userId);
 
       // Update account balance (reverse the transaction)
       const accountRef = doc(db, 'accounts', transactionToDelete.accountId);
